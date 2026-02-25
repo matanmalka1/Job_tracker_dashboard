@@ -1,6 +1,8 @@
 import datetime as dt
 import logging
 import os
+import re
+import re
 from typing import Dict, List, Optional
 
 from google.oauth2.credentials import Credentials
@@ -115,19 +117,23 @@ class GmailClient:
     @staticmethod
     def _parse_date(date_str: str | None) -> dt.datetime:
         if not date_str:
-            # BUG FIX: datetime.utcnow() is deprecated in Python 3.12+
             return dt.datetime.now(dt.timezone.utc)
 
-        # Gmail uses RFC 2822: "Thu, 01 Jan 2025 12:00:00 +0000"
-        # Some servers omit the weekday: "01 Jan 2025 12:00:00 +0000"
+        # Real-world Gmail Date headers include trailing labels strptime can't handle:
+        #   "Wed, 25 Feb 2026 14:34:32 GMT"           (bare GMT instead of +0000)
+        #   "Tue, 24 Feb 2026 00:44:14 -0800 (PST)"   (offset + label in parens)
+        cleaned = date_str.strip()
+        cleaned = re.sub(r"\s+\([^)]+\)$", "", cleaned)  # strip (UTC), (PST), ...
+        cleaned = re.sub(r"\s+GMT$", " +0000", cleaned)    # normalize bare GMT
+
         for fmt in ("%a, %d %b %Y %H:%M:%S %z", "%d %b %Y %H:%M:%S %z"):
             try:
-                return dt.datetime.strptime(date_str.strip(), fmt).astimezone(dt.timezone.utc)
+                return dt.datetime.strptime(cleaned, fmt).astimezone(dt.timezone.utc)
             except ValueError:
                 continue
 
         try:
-            return dt.datetime.fromisoformat(date_str)
+            return dt.datetime.fromisoformat(cleaned)
         except Exception:
             logger.warning("Could not parse date string %r, using current time", date_str)
             return dt.datetime.now(dt.timezone.utc)

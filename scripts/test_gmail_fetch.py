@@ -1,4 +1,3 @@
-import asyncio
 from app.config import get_settings
 from app.job_tracker.email_scanner.gmail_client import GmailClient
 
@@ -6,7 +5,6 @@ def main():
     settings = get_settings()
 
     client = GmailClient(
-        service_account_file=settings.GMAIL_TOKEN_FILE,  # 👈 הכי חשוב
         delegated_user=settings.GMAIL_DELEGATED_USER,
         query_window_days=settings.GMAIL_QUERY_WINDOW_DAYS,
         max_messages=settings.GMAIL_MAX_MESSAGES,
