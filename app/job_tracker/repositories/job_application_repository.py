@@ -1,12 +1,85 @@
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.job_tracker.models.job_application import JobApplication, ApplicationStatus
+from app.job_tracker.models.email_reference import EmailReference
 
 
 class JobApplicationRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_by_id(self, application_id: int):
-        return None
+    async def create(self, data: dict) -> JobApplication:
+        app = JobApplication(**data)
+        self.session.add(app)
+        await self.session.flush()
+        return app
 
-    async def list_recent(self, limit: int = 10):
-        return []
+    async def get_by_id(self, application_id: int) -> Optional[JobApplication]:
+        result = await self.session.execute(
+            select(JobApplication)
+            .options(selectinload(JobApplication.emails))
+            .where(JobApplication.id == application_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def update(self, application_id: int, data: dict) -> Optional[JobApplication]:
+        existing = await self.get_by_id(application_id)
+        if not existing:
+            return None
+        for key, value in data.items():
+            if value is not None:
+                setattr(existing, key, value)
+        await self.session.flush()
+        return existing
+
+    async def delete(self, application_id: int) -> bool:
+        existing = await self.get_by_id(application_id)
+        if not existing:
+            return False
+        await self.session.delete(existing)
+        await self.session.flush()
+        return True
+
+    async def list_paginated(
+        self,
+        limit: int,
+        offset: int,
+        status: Optional[ApplicationStatus] = None,
+    ) -> tuple[list[JobApplication], int]:
+        query = select(JobApplication).options(selectinload(JobApplication.emails))
+        count_query = select(func.count()).select_from(JobApplication)
+
+        if status:
+            query = query.where(JobApplication.status == status)
+            count_query = count_query.where(JobApplication.status == status)
+
+        total = await self.session.scalar(count_query)
+        result = await self.session.execute(
+            query.order_by(JobApplication.updated_at.desc()).limit(limit).offset(offset)
+        )
+        return list(result.scalars().all()), total or 0
+
+    async def list_recent(self, limit: int = 10) -> list[JobApplication]:
+        result = await self.session.execute(
+            select(JobApplication)
+            .options(selectinload(JobApplication.emails))
+            .order_by(JobApplication.updated_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def update_last_email_at(self, application_id: int, received_at: datetime) -> None:
+        await self.session.execute(
+            update(JobApplication)
+            .where(JobApplication.id == application_id)
+            .where(
+                (JobApplication.last_email_at == None)  # noqa: E711
+                | (JobApplication.last_email_at < received_at)
+            )
+            .values(last_email_at=received_at)
+        )

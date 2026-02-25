@@ -7,7 +7,6 @@ from app.db import Base
 
 
 def _utcnow():
-    # BUG FIX: datetime.utcnow() is deprecated in Python 3.12+
     return datetime.now(timezone.utc)
 
 

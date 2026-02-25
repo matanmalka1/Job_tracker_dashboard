@@ -51,4 +51,4 @@ class EmailReferenceRepository:
             .offset(offset)
         )
         items = result.scalars().all()
-        return items, total or 0
+        return list(items), total or 0

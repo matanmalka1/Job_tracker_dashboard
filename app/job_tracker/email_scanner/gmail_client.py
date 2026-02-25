@@ -2,7 +2,6 @@ import datetime as dt
 import logging
 import os
 import re
-import re
 from typing import Dict, List, Optional
 
 from google.oauth2.credentials import Credentials
@@ -17,9 +16,6 @@ class GmailClient:
     def __init__(
         self,
         *,
-        # BUG FIX: renamed from service_account_file → token_file to match actual usage
-        # (the client calls Credentials.from_authorized_user_file, not a SA loader).
-        # The old name is kept as an alias for backwards-compatibility with existing callers.
         token_file: Optional[str] = None,
         service_account_file: Optional[str] = None,  # deprecated alias
         delegated_user: Optional[str],
@@ -119,11 +115,8 @@ class GmailClient:
         if not date_str:
             return dt.datetime.now(dt.timezone.utc)
 
-        # Real-world Gmail Date headers include trailing labels strptime can't handle:
-        #   "Wed, 25 Feb 2026 14:34:32 GMT"           (bare GMT instead of +0000)
-        #   "Tue, 24 Feb 2026 00:44:14 -0800 (PST)"   (offset + label in parens)
         cleaned = date_str.strip()
-        cleaned = re.sub(r"\s+\([^)]+\)$", "", cleaned)  # strip (UTC), (PST), ...
+        cleaned = re.sub(r"\s+\([^)]+\)$", "", cleaned)   # strip (UTC), (PST), ...
         cleaned = re.sub(r"\s+GMT$", " +0000", cleaned)    # normalize bare GMT
 
         for fmt in ("%a, %d %b %Y %H:%M:%S %z", "%d %b %Y %H:%M:%S %z"):

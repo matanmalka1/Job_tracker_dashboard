@@ -8,12 +8,32 @@ from app.job_tracker.repositories.email_reference_repository import EmailReferen
 
 logger = logging.getLogger(__name__)
 
-KEYWORDS = ["interview", "application", "thank you for applying", "hr", "recruiter"]
+# Broad keyword list: catch applications, rejections, offers, interviews, etc.
+KEYWORDS = [
+    "interview",
+    "application",
+    "thank you for applying",
+    "applied",
+    "recruiter",
+    "recruiting",
+    "hr",
+    "human resources",
+    "job offer",
+    "offer letter",
+    "unfortunately",
+    "regret to inform",
+    "pleased to inform",
+    "moving forward",
+    "next steps",
+    "hiring",
+    "position",
+    "candidate",
+    "background check",
+    "onboarding",
+    "start date",
+]
 
-# BUG FIX: executor is now managed per-instance (or lazily created once and exposed
-# for clean shutdown) rather than as a leak-prone bare global.
 _executor: ThreadPoolExecutor | None = None
-_executor_lock = asyncio.Lock() if False else None  # placeholder; see _get_executor()
 
 
 def _matches_keywords(subject: str | None, snippet: str | None) -> bool:
@@ -30,7 +50,7 @@ def _get_executor() -> ThreadPoolExecutor:
 
 
 def shutdown_executor() -> None:
-    """Call this on application shutdown to cleanly drain threads."""
+    """Call on application shutdown to cleanly drain threads."""
     global _executor
     if _executor is not None:
         _executor.shutdown(wait=True)
@@ -47,7 +67,10 @@ class EmailScanService:
         fetch_fn = partial(self.gmail_client.fetch_recent_messages)
         fetched_messages = await loop.run_in_executor(_get_executor(), fetch_fn)
 
-        matched = [msg for msg in fetched_messages if _matches_keywords(msg.get("subject"), msg.get("snippet"))]
+        matched = [
+            msg for msg in fetched_messages
+            if _matches_keywords(msg.get("subject"), msg.get("snippet"))
+        ]
 
         inserted, skipped = await self._bulk_insert(matched)
 

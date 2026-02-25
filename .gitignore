@@ -41,5 +41,5 @@ htmlcov/
 *.env
 .env
 
-# Secrets
+# Secrets — never commit tokens or service account keys
 secrets/

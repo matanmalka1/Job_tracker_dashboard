@@ -1,19 +1,29 @@
 import importlib
 import importlib.util
 from functools import lru_cache
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.config import get_settings
 from app.db import get_session
 from app.job_tracker.email_scanner.gmail_client import GmailClient
+from app.job_tracker.models.job_application import ApplicationStatus
 from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
+from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
 from app.job_tracker.schemas.email_reference import EmailReferencePage, EmailReferenceRead
+from app.job_tracker.schemas.job_application import (
+    JobApplicationCreate,
+    JobApplicationPage,
+    JobApplicationRead,
+    JobApplicationUpdate,
+)
+from app.job_tracker.services.job_application_service import JobApplicationService
 
 
 @lru_cache(maxsize=1)
 def _resolve_auth_dep():
-    """Return a FastAPI-compatible dependency function for auth, or a no-op if app.auth is absent."""
+    """Return a FastAPI-compatible dependency for auth, or a no-op if app.auth is absent."""
     spec = importlib.util.find_spec("app.auth")
     if spec is None:
         async def _noop():
@@ -27,10 +37,12 @@ def _resolve_auth_dep():
 router = APIRouter(prefix="/job-tracker", tags=["job-tracker"])
 
 
+# ─── Email endpoints ───────────────────────────────────────────────────────────
+
 @router.get("/emails", response_model=EmailReferencePage)
 async def list_emails(
-    limit: int | None = None,
-    offset: int | None = None,
+    limit: Optional[int] = Query(None, ge=1, le=500),
+    offset: Optional[int] = Query(None, ge=0),
     session=Depends(get_session),
     _=Depends(_resolve_auth_dep()),
 ):
@@ -44,12 +56,14 @@ async def list_emails(
 
 
 @router.post("/scan", status_code=status.HTTP_202_ACCEPTED)
-async def trigger_scan(session=Depends(get_session), _=Depends(_resolve_auth_dep())):
+async def trigger_scan(
+    session=Depends(get_session),
+    _=Depends(_resolve_auth_dep()),
+):
+    """Trigger a Gmail scan and store matching emails in the database."""
     repo = EmailReferenceRepository(session)
     settings = get_settings()
 
-    # BUG FIX: use GMAIL_TOKEN_FILE (OAuth token) not GMAIL_SERVICE_ACCOUNT_FILE,
-    # because GmailClient calls Credentials.from_authorized_user_file internally.
     client = GmailClient(
         token_file=settings.GMAIL_TOKEN_FILE,
         delegated_user=settings.GMAIL_DELEGATED_USER,
@@ -65,3 +79,105 @@ async def trigger_scan(session=Depends(get_session), _=Depends(_resolve_auth_dep
         return {"inserted": inserted}
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+
+# ─── Job Application endpoints ────────────────────────────────────────────────
+
+@router.get("/applications", response_model=JobApplicationPage)
+async def list_applications(
+    limit: Optional[int] = Query(None, ge=1, le=500),
+    offset: Optional[int] = Query(None, ge=0),
+    status_filter: Optional[ApplicationStatus] = Query(None, alias="status"),
+    session=Depends(get_session),
+    _=Depends(_resolve_auth_dep()),
+):
+    settings = get_settings()
+    limit = limit if limit is not None else settings.PAGINATION_LIMIT_DEFAULT
+    offset = offset if offset is not None else settings.PAGINATION_OFFSET_DEFAULT
+
+    app_repo = JobApplicationRepository(session)
+    email_repo = EmailReferenceRepository(session)
+    svc = JobApplicationService(app_repo, email_repo)
+    items, total = await svc.list_paginated(limit=limit, offset=offset, status=status_filter)
+    return JobApplicationPage(
+        total=total,
+        items=[JobApplicationRead.model_validate(i) for i in items],
+    )
+
+
+@router.post("/applications", response_model=JobApplicationRead, status_code=status.HTTP_201_CREATED)
+async def create_application(
+    body: JobApplicationCreate,
+    session=Depends(get_session),
+    _=Depends(_resolve_auth_dep()),
+):
+    app_repo = JobApplicationRepository(session)
+    email_repo = EmailReferenceRepository(session)
+    svc = JobApplicationService(app_repo, email_repo)
+    app = await svc.create(body.model_dump())
+    return JobApplicationRead.model_validate(app)
+
+
+@router.get("/applications/{application_id}", response_model=JobApplicationRead)
+async def get_application(
+    application_id: int,
+    session=Depends(get_session),
+    _=Depends(_resolve_auth_dep()),
+):
+    app_repo = JobApplicationRepository(session)
+    email_repo = EmailReferenceRepository(session)
+    svc = JobApplicationService(app_repo, email_repo)
+    app = await svc.get_by_id(application_id)
+    if not app:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+    return JobApplicationRead.model_validate(app)
+
+
+@router.patch("/applications/{application_id}", response_model=JobApplicationRead)
+async def update_application(
+    application_id: int,
+    body: JobApplicationUpdate,
+    session=Depends(get_session),
+    _=Depends(_resolve_auth_dep()),
+):
+    app_repo = JobApplicationRepository(session)
+    email_repo = EmailReferenceRepository(session)
+    svc = JobApplicationService(app_repo, email_repo)
+    app = await svc.update(application_id, body.model_dump(exclude_none=True))
+    if not app:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+    return JobApplicationRead.model_validate(app)
+
+
+@router.delete("/applications/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_application(
+    application_id: int,
+    session=Depends(get_session),
+    _=Depends(_resolve_auth_dep()),
+):
+    app_repo = JobApplicationRepository(session)
+    email_repo = EmailReferenceRepository(session)
+    svc = JobApplicationService(app_repo, email_repo)
+    deleted = await svc.delete(application_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+
+
+@router.post(
+    "/applications/{application_id}/emails/{email_id}",
+    status_code=status.HTTP_200_OK,
+)
+async def assign_email_to_application(
+    application_id: int,
+    email_id: int,
+    session=Depends(get_session),
+    _=Depends(_resolve_auth_dep()),
+):
+    """Link an existing email reference to a job application."""
+    app_repo = JobApplicationRepository(session)
+    email_repo = EmailReferenceRepository(session)
+    svc = JobApplicationService(app_repo, email_repo)
+    ok = await svc.assign_email(application_id, email_id)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application or email not found")
+    return {"assigned": True}
