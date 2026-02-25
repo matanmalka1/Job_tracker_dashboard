@@ -36,6 +36,10 @@ def _resolve_auth_dep():
 
 router = APIRouter(prefix="/job-tracker", tags=["job-tracker"])
 
+# NOTE: _resolve_auth_dep() is called here (at import time) intentionally —
+# the resolved callable is what FastAPI wraps as a dependency per-request.
+_auth_dep = _resolve_auth_dep()
+
 
 # ─── Email endpoints ───────────────────────────────────────────────────────────
 
@@ -44,7 +48,7 @@ async def list_emails(
     limit: Optional[int] = Query(None, ge=1, le=500),
     offset: Optional[int] = Query(None, ge=0),
     session=Depends(get_session),
-    _=Depends(_resolve_auth_dep()),
+    _=Depends(_auth_dep),
 ):
     settings = get_settings()
     limit = limit if limit is not None else settings.PAGINATION_LIMIT_DEFAULT
@@ -58,7 +62,7 @@ async def list_emails(
 @router.post("/scan", status_code=status.HTTP_202_ACCEPTED)
 async def trigger_scan(
     session=Depends(get_session),
-    _=Depends(_resolve_auth_dep()),
+    _=Depends(_auth_dep),
 ):
     """Trigger a Gmail scan and store matching emails in the database."""
     repo = EmailReferenceRepository(session)
@@ -77,6 +81,9 @@ async def trigger_scan(
         service = EmailScanService(client, repo)
         inserted = await service.scan_for_applications()
         return {"inserted": inserted}
+    except RuntimeError as exc:
+        # Configuration errors (missing token file, etc.)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
 
@@ -89,7 +96,7 @@ async def list_applications(
     offset: Optional[int] = Query(None, ge=0),
     status_filter: Optional[ApplicationStatus] = Query(None, alias="status"),
     session=Depends(get_session),
-    _=Depends(_resolve_auth_dep()),
+    _=Depends(_auth_dep),
 ):
     settings = get_settings()
     limit = limit if limit is not None else settings.PAGINATION_LIMIT_DEFAULT
@@ -109,7 +116,7 @@ async def list_applications(
 async def create_application(
     body: JobApplicationCreate,
     session=Depends(get_session),
-    _=Depends(_resolve_auth_dep()),
+    _=Depends(_auth_dep),
 ):
     app_repo = JobApplicationRepository(session)
     email_repo = EmailReferenceRepository(session)
@@ -122,7 +129,7 @@ async def create_application(
 async def get_application(
     application_id: int,
     session=Depends(get_session),
-    _=Depends(_resolve_auth_dep()),
+    _=Depends(_auth_dep),
 ):
     app_repo = JobApplicationRepository(session)
     email_repo = EmailReferenceRepository(session)
@@ -138,12 +145,14 @@ async def update_application(
     application_id: int,
     body: JobApplicationUpdate,
     session=Depends(get_session),
-    _=Depends(_resolve_auth_dep()),
+    _=Depends(_auth_dep),
 ):
     app_repo = JobApplicationRepository(session)
     email_repo = EmailReferenceRepository(session)
     svc = JobApplicationService(app_repo, email_repo)
-    app = await svc.update(application_id, body.model_dump(exclude_none=True))
+    # exclude_unset=True so that fields not provided are not patched;
+    # exclude_none is intentionally NOT used here so callers can explicitly clear nullable fields.
+    app = await svc.update(application_id, body.model_dump(exclude_unset=True))
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
     return JobApplicationRead.model_validate(app)
@@ -153,7 +162,7 @@ async def update_application(
 async def delete_application(
     application_id: int,
     session=Depends(get_session),
-    _=Depends(_resolve_auth_dep()),
+    _=Depends(_auth_dep),
 ):
     app_repo = JobApplicationRepository(session)
     email_repo = EmailReferenceRepository(session)
@@ -171,7 +180,7 @@ async def assign_email_to_application(
     application_id: int,
     email_id: int,
     session=Depends(get_session),
-    _=Depends(_resolve_auth_dep()),
+    _=Depends(_auth_dep),
 ):
     """Link an existing email reference to a job application."""
     app_repo = JobApplicationRepository(session)
@@ -179,5 +188,8 @@ async def assign_email_to_application(
     svc = JobApplicationService(app_repo, email_repo)
     ok = await svc.assign_email(application_id, email_id)
     if not ok:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application or email not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application or email not found",
+        )
     return {"assigned": True}

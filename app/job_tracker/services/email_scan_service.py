@@ -1,7 +1,9 @@
 import asyncio
 import logging
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
+from typing import Optional
 
 from app.job_tracker.email_scanner.gmail_client import GmailClient
 from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
@@ -33,7 +35,8 @@ KEYWORDS = [
     "start date",
 ]
 
-_executor: ThreadPoolExecutor | None = None
+_executor: Optional[ThreadPoolExecutor] = None
+_executor_lock = threading.Lock()
 
 
 def _matches_keywords(subject: str | None, snippet: str | None) -> bool:
@@ -42,19 +45,26 @@ def _matches_keywords(subject: str | None, snippet: str | None) -> bool:
 
 
 def _get_executor() -> ThreadPoolExecutor:
-    """Return the shared executor, creating it on first call."""
+    """Return the shared executor, creating it thread-safely on first call."""
     global _executor
     if _executor is None or _executor._shutdown:
-        _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="gmail-scan")
+        with _executor_lock:
+            # Double-checked locking: re-test inside the lock
+            if _executor is None or _executor._shutdown:
+                _executor = ThreadPoolExecutor(
+                    max_workers=4,
+                    thread_name_prefix="gmail-scan",
+                )
     return _executor
 
 
 def shutdown_executor() -> None:
     """Call on application shutdown to cleanly drain threads."""
     global _executor
-    if _executor is not None:
-        _executor.shutdown(wait=True)
-        _executor = None
+    with _executor_lock:
+        if _executor is not None:
+            _executor.shutdown(wait=True)
+            _executor = None
 
 
 class EmailScanService:

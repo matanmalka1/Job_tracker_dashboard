@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import select, func, update
@@ -31,9 +31,17 @@ class JobApplicationRepository:
         existing = await self.get_by_id(application_id)
         if not existing:
             return None
+
+        # Only skip keys whose value is explicitly None; falsy values like ""
+        # or 0 are legitimate updates the caller wants to persist.
         for key, value in data.items():
             if value is not None:
                 setattr(existing, key, value)
+
+        # Explicitly bump updated_at so the change is visible even if the async
+        # driver's onupdate hook doesn't fire inside the same flush cycle.
+        existing.updated_at = datetime.now(timezone.utc)
+
         await self.session.flush()
         return existing
 

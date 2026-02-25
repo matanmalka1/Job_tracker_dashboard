@@ -4,6 +4,7 @@ import os
 import re
 from typing import Dict, List, Optional
 
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -28,7 +29,7 @@ class GmailClient:
         self.query_window_days = max(1, query_window_days)
         self.max_messages = max(1, max_messages)
         self.page_size = max(1, min(page_size, self.max_messages))
-        self._credentials = None
+        self._credentials: Optional[Credentials] = None
         self._service = None
         self._user_id = delegated_user or "me"
 
@@ -40,6 +41,29 @@ class GmailClient:
                 "then set GMAIL_TOKEN_FILE in your .env."
             )
         creds = Credentials.from_authorized_user_file(self._token_file, scopes=SCOPES)
+
+        # Refresh expired credentials automatically
+        if creds.expired and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+                # Persist refreshed token so the next startup doesn't need to re-auth
+                with open(self._token_file, "w") as fh:
+                    fh.write(creds.to_json())
+                logger.info("Gmail OAuth token refreshed and saved to %s", self._token_file)
+            except Exception:
+                logger.exception(
+                    "Failed to refresh Gmail token from %s. "
+                    "Re-run scripts/generate_token.py to re-authorize.",
+                    self._token_file,
+                )
+                raise
+
+        if not creds.valid:
+            raise RuntimeError(
+                f"Gmail credentials in {self._token_file} are invalid or expired "
+                "and could not be refreshed. Re-run scripts/generate_token.py."
+            )
+
         self._credentials = creds
         return creds
 
@@ -61,7 +85,12 @@ class GmailClient:
                 response = (
                     service.users()
                     .messages()
-                    .list(userId=self._user_id, q=query, maxResults=page_size, pageToken=page_token)
+                    .list(
+                        userId=self._user_id,
+                        q=query,
+                        maxResults=page_size,
+                        pageToken=page_token,
+                    )
                     .execute()
                 )
                 messages.extend(response.get("messages", []))
@@ -96,7 +125,10 @@ class GmailClient:
         return f"after:{after_date.isoformat()}"
 
     def _parse_message(self, msg: Dict) -> Dict:
-        headers = {h["name"].lower(): h.get("value") for h in msg.get("payload", {}).get("headers", [])}
+        headers = {
+            h["name"].lower(): h.get("value")
+            for h in msg.get("payload", {}).get("headers", [])
+        }
         subject = headers.get("subject")
         sender = headers.get("from")
         date_raw = headers.get("date")
@@ -116,8 +148,8 @@ class GmailClient:
             return dt.datetime.now(dt.timezone.utc)
 
         cleaned = date_str.strip()
-        cleaned = re.sub(r"\s+\([^)]+\)$", "", cleaned)   # strip (UTC), (PST), ...
-        cleaned = re.sub(r"\s+GMT$", " +0000", cleaned)    # normalize bare GMT
+        cleaned = re.sub(r"\s+\([^)]+\)$", "", cleaned)  # strip (UTC), (PST), …
+        cleaned = re.sub(r"\s+GMT$", " +0000", cleaned)   # normalize bare GMT
 
         for fmt in ("%a, %d %b %Y %H:%M:%S %z", "%d %b %Y %H:%M:%S %z"):
             try:
