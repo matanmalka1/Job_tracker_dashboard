@@ -1,4 +1,7 @@
+import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 
 from app.job_tracker.email_scanner.gmail_client import GmailClient
 from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
@@ -6,6 +9,7 @@ from app.job_tracker.repositories.email_reference_repository import EmailReferen
 logger = logging.getLogger(__name__)
 
 KEYWORDS = ["interview", "application", "thank you for applying", "hr", "recruiter"]
+_executor: ThreadPoolExecutor | None = None
 
 
 def _matches_keywords(subject: str | None, snippet: str | None) -> bool:
@@ -19,19 +23,28 @@ class EmailScanService:
         self.repo = repo
 
     async def scan_for_applications(self):
-        fetched_messages = self.gmail_client.fetch_recent_messages()
+        global _executor
+        if _executor is None:
+            _executor = ThreadPoolExecutor(max_workers=4)
+
+        loop = asyncio.get_running_loop()
+        fetch_fn = partial(self.gmail_client.fetch_recent_messages)
+        fetched_messages = await loop.run_in_executor(_executor, fetch_fn)
+
         matched = [msg for msg in fetched_messages if _matches_keywords(msg.get("subject"), msg.get("snippet"))]
 
-        inserted = 0
-        for msg in matched:
-            record, created = await self.repo.create_from_raw_message(msg)
-            if created:
-                inserted += 1
+        inserted, skipped = await self._bulk_insert(matched)
 
         logger.info(
-            "Email scan completed: fetched=%s matched=%s inserted=%s",
+            "Email scan completed: fetched=%s matched=%s inserted=%s skipped_duplicates=%s",
             len(fetched_messages),
             len(matched),
             inserted,
+            skipped,
         )
         return inserted
+
+    async def _bulk_insert(self, messages: list[dict]) -> tuple[int, int]:
+        created, duplicates = await self.repo.bulk_create(messages)
+        await self.repo.session.commit()
+        return created, duplicates

@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     GMAIL_SERVICE_ACCOUNT_FILE: str | None = None
     GMAIL_DELEGATED_USER: str | None = None
     GMAIL_QUERY_WINDOW_DAYS: int = 30
+    GMAIL_MAX_MESSAGES: int = 200
+    GMAIL_LIST_PAGE_SIZE: int = 50
     PAGINATION_LIMIT_DEFAULT: int = 50
     PAGINATION_OFFSET_DEFAULT: int = 0
 

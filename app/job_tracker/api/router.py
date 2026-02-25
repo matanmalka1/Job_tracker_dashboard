@@ -42,7 +42,14 @@ async def list_emails(
 @router.post("/scan", status_code=status.HTTP_202_ACCEPTED)
 async def trigger_scan(session=Depends(get_session), _=Depends(_resolve_auth_dep())):
     repo = EmailReferenceRepository(session)
-    client = GmailClient()
+    settings = get_settings()
+    client = GmailClient(
+        service_account_file=settings.GMAIL_SERVICE_ACCOUNT_FILE,
+        delegated_user=settings.GMAIL_DELEGATED_USER,
+        query_window_days=settings.GMAIL_QUERY_WINDOW_DAYS,
+        max_messages=settings.GMAIL_MAX_MESSAGES,
+        page_size=settings.GMAIL_LIST_PAGE_SIZE,
+    )
     try:
         from app.job_tracker.services.email_scan_service import EmailScanService
 

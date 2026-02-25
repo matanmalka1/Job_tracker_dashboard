@@ -21,9 +21,25 @@ class EmailReferenceRepository:
 
         record = EmailReference(**data)
         self.session.add(record)
-        await self.session.commit()
-        await self.session.refresh(record)
         return record, True
+
+    async def bulk_create(self, items: list[dict]) -> tuple[int, int]:
+        if not items:
+            return 0, 0
+
+        ids = [item.get("gmail_message_id") for item in items if item.get("gmail_message_id")]
+        existing_ids = set()
+        if ids:
+            result = await self.session.execute(
+                select(EmailReference.gmail_message_id).where(EmailReference.gmail_message_id.in_(ids))
+            )
+            existing_ids = set(result.scalars().all())
+
+        to_insert = [item for item in items if item.get("gmail_message_id") not in existing_ids]
+        records = [EmailReference(**item) for item in to_insert]
+        self.session.add_all(records)
+        await self.session.flush()
+        return len(records), len(existing_ids)
 
     async def list_paginated(self, limit: int, offset: int) -> tuple[list[EmailReference], int]:
         total = await self.session.scalar(select(func.count()).select_from(EmailReference))
