@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./job_dashboard.db"
     GMAIL_SERVICE_ACCOUNT_FILE: str | None = None
     GMAIL_DELEGATED_USER: str | None = None
+    GMAIL_TOKEN_FILE: str | None = None
+    
     GMAIL_QUERY_WINDOW_DAYS: int = 30
     GMAIL_MAX_MESSAGES: int = 200
     GMAIL_LIST_PAGE_SIZE: int = 50

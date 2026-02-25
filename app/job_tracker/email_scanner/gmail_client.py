@@ -1,8 +1,9 @@
 import datetime as dt
 import logging
+import os
 from typing import Dict, List, Optional
 
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -20,7 +21,8 @@ class GmailClient:
         max_messages: int,
         page_size: int,
     ):
-        self.service_account_file = service_account_file
+        # `service_account_file` is treated as the path to OAuth token.json for compatibility with callers.
+        self._token_file = service_account_file
         self.delegated_user = delegated_user
         self.query_window_days = max(1, query_window_days)
         self.max_messages = max(1, max_messages)
@@ -30,14 +32,10 @@ class GmailClient:
         self._user_id = delegated_user or "me"
 
     def _build_credentials(self):
-        if not self.service_account_file:
-            raise RuntimeError("GMAIL_SERVICE_ACCOUNT_FILE is not configured")
+        if not self._token_file or not os.path.exists(self._token_file):
+            raise RuntimeError("GMAIL token file is not configured")
 
-        creds = service_account.Credentials.from_service_account_file(
-            self.service_account_file, scopes=SCOPES
-        )
-        if self.delegated_user:
-            creds = creds.with_subject(self.delegated_user)
+        creds = Credentials.from_authorized_user_file(self._token_file, scopes=SCOPES)
         self._credentials = creds
         return creds
 
