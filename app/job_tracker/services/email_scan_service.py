@@ -9,7 +9,11 @@ from app.job_tracker.repositories.email_reference_repository import EmailReferen
 logger = logging.getLogger(__name__)
 
 KEYWORDS = ["interview", "application", "thank you for applying", "hr", "recruiter"]
+
+# BUG FIX: executor is now managed per-instance (or lazily created once and exposed
+# for clean shutdown) rather than as a leak-prone bare global.
 _executor: ThreadPoolExecutor | None = None
+_executor_lock = asyncio.Lock() if False else None  # placeholder; see _get_executor()
 
 
 def _matches_keywords(subject: str | None, snippet: str | None) -> bool:
@@ -17,19 +21,31 @@ def _matches_keywords(subject: str | None, snippet: str | None) -> bool:
     return any(keyword in haystack for keyword in KEYWORDS)
 
 
+def _get_executor() -> ThreadPoolExecutor:
+    """Return the shared executor, creating it on first call."""
+    global _executor
+    if _executor is None or _executor._shutdown:
+        _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="gmail-scan")
+    return _executor
+
+
+def shutdown_executor() -> None:
+    """Call this on application shutdown to cleanly drain threads."""
+    global _executor
+    if _executor is not None:
+        _executor.shutdown(wait=True)
+        _executor = None
+
+
 class EmailScanService:
     def __init__(self, gmail_client: GmailClient, repo: EmailReferenceRepository):
         self.gmail_client = gmail_client
         self.repo = repo
 
-    async def scan_for_applications(self):
-        global _executor
-        if _executor is None:
-            _executor = ThreadPoolExecutor(max_workers=4)
-
+    async def scan_for_applications(self) -> int:
         loop = asyncio.get_running_loop()
         fetch_fn = partial(self.gmail_client.fetch_recent_messages)
-        fetched_messages = await loop.run_in_executor(_executor, fetch_fn)
+        fetched_messages = await loop.run_in_executor(_get_executor(), fetch_fn)
 
         matched = [msg for msg in fetched_messages if _matches_keywords(msg.get("subject"), msg.get("snippet"))]
 

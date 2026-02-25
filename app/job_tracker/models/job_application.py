@@ -1,9 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from sqlalchemy import Column, DateTime, Enum as SAEnum, Float, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.db import Base
+
+
+def _utcnow():
+    # BUG FIX: datetime.utcnow() is deprecated in Python 3.12+
+    return datetime.now(timezone.utc)
 
 
 class ApplicationStatus(str, Enum):
@@ -23,11 +28,11 @@ class JobApplication(Base):
     role_title = Column(String(255), nullable=False)
     status = Column(SAEnum(ApplicationStatus), nullable=False, default=ApplicationStatus.NEW)
     source = Column(String(255), nullable=True)
-    applied_at = Column(DateTime, nullable=True)
-    last_email_at = Column(DateTime, nullable=True)
+    applied_at = Column(DateTime(timezone=True), nullable=True)
+    last_email_at = Column(DateTime(timezone=True), nullable=True)
     confidence_score = Column(Float, nullable=True)
 
     emails = relationship("EmailReference", back_populates="application", cascade="all, delete-orphan")
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)

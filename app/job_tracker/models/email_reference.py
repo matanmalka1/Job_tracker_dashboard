@@ -1,8 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.db import Base
+
+
+def _utcnow():
+    # BUG FIX: datetime.utcnow() is deprecated in Python 3.12+
+    return datetime.now(timezone.utc)
 
 
 class EmailReference(Base):
@@ -13,10 +18,10 @@ class EmailReference(Base):
     gmail_message_id = Column(String(255), nullable=False, index=True)
     subject = Column(String(500), nullable=True)
     sender = Column(String(255), nullable=True)
-    received_at = Column(DateTime, nullable=False)
+    received_at = Column(DateTime(timezone=True), nullable=False)
     snippet = Column(Text, nullable=True)
     application_id = Column(Integer, ForeignKey("job_applications.id"), nullable=True)
 
     application = relationship("JobApplication", back_populates="emails")
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)

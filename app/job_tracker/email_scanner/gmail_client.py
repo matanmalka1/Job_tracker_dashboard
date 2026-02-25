@@ -15,14 +15,17 @@ class GmailClient:
     def __init__(
         self,
         *,
-        service_account_file: str,
+        # BUG FIX: renamed from service_account_file → token_file to match actual usage
+        # (the client calls Credentials.from_authorized_user_file, not a SA loader).
+        # The old name is kept as an alias for backwards-compatibility with existing callers.
+        token_file: Optional[str] = None,
+        service_account_file: Optional[str] = None,  # deprecated alias
         delegated_user: Optional[str],
         query_window_days: int,
         max_messages: int,
         page_size: int,
     ):
-        # `service_account_file` is treated as the path to OAuth token.json for compatibility with callers.
-        self._token_file = service_account_file
+        self._token_file = token_file or service_account_file
         self.delegated_user = delegated_user
         self.query_window_days = max(1, query_window_days)
         self.max_messages = max(1, max_messages)
@@ -31,10 +34,13 @@ class GmailClient:
         self._service = None
         self._user_id = delegated_user or "me"
 
-    def _build_credentials(self):
+    def _build_credentials(self) -> Credentials:
         if not self._token_file or not os.path.exists(self._token_file):
-            raise RuntimeError("GMAIL token file is not configured")
-
+            raise RuntimeError(
+                "GMAIL_TOKEN_FILE is not configured or does not exist. "
+                "Run scripts/generate_token.py to create secrets/token.json, "
+                "then set GMAIL_TOKEN_FILE in your .env."
+            )
         creds = Credentials.from_authorized_user_file(self._token_file, scopes=SCOPES)
         self._credentials = creds
         return creds
@@ -42,7 +48,6 @@ class GmailClient:
     def _get_service(self):
         if self._service is None:
             creds = self._credentials or self._build_credentials()
-            # Building the discovery client is blocking; keep it here so callers can run off the event loop.
             self._service = build("gmail", "v1", credentials=creds, cache_discovery=False)
         return self._service
 
@@ -52,7 +57,7 @@ class GmailClient:
             query = self._date_query()
             messages: List[Dict] = []
             page_token: Optional[str] = None
-            # Paginate to avoid unbounded list calls; still needs per-message fetch until Gmail batch is available.
+
             while len(messages) < self.max_messages:
                 page_size = min(self.page_size, self.max_messages - len(messages))
                 response = (
@@ -110,11 +115,19 @@ class GmailClient:
     @staticmethod
     def _parse_date(date_str: str | None) -> dt.datetime:
         if not date_str:
-            return dt.datetime.utcnow()
-        try:
-            return dt.datetime.strptime(date_str, "%a, %d %b %Y %H:%M:%S %z").astimezone(dt.timezone.utc)
-        except ValueError:
+            # BUG FIX: datetime.utcnow() is deprecated in Python 3.12+
+            return dt.datetime.now(dt.timezone.utc)
+
+        # Gmail uses RFC 2822: "Thu, 01 Jan 2025 12:00:00 +0000"
+        # Some servers omit the weekday: "01 Jan 2025 12:00:00 +0000"
+        for fmt in ("%a, %d %b %Y %H:%M:%S %z", "%d %b %Y %H:%M:%S %z"):
             try:
-                return dt.datetime.fromisoformat(date_str)
-            except Exception:
-                return dt.datetime.utcnow()
+                return dt.datetime.strptime(date_str.strip(), fmt).astimezone(dt.timezone.utc)
+            except ValueError:
+                continue
+
+        try:
+            return dt.datetime.fromisoformat(date_str)
+        except Exception:
+            logger.warning("Could not parse date string %r, using current time", date_str)
+            return dt.datetime.now(dt.timezone.utc)

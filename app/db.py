@@ -23,12 +23,11 @@ async def init_db() -> None:
     # Import models so metadata is populated before create_all
     import app.job_tracker.models  # noqa: F401
 
-    if _is_sqlite(_settings.DATABASE_URL):
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-    else:
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
+    # BUG FIX: always run create_all regardless of DB backend.
+    # The old code only ran create_all for SQLite; Postgres/MySQL would start
+    # with no tables and fail on the first request.
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
