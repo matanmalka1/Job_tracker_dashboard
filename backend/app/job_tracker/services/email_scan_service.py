@@ -49,7 +49,7 @@ _APPLICATION_SUBJECT_PATTERNS = [
         r"(?:your\s+)?application\s+(?:to|for)\s+(?P<role>.+?)\s+at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
-    # "Thanks for applying for <Role> at <Company>" / "We got it: Thanks for applying for <Role> at <Company>"
+    # "Thanks for applying for <Role> at <Company>"
     re.compile(
         r"(?:thank(?:s|\s+you)\s+for\s+apply(?:ing)?(?:\s+for)?)\s+(?:the\s+)?(?P<role>.+?)\s+(?:position\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
@@ -74,12 +74,12 @@ _APPLICATION_SUBJECT_PATTERNS = [
         r"(?:we\s+)?received\s+your\s+application\s+(?:for\s+(?P<role>.+?)\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
-    # "Next steps for your application at <Company>" / "Next steps for your candidacy at <Company>"
+    # "Next steps for your application at <Company>"
     re.compile(
         r"next\s+steps?\s+(?:for\s+your\s+(?:application|candidacy)\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
-    # "Interview invitation — <Company>" / "<Company> — Interview"
+    # "Interview invitation — <Company>"
     re.compile(
         r"interview\s+invitation[\s\-–—]+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
@@ -88,7 +88,7 @@ _APPLICATION_SUBJECT_PATTERNS = [
         r"^(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)\s*[\-–—]+\s*(?:interview|phone\s+screen|technical\s+screen)",
         re.IGNORECASE,
     ),
-    # "<Company> — <Role> — Application Received" or "<Company>: <Role> application"
+    # "<Company> — <Role> — Application Received"
     re.compile(
         r"^(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]{2,40})\s*[\-–—:]\s*(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]{2,80})\s*[\-–—]\s*application",
         re.IGNORECASE,
@@ -127,25 +127,25 @@ def _matches_keywords(subject: str | None, snippet: str | None) -> bool:
 
 
 def _extract_sender_domain(sender: str | None) -> str | None:
-    """Extract bare domain from a sender like 'noreply@careers.acme.com' → 'acme.com'."""
+    """Extract bare domain from a sender like 'noreply@careers.acme.com' → 'Acme'."""
     if not sender:
         return None
     m = re.search(r"@([\w.\-]+)", sender)
     if not m:
         return None
     parts = m.group(1).lower().split(".")
-    # Drop common notification subdomains and TLD, return last two meaningful parts
-    skip = {"mail", "email", "notification", "notifications", "noreply",
-            "no-reply", "careers", "jobs", "comeet", "greenhouse", "lever",
-            "workday", "bamboohr", "smartrecruiters", "taleo", "icims",
-            "jobvite", "ashbyhq", "ashby", "rippling", "gusto", "myworkday",
-            "successfactors", "oracle", "peoplesoft", "ultipro", "adp",
-            "paychex", "zenefits", "breezy", "jazz", "applytojob",
-            "hire", "recruiting", "workable", "pinpoint", "recruitee"}
+    skip = {
+        "mail", "email", "notification", "notifications", "noreply",
+        "no-reply", "careers", "jobs", "comeet", "greenhouse", "lever",
+        "workday", "bamboohr", "smartrecruiters", "taleo", "icims",
+        "jobvite", "ashbyhq", "ashby", "rippling", "gusto", "myworkday",
+        "successfactors", "oracle", "peoplesoft", "ultipro", "adp",
+        "paychex", "zenefits", "breezy", "jazz", "applytojob",
+        "hire", "recruiting", "workable", "pinpoint", "recruitee",
+    }
     meaningful = [p for p in parts[:-1] if p not in skip]  # drop TLD
     if meaningful:
         return meaningful[-1].capitalize()
-    # Last resort: first domain part — but only if it's not itself an ATS platform
     first = parts[0] if parts else None
     if first and first not in skip:
         return first.capitalize()
@@ -168,7 +168,6 @@ def _parse_application_from_email(email: EmailReference) -> Optional[dict]:
     snippet = email.snippet or ""
     haystack = f"{subject} {snippet}"
 
-    # Try patterns against subject first, then fall back to snippet
     for search_text in (subject, snippet):
         if not search_text:
             continue
@@ -180,15 +179,20 @@ def _parse_application_from_email(email: EmailReference) -> Optional[dict]:
             company = groups.get("company", "").strip().rstrip(".,!")
             role = groups.get("role", "").strip().rstrip(".,!")
 
-            # Fall back to sender domain if company not captured
             if not company:
                 company = _extract_sender_domain(email.sender) or "Unknown Company"
 
-            # Cap role length sanity
+            # Log and skip suspiciously long matches — likely a bad regex capture
             if len(role) > 120:
-                role = role[:120]
+                logger.warning(
+                    "Role title exceeds 120 chars (%d), skipping: %r", len(role), role[:40]
+                )
+                continue
             if len(company) > 120:
-                company = company[:120]
+                logger.warning(
+                    "Company name exceeds 120 chars (%d), skipping: %r", len(company), company[:40]
+                )
+                continue
 
             if not company:
                 continue
@@ -205,10 +209,6 @@ def _parse_application_from_email(email: EmailReference) -> Optional[dict]:
 
 
 def _extract_role_from_subjects(subjects: list[str | None]) -> str | None:
-    """
-    Given a list of email subjects for the same company, try to find one
-    that contains a parseable role title.
-    """
     for subject in subjects:
         if not subject:
             continue
@@ -262,14 +262,13 @@ class EmailScanService:
         Returns {"inserted": int, "applications_created": int}.
         Calls on_progress(stage: str, detail: str) at key steps if provided.
         """
-        # Record scan start
         scan_run_id: Optional[int] = None
         if self.scan_run_repo is not None:
             try:
                 run = await self.scan_run_repo.create()
                 scan_run_id = run.id
             except Exception:
-                pass  # non-fatal — don't block scan if history tracking fails
+                logger.warning("Could not record scan run start", exc_info=True)
 
         def emit(stage: str, detail: str = ""):
             if on_progress:
@@ -321,7 +320,7 @@ class EmailScanService:
                         apps_created=applications_created,
                     )
                 except Exception:
-                    pass
+                    logger.warning("Could not record scan run completion", exc_info=True)
 
             return {"inserted": inserted, "applications_created": applications_created}
 
@@ -330,7 +329,7 @@ class EmailScanService:
                 try:
                     await self.scan_run_repo.fail(scan_run_id, str(exc))
                 except Exception:
-                    pass
+                    logger.warning("Could not record scan run failure", exc_info=True)
             raise
 
     async def _bulk_insert(self, messages: list[dict]) -> tuple[int, int]:
@@ -372,6 +371,8 @@ class EmailScanService:
         from the subject line and create it, then link the email.
         Deduplicates by (company_name, role_title) — won't create the same
         application twice across multiple scans.
+
+        FIX: Returns 0 (not None) when there are no unlinked emails.
         """
         session = self.repo.session
 
@@ -380,9 +381,8 @@ class EmailScanService:
         )
         still_unlinked = result.scalars().all()
         if not still_unlinked:
-            return 0
+            return 0  # BUG FIX: was bare `return` (returns None), causing TypeError in caller
 
-        # Build a set of existing (company, role) pairs to avoid duplicates
         apps_result = await session.execute(
             select(JobApplication.company_name, JobApplication.role_title)
         )
@@ -391,10 +391,8 @@ class EmailScanService:
         }
 
         created_count = 0
-        # Track newly created apps within this run to avoid double-creating
         created_this_run: dict[tuple[str, str], JobApplication] = {}
 
-        # Build a company → [subjects] index from all unlinked emails for role lookup
         company_subjects: dict[str, list[str | None]] = {}
         for e in still_unlinked:
             parsed_peek = _parse_application_from_email(e)
@@ -407,7 +405,6 @@ class EmailScanService:
             if not parsed:
                 continue
 
-            # If no role found in this email's subject, search sibling emails for the same company
             if not parsed["role_title"]:
                 ckey = parsed["company_name"].lower()
                 sibling_subjects = [s for s in company_subjects.get(ckey, []) if s != email.subject]
@@ -418,7 +415,6 @@ class EmailScanService:
             key = (parsed["company_name"].lower(), parsed["role_title"].lower())
 
             if key in existing_keys:
-                # Application already exists — run matcher again now that it exists
                 apps_result2 = await session.execute(select(JobApplication))
                 all_apps = apps_result2.scalars().all()
                 best = match_email_to_application(email, all_apps)
@@ -428,13 +424,11 @@ class EmailScanService:
                 continue
 
             if key in created_this_run:
-                # Reuse the app created earlier in this same scan run
                 app = created_this_run[key]
                 email.application_id = app.id
                 await self.app_repo.update_last_email_at(app.id, email.received_at)
                 continue
 
-            # Create the new application
             new_app = await self.app_repo.create(parsed)
             existing_keys.add(key)
             created_this_run[key] = new_app

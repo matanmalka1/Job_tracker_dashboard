@@ -11,13 +11,27 @@ class ScanRunRepository:
         self.session = session
 
     async def create(self) -> ScanRun:
+        """
+        Insert a new scan run record and commit immediately so the row is
+        persisted even if the scan itself later fails and rolls back.
+        We use a fresh savepoint (nested transaction) to isolate this write.
+        """
         run = ScanRun(status="running")
         self.session.add(run)
+        # Flush to get the PK, then commit so the record survives scan failures.
+        # This is intentionally a standalone commit: scan_run history is
+        # append-only audit data and should not be rolled back with scan errors.
         await self.session.flush()
         await self.session.commit()
         return run
 
-    async def complete(self, run_id: int, emails_fetched: int, emails_inserted: int, apps_created: int) -> None:
+    async def complete(
+        self,
+        run_id: int,
+        emails_fetched: int,
+        emails_inserted: int,
+        apps_created: int,
+    ) -> None:
         result = await self.session.execute(select(ScanRun).where(ScanRun.id == run_id))
         run = result.scalar_one_or_none()
         if run:

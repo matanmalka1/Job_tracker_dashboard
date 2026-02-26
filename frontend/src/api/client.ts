@@ -59,11 +59,30 @@ export const triggerScan = (): Promise<{ inserted: number; applications_created:
     .post<{ inserted: number; applications_created: number }>('/job-tracker/scan')
     .then((r) => r.data)
 
+// FIX: createApplication and updateApplication now include all schema fields
+// (notes, job_url, next_action_at were missing from the Pick type)
+type ApplicationWriteFields = Pick<
+  JobApplication,
+  | 'company_name'
+  | 'role_title'
+  | 'status'
+  | 'source'
+  | 'applied_at'
+  | 'confidence_score'
+  | 'notes'
+  | 'job_url'
+  | 'next_action_at'
+>
+
 export const createApplication = (
-  body: Pick<
-    JobApplication,
-    'company_name' | 'role_title' | 'status' | 'source' | 'applied_at' | 'confidence_score'
-  >,
+  body: Omit<ApplicationWriteFields, 'source' | 'applied_at' | 'confidence_score' | 'notes' | 'job_url' | 'next_action_at'> & {
+    source?: string
+    applied_at?: string
+    confidence_score?: number
+    notes?: string
+    job_url?: string
+    next_action_at?: string
+  },
 ): Promise<JobApplication> =>
   apiClient
     .post<JobApplication>('/job-tracker/applications', body)
@@ -71,20 +90,7 @@ export const createApplication = (
 
 export const updateApplication = (
   id: number,
-  body: Partial<
-    Pick<
-      JobApplication,
-      | 'company_name'
-      | 'role_title'
-      | 'status'
-      | 'source'
-      | 'applied_at'
-      | 'confidence_score'
-      | 'notes'
-      | 'job_url'
-      | 'next_action_at'
-    >
-  >,
+  body: Partial<ApplicationWriteFields>,
 ): Promise<JobApplication> =>
   apiClient
     .patch<JobApplication>(`/job-tracker/applications/${id}`, body)
@@ -92,6 +98,11 @@ export const updateApplication = (
 
 export const deleteApplication = (id: number): Promise<void> =>
   apiClient.delete(`/job-tracker/applications/${id}`).then(() => undefined)
+
+export const assignEmail = (applicationId: number, emailId: number): Promise<void> =>
+  apiClient
+    .post(`/job-tracker/applications/${applicationId}/emails/${emailId}`)
+    .then(() => undefined)
 
 export const unassignEmail = (applicationId: number, emailId: number): Promise<void> =>
   apiClient

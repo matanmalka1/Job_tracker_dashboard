@@ -7,6 +7,9 @@ import CompaniesPage from './pages/CompaniesPage.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
 import ApplicationDetailPage from './pages/ApplicationDetailPage.tsx'
 import ManageDataUiPage from './pages/manageDataUi/ManageDataUiPage.tsx'
+import InterviewsPage from './pages/InterviewsPage.tsx'
+
+// FIX: InterviewsPage was imported in InterviewsPage.tsx but never registered in the router
 
 const App = () => (
   <Routes>
@@ -16,6 +19,7 @@ const App = () => (
       <Route path="pipeline" element={<PipelinePage />} />
       <Route path="applications" element={<ApplicationsPage />} />
       <Route path="applications/:id" element={<ApplicationDetailPage />} />
+      <Route path="interviews" element={<InterviewsPage />} />
       <Route path="companies" element={<CompaniesPage />} />
       <Route path="settings" element={<SettingsPage />} />
       <Route path="manage-data" element={<ManageDataUiPage />} />

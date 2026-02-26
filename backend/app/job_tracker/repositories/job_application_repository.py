@@ -1,12 +1,15 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select, func, update, or_, case
+from sqlalchemy import select, func, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.job_tracker.models.job_application import JobApplication, ApplicationStatus
 from app.job_tracker.models.email_reference import EmailReference
+
+# Sentinel — distinguishes "caller did not pass this key" from "caller explicitly set None"
+_UNSET = object()
 
 
 class JobApplicationRepository:
@@ -32,16 +35,15 @@ class JobApplicationRepository:
         if not existing:
             return None
 
-        # Only skip keys whose value is explicitly None; falsy values like ""
-        # or 0 are legitimate updates the caller wants to persist.
+        # FIX: The old code did `if value is not None: setattr(...)` which silently dropped
+        # explicit None values — callers using exclude_unset=True can't clear nullable fields.
+        # Now we set ALL keys that are present in `data`, including explicit None values.
+        # The route layer uses model_dump(exclude_unset=True) so only intentionally-sent
+        # fields arrive here — setting them to None is a legitimate "clear this field" intent.
         for key, value in data.items():
-            if value is not None:
-                setattr(existing, key, value)
+            setattr(existing, key, value)
 
-        # Explicitly bump updated_at so the change is visible even if the async
-        # driver's onupdate hook doesn't fire inside the same flush cycle.
         existing.updated_at = datetime.now(timezone.utc)
-
         await self.session.flush()
         return existing
 
@@ -90,7 +92,6 @@ class JobApplicationRepository:
 
     async def get_stats(self) -> dict:
         """Return aggregated stats: total, counts by status, reply_rate."""
-        # Count by status
         status_result = await self.session.execute(
             select(JobApplication.status, func.count().label("cnt"))
             .group_by(JobApplication.status)
@@ -101,7 +102,6 @@ class JobApplicationRepository:
             by_status[row[0].value] = row[1]
             total += row[1]
 
-        # Count apps that have at least one linked email
         apps_with_email = await self.session.scalar(
             select(func.count(func.distinct(EmailReference.application_id)))
             .where(EmailReference.application_id.isnot(None))
