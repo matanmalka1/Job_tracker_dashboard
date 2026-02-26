@@ -23,6 +23,7 @@ from app.job_tracker.schemas.job_application import (
     JobApplicationUpdate,
 )
 from app.job_tracker.services.job_application_service import JobApplicationService
+from app.job_tracker.api.scan_rate_limit import acquire_scan_slot
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,6 @@ _auth_dep = _resolve_auth_dep()
 
 
 def _make_gmail_client(settings) -> GmailClient:
-    """Factory so client construction is not repeated across endpoints."""
     return GmailClient(
         token_file=settings.GMAIL_TOKEN_FILE,
         delegated_user=settings.GMAIL_DELEGATED_USER,
@@ -78,7 +78,15 @@ async def trigger_scan(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    """Trigger a Gmail scan and store matching emails in the database."""
+    """Trigger a Gmail scan (rate-limited to once per 60 s)."""
+    allowed, retry_after = await acquire_scan_slot()
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"A scan was run recently. Retry in {int(retry_after)}s.",
+            headers={"Retry-After": str(int(retry_after))},
+        )
+
     settings = get_settings()
     client = _make_gmail_client(settings)
 
@@ -105,6 +113,14 @@ async def scan_progress(
     _=Depends(_auth_dep),
 ):
     """SSE endpoint: streams scan progress events then a final result."""
+    allowed, retry_after = await acquire_scan_slot()
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"A scan was run recently. Retry in {int(retry_after)}s.",
+            headers={"Retry-After": str(int(retry_after))},
+        )
+
     settings = get_settings()
     client = _make_gmail_client(settings)
     queue: asyncio.Queue = asyncio.Queue()
@@ -138,8 +154,6 @@ async def scan_progress(
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=60.0)
                 except asyncio.TimeoutError:
-                    # BUG FIX: send a keepalive comment instead of empty data so
-                    # the client doesn't try to parse "{}" as a progress event.
                     yield ": keepalive\n\n"
                     break
 
@@ -148,8 +162,6 @@ async def scan_progress(
                 if event.get("stage") in ("result", "error"):
                     break
         finally:
-            # BUG FIX: always await the scan task to avoid "Task was destroyed
-            # but it is pending!" warnings when the client disconnects early.
             if scan_task is not None and not scan_task.done():
                 scan_task.cancel()
                 try:
@@ -163,8 +175,6 @@ async def scan_progress(
         headers={
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
-            # BUG FIX: Connection header is required by some proxies/browsers
-            # to keep SSE connections alive.
             "Connection": "keep-alive",
         },
     )
@@ -281,6 +291,39 @@ async def delete_application(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
 
 
+@router.delete("/applications", status_code=status.HTTP_200_OK)
+async def bulk_delete_applications(
+    ids: list[int] = Query(..., description="Application IDs to delete"),
+    session=Depends(get_session),
+    _=Depends(_auth_dep),
+):
+    """
+    Bulk-delete multiple applications by ID.
+    Returns counts of deleted and not-found records.
+    """
+    if not ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No IDs provided")
+    if len(ids) > 100:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete more than 100 at once")
+
+    app_repo = JobApplicationRepository(session)
+    email_repo = EmailReferenceRepository(session)
+    svc = JobApplicationService(app_repo, email_repo)
+
+    deleted_count = 0
+    not_found = []
+    for app_id in ids:
+        ok = await svc.delete(app_id)
+        if ok:
+            deleted_count += 1
+        else:
+            not_found.append(app_id)
+
+    # commit once after all deletes
+    await svc._session.commit()
+    return {"deleted": deleted_count, "not_found": not_found}
+
+
 @router.post(
     "/applications/{application_id}/emails/{email_id}",
     status_code=status.HTTP_200_OK,
@@ -291,7 +334,6 @@ async def assign_email_to_application(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    """Link an existing email reference to a job application."""
     app_repo = JobApplicationRepository(session)
     email_repo = EmailReferenceRepository(session)
     svc = JobApplicationService(app_repo, email_repo)
@@ -314,7 +356,6 @@ async def unassign_email_from_application(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    """Unlink an email reference from a job application."""
     app_repo = JobApplicationRepository(session)
     email_repo = EmailReferenceRepository(session)
     svc = JobApplicationService(app_repo, email_repo)

@@ -1,25 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import {
-  Database,
-  Plus,
-  Pencil,
-  Trash2,
-  Search,
-  RefreshCw,
-  AlertCircle,
-} from 'lucide-react'
+import { Database, Plus, Pencil, Trash2, Search, RefreshCw, AlertCircle } from 'lucide-react'
 import SlideOver from '../../components/ui/SlideOver.tsx'
 import ConfirmDialog from '../../components/ui/ConfirmDialog.tsx'
 import LoadingSpinner from '../../components/ui/LoadingSpinner.tsx'
 import type { ApplicationStatus, ApplicationWritePayload, JobApplication } from '../../types/index.ts'
-import {
-  fetchApplications,
-  createApplication,
-  updateApplication,
-  deleteApplication,
-} from '../../api/client.ts'
+import { fetchApplications, createApplication, updateApplication, deleteApplication } from '../../api/client.ts'
 
 const STATUS_OPTIONS: { value: ApplicationStatus; label: string }[] = [
   { value: 'new', label: 'New' },
@@ -58,13 +45,7 @@ const EMPTY_FORM: FormState = {
 }
 
 const formatDate = (iso?: string) =>
-  iso
-    ? new Date(iso).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : '—'
+  iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
 
 const ManageDataUiPage = () => {
   const queryClient = useQueryClient()
@@ -87,40 +68,22 @@ const ManageDataUiPage = () => {
 
   const { mutate: createMutate, isPending: createLoading } = useMutation({
     mutationFn: createApplication,
-    onSuccess: () => {
-      toast.success('Record created')
-      invalidateAll()
-      setDrawerOpen(false)
-      setForm(EMPTY_FORM)
-    },
+    onSuccess: () => { toast.success('Record created'); invalidateAll(); setDrawerOpen(false); setForm(EMPTY_FORM) },
     onError: (err: Error) => toast.error(err.message),
   })
 
-  // BUG FIX: updateMutate's mutationFn argument type was
-  // `Parameters<typeof createApplication>[0]` (required fields) instead of
-  // `Partial<ApplicationWritePayload>` (all optional for PATCH).
   const { mutate: updateMutate, isPending: updateLoading } = useMutation({
     mutationFn: (body: Partial<ApplicationWritePayload>) => {
       if (!editing) return Promise.reject(new Error('No record selected'))
       return updateApplication(editing.id, body)
     },
-    onSuccess: () => {
-      toast.success('Record updated')
-      invalidateAll()
-      setDrawerOpen(false)
-      setEditing(null)
-      setForm(EMPTY_FORM)
-    },
+    onSuccess: () => { toast.success('Record updated'); invalidateAll(); setDrawerOpen(false); setEditing(null); setForm(EMPTY_FORM) },
     onError: (err: Error) => toast.error(err.message),
   })
 
   const { mutate: deleteMutate, isPending: deleteLoading } = useMutation({
     mutationFn: (id: number) => deleteApplication(id),
-    onSuccess: () => {
-      toast.success('Record deleted')
-      invalidateAll()
-      setDeleteTarget(null)
-    },
+    onSuccess: () => { toast.success('Record deleted'); invalidateAll(); setDeleteTarget(null) },
     onError: (err: Error) => toast.error(err.message),
   })
 
@@ -133,23 +96,21 @@ const ManageDataUiPage = () => {
       const matchesSearch =
         !q ||
         app.company_name.toLowerCase().includes(q) ||
-        app.role_title.toLowerCase().includes(q) ||
+        // FIX: role_title is now string | null
+        (app.role_title?.toLowerCase().includes(q) ?? false) ||
         (app.source ?? '').toLowerCase().includes(q)
       return matchesStatus && matchesSearch
     })
   }, [applications, search, statusFilter])
 
-  const openCreate = () => {
-    setEditing(null)
-    setForm(EMPTY_FORM)
-    setDrawerOpen(true)
-  }
+  const openCreate = () => { setEditing(null); setForm(EMPTY_FORM); setDrawerOpen(true) }
 
   const openEdit = (app: JobApplication) => {
     setEditing(app)
     setForm({
       company_name: app.company_name,
-      role_title: app.role_title,
+      // FIX: coerce null → '' for the controlled input
+      role_title: app.role_title ?? '',
       status: app.status,
       source: app.source ?? '',
       applied_at: app.applied_at ? app.applied_at.slice(0, 10) : '',
@@ -161,32 +122,20 @@ const ManageDataUiPage = () => {
     setDrawerOpen(true)
   }
 
-  const closeDrawer = () => {
-    setDrawerOpen(false)
-    setEditing(null)
-    setForm(EMPTY_FORM)
-  }
+  const closeDrawer = () => { setDrawerOpen(false); setEditing(null); setForm(EMPTY_FORM) }
 
   const onSubmit = () => {
     if (!form.company_name.trim() || !form.role_title.trim()) return
-
     const payload: ApplicationWritePayload = {
       company_name: form.company_name.trim(),
       role_title: form.role_title.trim(),
       status: form.status,
       source: form.source.trim() || undefined,
       applied_at: form.applied_at ? `${form.applied_at}T00:00:00Z` : undefined,
-      confidence_score:
-        form.confidence_score.trim() === ''
-          ? undefined
-          : Number(form.confidence_score) / 100,
+      confidence_score: form.confidence_score.trim() === '' ? undefined : Number(form.confidence_score) / 100,
     }
-
-    if (editing) {
-      updateMutate(payload)
-    } else {
-      createMutate(payload)
-    }
+    if (editing) updateMutate(payload)
+    else createMutate(payload)
   }
 
   return (
@@ -199,24 +148,14 @@ const ManageDataUiPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-white text-2xl font-bold">Data Manager</h1>
-            <p className="text-gray-400 text-sm">
-              Live data from the database — create, edit, or delete job application rows directly.
-            </p>
+            <p className="text-gray-400 text-sm">Live data from the database — create, edit, or delete job application rows directly.</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => void refetch()}
-              className="p-2 rounded-lg border border-white/10 text-gray-300 hover:text-white hover:border-white/20 transition-colors"
-              title="Refresh"
-            >
+            <button onClick={() => void refetch()} className="p-2 rounded-lg border border-white/10 text-gray-300 hover:text-white hover:border-white/20 transition-colors" title="Refresh">
               <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
             </button>
-            <button
-              onClick={openCreate}
-              className="inline-flex items-center gap-2 self-start px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors"
-            >
-              <Plus size={16} />
-              New record
+            <button onClick={openCreate} className="inline-flex items-center gap-2 self-start px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors">
+              <Plus size={16} />New record
             </button>
           </div>
         </div>
@@ -234,35 +173,24 @@ const ManageDataUiPage = () => {
               className="w-full bg-[#0f0f13] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-              className="bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500/50"
-            >
-              <option value="all">Any status</option>
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+            className="bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500/50"
+          >
+            <option value="all">Any status</option>
+            {STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
         </div>
-        <div className="text-xs text-gray-500">
-          {filtered.length} record{filtered.length === 1 ? '' : 's'} shown
-        </div>
+        <div className="text-xs text-gray-500">{filtered.length} record{filtered.length === 1 ? '' : 's'} shown</div>
       </div>
 
       <div className="bg-[#1a1a24] border border-white/5 rounded-xl overflow-hidden">
         {isLoading ? (
-          <div className="py-16 flex justify-center">
-            <LoadingSpinner />
-          </div>
+          <div className="py-16 flex justify-center"><LoadingSpinner /></div>
         ) : isError ? (
           <div className="py-16 flex flex-col items-center gap-2 text-red-200">
-            <AlertCircle size={18} />
-            <p className="text-sm">Could not load records.</p>
+            <AlertCircle size={18} /><p className="text-sm">Could not load records.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -284,11 +212,10 @@ const ManageDataUiPage = () => {
                 {filtered.map((app) => (
                   <tr key={app.id} className="border-t border-white/5 hover:bg-white/5 transition-colors">
                     <td className="px-4 py-3 text-white font-medium">{app.company_name}</td>
-                    <td className="px-4 py-3 text-gray-200">{app.role_title}</td>
+                    {/* FIX: role_title is now string | null */}
+                    <td className="px-4 py-3 text-gray-200">{app.role_title ?? '—'}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${STATUS_COLORS[app.status]}`}
-                      >
+                      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${STATUS_COLORS[app.status]}`}>
                         <span className="w-2 h-2 rounded-full bg-current" />
                         {STATUS_OPTIONS.find((o) => o.value === app.status)?.label ?? app.status}
                       </span>
@@ -296,35 +223,23 @@ const ManageDataUiPage = () => {
                     <td className="px-4 py-3 text-gray-300">{app.source ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-300">{formatDate(app.applied_at)}</td>
                     <td className="px-4 py-3 text-gray-300">
-                      {app.confidence_score != null
-                        ? `${Math.round(app.confidence_score * 100)}%`
-                        : '—'}
+                      {app.confidence_score != null ? `${Math.round(app.confidence_score * 100)}%` : '—'}
                     </td>
-                    <td className="px-4 py-3 text-gray-300">{app.emails.length}</td>
+                    {/* FIX: use email_count instead of app.emails.length */}
+                    <td className="px-4 py-3 text-gray-300">{app.email_count}</td>
                     <td className="px-4 py-3 text-gray-400">{formatDate(app.updated_at)}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openEdit(app)}
-                          className="p-2 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:border-white/20 transition-colors"
-                          title="Edit"
-                          aria-label={`Edit ${app.company_name}`}
-                        >
+                        <button onClick={() => openEdit(app)} className="p-2 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:border-white/20 transition-colors" title="Edit" aria-label={`Edit ${app.company_name}`}>
                           <Pencil size={14} />
                         </button>
-                        <button
-                          onClick={() => setDeleteTarget(app)}
-                          className="p-2 rounded-md bg-red-500/10 border border-red-500/30 text-red-200 hover:text-white hover:border-red-400/60 transition-colors"
-                          title="Delete"
-                          aria-label={`Delete ${app.company_name}`}
-                        >
+                        <button onClick={() => setDeleteTarget(app)} className="p-2 rounded-md bg-red-500/10 border border-red-500/30 text-red-200 hover:text-white hover:border-red-400/60 transition-colors" title="Delete" aria-label={`Delete ${app.company_name}`}>
                           <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
                   </tr>
                 ))}
-
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={9} className="px-4 py-10 text-center text-gray-500">
@@ -341,94 +256,43 @@ const ManageDataUiPage = () => {
         )}
       </div>
 
-      <SlideOver
-        open={drawerOpen}
-        title={editing ? 'Edit record' : 'Create record'}
-        onClose={closeDrawer}
-      >
+      <SlideOver open={drawerOpen} title={editing ? 'Edit record' : 'Create record'} onClose={closeDrawer}>
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500">Company *</label>
-              <input
-                value={form.company_name}
-                onChange={(e) => setForm((f) => ({ ...f, company_name: e.target.value }))}
-                className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50"
-                autoFocus
-              />
+              <input value={form.company_name} onChange={(e) => setForm((f) => ({ ...f, company_name: e.target.value }))} className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50" autoFocus />
             </div>
             <div>
               <label className="text-xs text-gray-500">Role *</label>
-              <input
-                value={form.role_title}
-                onChange={(e) => setForm((f) => ({ ...f, role_title: e.target.value }))}
-                className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50"
-              />
+              <input value={form.role_title} onChange={(e) => setForm((f) => ({ ...f, role_title: e.target.value }))} className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50" />
             </div>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500">Status</label>
-              <select
-                value={form.status}
-                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as ApplicationStatus }))}
-                className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50"
-              >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
+              <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as ApplicationStatus }))} className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50">
+                {STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs text-gray-500">Source</label>
-              <input
-                value={form.source}
-                onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))}
-                className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50"
-                placeholder="LinkedIn, referral, etc"
-              />
+              <input value={form.source} onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))} className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50" placeholder="LinkedIn, referral, etc" />
             </div>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500">Applied date</label>
-              <input
-                type="date"
-                value={form.applied_at}
-                onChange={(e) => setForm((f) => ({ ...f, applied_at: e.target.value }))}
-                className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50 [color-scheme:dark]"
-              />
+              <input type="date" value={form.applied_at} onChange={(e) => setForm((f) => ({ ...f, applied_at: e.target.value }))} className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50 [color-scheme:dark]" />
             </div>
             <div>
               <label className="text-xs text-gray-500">Confidence (%)</label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={form.confidence_score}
-                onChange={(e) => setForm((f) => ({ ...f, confidence_score: e.target.value }))}
-                className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50"
-                placeholder="0 - 100"
-              />
+              <input type="number" min={0} max={100} value={form.confidence_score} onChange={(e) => setForm((f) => ({ ...f, confidence_score: e.target.value }))} className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50" placeholder="0 - 100" />
             </div>
           </div>
-
           <div className="flex items-center justify-end gap-3 pt-2">
-            <button
-              onClick={closeDrawer}
-              className="px-4 py-2 rounded-lg border border-white/10 text-sm text-gray-400 hover:text-white hover:border-white/20"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onSubmit}
-              disabled={!form.company_name.trim() || !form.role_title.trim() || createLoading || updateLoading}
-              className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-sm text-white font-medium"
-            >
+            <button onClick={closeDrawer} className="px-4 py-2 rounded-lg border border-white/10 text-sm text-gray-400 hover:text-white hover:border-white/20">Cancel</button>
+            <button onClick={onSubmit} disabled={!form.company_name.trim() || !form.role_title.trim() || createLoading || updateLoading} className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-sm text-white font-medium">
               {createLoading || updateLoading ? 'Saving…' : editing ? 'Save changes' : 'Create record'}
             </button>
           </div>

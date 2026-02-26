@@ -10,40 +10,19 @@ import SlideOver from '../components/ui/SlideOver.tsx'
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx'
 
 const ALL_STATUSES: ApplicationStatus[] = [
-  'new',
-  'applied',
-  'interviewing',
-  'offer',
-  'rejected',
-  'hired',
+  'new', 'applied', 'interviewing', 'offer', 'rejected', 'hired',
 ]
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  new: 'New',
-  applied: 'Applied',
-  interviewing: 'Interviewing',
-  offer: 'Offer',
-  rejected: 'Rejected',
-  hired: 'Hired',
+  new: 'New', applied: 'Applied', interviewing: 'Interviewing',
+  offer: 'Offer', rejected: 'Rejected', hired: 'Hired',
 }
 
 const formatDate = (iso?: string) =>
-  iso
-    ? new Date(iso).toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : '—'
+  iso ? new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
 
 const formatDateTime = (iso: string) =>
-  new Date(iso).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
+  new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 
 const relativeTime = (iso: string): string => {
   const diff = Date.now() - new Date(iso).getTime()
@@ -58,6 +37,9 @@ const relativeTime = (iso: string): string => {
 
 interface EditFormState {
   company_name: string
+  // FIX: was `string` — but JobApplication.role_title is now `string | null`.
+  // Keep as `string` internally (form inputs are always strings); coerce null→''
+  // when populating from the app object.
   role_title: string
   status: ApplicationStatus
   source: string
@@ -80,7 +62,6 @@ const ApplicationDetailPage = () => {
   const { data: app, isLoading, isError } = useQuery({
     queryKey: ['applications', appId],
     queryFn: () => fetchApplication(appId),
-    // BUG FIX: don't run the query if appId is not a valid integer
     enabled: !isNaN(appId) && appId > 0,
   })
 
@@ -120,7 +101,8 @@ const ApplicationDetailPage = () => {
     if (!app) return
     setEditForm({
       company_name: app.company_name,
-      role_title: app.role_title,
+      // FIX: coerce null → '' so the controlled input stays a string
+      role_title: app.role_title ?? '',
       status: app.status,
       source: app.source ?? '',
       applied_at: app.applied_at ? app.applied_at.slice(0, 10) : '',
@@ -146,7 +128,6 @@ const ApplicationDetailPage = () => {
     })
   }
 
-  // BUG FIX: setEditField now accepts textarea change events too.
   const setEditField =
     (key: keyof EditFormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -163,10 +144,7 @@ const ApplicationDetailPage = () => {
   if (isError || !app) {
     return (
       <div className="space-y-4">
-        <button
-          onClick={() => navigate('/applications')}
-          className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
-        >
+        <button onClick={() => navigate('/applications')} className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors">
           <ArrowLeft size={16} />
           Back to Applications
         </button>
@@ -182,11 +160,7 @@ const ApplicationDetailPage = () => {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      {/* Back */}
-      <button
-        onClick={() => navigate('/applications')}
-        className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
-      >
+      <button onClick={() => navigate('/applications')} className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors">
         <ArrowLeft size={16} />
         Back to Applications
       </button>
@@ -196,13 +170,11 @@ const ApplicationDetailPage = () => {
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-4">
             <div className="shrink-0 w-12 h-12 rounded-xl bg-purple-600/10 border border-purple-600/20 flex items-center justify-center">
-              <span className="text-purple-400 font-bold text-lg">
-                {app.company_name.charAt(0).toUpperCase()}
-              </span>
+              <span className="text-purple-400 font-bold text-lg">{app.company_name.charAt(0).toUpperCase()}</span>
             </div>
             <div>
               <h1 className="text-white text-xl font-bold">{app.company_name}</h1>
-              <p className="text-gray-400 text-sm mt-0.5">{app.role_title}</p>
+              <p className="text-gray-400 text-sm mt-0.5">{app.role_title ?? '—'}</p>
               <div className="flex items-center gap-3 mt-2">
                 <select
                   value={app.status}
@@ -213,65 +185,39 @@ const ApplicationDetailPage = () => {
                     <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                   ))}
                 </select>
-                {app.source && (
-                  <span className="text-gray-500 text-xs">via {app.source}</span>
-                )}
+                {app.source && <span className="text-gray-500 text-xs">via {app.source}</span>}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={openEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/20 text-xs font-medium transition-colors"
-            >
+            <button onClick={openEdit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/20 text-xs font-medium transition-colors">
               <Pencil size={13} />
               Edit
             </button>
-            <button
-              onClick={() => setDeleteOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-600/20 text-red-400 hover:bg-red-600/10 text-xs font-medium transition-colors"
-            >
+            <button onClick={() => setDeleteOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-600/20 text-red-400 hover:bg-red-600/10 text-xs font-medium transition-colors">
               <Trash2 size={13} />
               Delete
             </button>
           </div>
         </div>
 
-        {/* Meta grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/5">
-          <div>
-            <p className="text-gray-500 text-xs mb-1">Applied</p>
-            <p className="text-white text-sm">{formatDate(app.applied_at)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 text-xs mb-1">Created</p>
-            <p className="text-white text-sm">{formatDate(app.created_at)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 text-xs mb-1">Last Updated</p>
-            <p className="text-white text-sm">{relativeTime(app.updated_at)}</p>
-          </div>
-          {app.confidence_score !== null && app.confidence_score !== undefined && (
+          <div><p className="text-gray-500 text-xs mb-1">Applied</p><p className="text-white text-sm">{formatDate(app.applied_at)}</p></div>
+          <div><p className="text-gray-500 text-xs mb-1">Created</p><p className="text-white text-sm">{formatDate(app.created_at)}</p></div>
+          <div><p className="text-gray-500 text-xs mb-1">Last Updated</p><p className="text-white text-sm">{relativeTime(app.updated_at)}</p></div>
+          {app.confidence_score != null && (
             <div>
               <p className="text-gray-500 text-xs mb-1">Confidence</p>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-purple-500 rounded-full"
-                    style={{ width: `${Math.round(app.confidence_score * 100)}%` }}
-                  />
+                  <div className="h-full bg-purple-500 rounded-full" style={{ width: `${Math.round(app.confidence_score * 100)}%` }} />
                 </div>
-                <span className="text-white text-sm shrink-0">
-                  {Math.round(app.confidence_score * 100)}%
-                </span>
+                <span className="text-white text-sm shrink-0">{Math.round(app.confidence_score * 100)}%</span>
               </div>
             </div>
           )}
           {app.next_action_at && (
-            <div>
-              <p className="text-gray-500 text-xs mb-1">Follow-up</p>
-              <p className="text-yellow-400 text-sm">{formatDate(app.next_action_at)}</p>
-            </div>
+            <div><p className="text-gray-500 text-xs mb-1">Follow-up</p><p className="text-yellow-400 text-sm">{formatDate(app.next_action_at)}</p></div>
           )}
         </div>
 
@@ -280,14 +226,7 @@ const ApplicationDetailPage = () => {
             {app.job_url && (
               <div className="flex items-center gap-2">
                 <p className="text-gray-500 text-xs w-20 shrink-0">Job URL</p>
-                <a
-                  href={app.job_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-purple-400 text-xs hover:text-purple-300 truncate transition-colors"
-                >
-                  {app.job_url}
-                </a>
+                <a href={app.job_url} target="_blank" rel="noopener noreferrer" className="text-purple-400 text-xs hover:text-purple-300 truncate transition-colors">{app.job_url}</a>
               </div>
             )}
             {app.notes && (
@@ -306,9 +245,7 @@ const ApplicationDetailPage = () => {
           <Mail size={16} className="text-gray-400" />
           <h2 className="text-white font-semibold text-sm">
             Email Thread
-            {app.emails.length > 0 && (
-              <span className="ml-2 text-gray-500 font-normal">({app.emails.length})</span>
-            )}
+            {app.emails.length > 0 && <span className="ml-2 text-gray-500 font-normal">({app.emails.length})</span>}
           </h2>
         </div>
 
@@ -316,9 +253,7 @@ const ApplicationDetailPage = () => {
           <div className="text-center py-8">
             <Mail size={28} className="text-gray-700 mx-auto mb-2" />
             <p className="text-gray-500 text-sm">No emails linked yet</p>
-            <p className="text-gray-600 text-xs mt-1">
-              Run a Gmail scan to automatically link emails to this application.
-            </p>
+            <p className="text-gray-600 text-xs mt-1">Run a Gmail scan to automatically link emails to this application.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -326,26 +261,17 @@ const ApplicationDetailPage = () => {
               .slice()
               .sort((a, b) => b.received_at.localeCompare(a.received_at))
               .map((email) => (
-                <div
-                  key={email.id}
-                  className="border border-white/5 rounded-lg p-4 hover:border-white/10 transition-colors"
-                >
+                <div key={email.id} className="border border-white/5 rounded-lg p-4 hover:border-white/10 transition-colors">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-white text-sm font-medium truncate">
-                        {email.subject ?? '(No subject)'}
-                      </p>
+                      <p className="text-white text-sm font-medium truncate">{email.subject ?? '(No subject)'}</p>
                       <div className="flex items-center gap-3 mt-1">
-                        {email.sender && (
-                          <span className="text-purple-400 text-xs truncate">{email.sender}</span>
-                        )}
+                        {email.sender && <span className="text-purple-400 text-xs truncate">{email.sender}</span>}
                         <span className="flex items-center gap-1 text-gray-500 text-xs shrink-0">
                           <Calendar size={11} />
                           {formatDateTime(email.received_at)}
                         </span>
-                        <span className="text-gray-600 text-xs shrink-0">
-                          {relativeTime(email.received_at)}
-                        </span>
+                        <span className="text-gray-600 text-xs shrink-0">{relativeTime(email.received_at)}</span>
                       </div>
                     </div>
                     <a
@@ -359,11 +285,7 @@ const ApplicationDetailPage = () => {
                       <ExternalLink size={13} />
                     </a>
                   </div>
-                  {email.snippet && (
-                    <p className="text-gray-500 text-xs mt-2 leading-relaxed line-clamp-2">
-                      {email.snippet}
-                    </p>
-                  )}
+                  {email.snippet && <p className="text-gray-500 text-xs mt-2 leading-relaxed line-clamp-2">{email.snippet}</p>}
                 </div>
               ))}
           </div>
@@ -428,9 +350,7 @@ const ApplicationDetailPage = () => {
             <div>
               <label className="block text-xs text-gray-400 font-medium mb-1.5">Status</label>
               <select value={editForm.status} onChange={setEditField('status')} className={inputCls}>
-                {ALL_STATUSES.map((s) => (
-                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                ))}
+                {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
               </select>
             </div>
             <div>
@@ -449,22 +369,12 @@ const ApplicationDetailPage = () => {
               <label className="block text-xs text-gray-400 font-medium mb-1.5">Follow-up Date</label>
               <input type="date" value={editForm.next_action_at} onChange={setEditField('next_action_at')} className={`${inputCls} [color-scheme:dark]`} />
             </div>
-            {/* BUG FIX: notes textarea was using an inline handler with wrong type.
-                setEditField now supports HTMLTextAreaElement events. */}
             <div>
               <label className="block text-xs text-gray-400 font-medium mb-1.5">Notes</label>
-              <textarea
-                value={editForm.notes}
-                onChange={setEditField('notes')}
-                placeholder="Interview prep, impressions, contacts…"
-                rows={4}
-                className={`${inputCls} resize-none`}
-              />
+              <textarea value={editForm.notes} onChange={setEditField('notes')} placeholder="Interview prep, impressions, contacts…" rows={4} className={`${inputCls} resize-none`} />
             </div>
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setEditOpen(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-white/10 text-gray-400 text-sm font-medium hover:text-white hover:border-white/20 transition-colors">
-                Cancel
-              </button>
+              <button type="button" onClick={() => setEditOpen(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-white/10 text-gray-400 text-sm font-medium hover:text-white hover:border-white/20 transition-colors">Cancel</button>
               <button type="submit" disabled={editPending} className="flex-1 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium transition-colors">
                 {editPending ? 'Saving…' : 'Save Changes'}
               </button>
@@ -473,11 +383,10 @@ const ApplicationDetailPage = () => {
         )}
       </SlideOver>
 
-      {/* Delete Confirm */}
       <ConfirmDialog
         open={deleteOpen}
         title="Delete Application"
-        description={`Are you sure you want to delete ${app.company_name} — ${app.role_title}? This cannot be undone.`}
+        description={`Are you sure you want to delete ${app.company_name} — ${app.role_title ?? 'this application'}? This cannot be undone.`}
         onConfirm={() => deleteMutate()}
         onCancel={() => setDeleteOpen(false)}
         loading={deletePending}

@@ -76,7 +76,8 @@ const RecentApplications = ({ applications, isLoading, isError }: Props) => {
                     <span className="text-white font-medium">{app.company_name}</span>
                   </td>
                   <td className="px-5 py-3.5">
-                    <span className="text-gray-300">{app.role_title}</span>
+                    {/* FIX: role_title is now string | null */}
+                    <span className="text-gray-300">{app.role_title ?? '—'}</span>
                   </td>
                   <td className="px-5 py-3.5">
                     <StatusBadge status={app.status} />

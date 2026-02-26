@@ -38,7 +38,6 @@ const KanbanCard = ({ application }: Props) => {
       style={style}
       className="bg-[#0f0f13] rounded-lg border border-white/5 select-none"
     >
-      {/* Drag handle — only this area initiates a drag */}
       <div
         {...attributes}
         {...listeners}
@@ -48,17 +47,14 @@ const KanbanCard = ({ application }: Props) => {
         <GripVertical size={14} className="text-gray-700 hover:text-gray-400 transition-colors" />
       </div>
 
-      {/* Clickable body — navigates to detail page */}
-      {/* FIX: previously the entire card including the drag handle button had onClick,
-          causing navigation to trigger at the end of every drag gesture.
-          Now only the content body is a click target, clearly separated from the handle. */}
       <div
         onClick={() => navigate(`/applications/${application.id}`)}
         className="px-3.5 pb-3.5 cursor-pointer"
       >
         <div className="min-w-0">
           <p className="text-white text-sm font-semibold truncate">{application.company_name}</p>
-          <p className="text-gray-400 text-xs mt-0.5 truncate">{application.role_title}</p>
+          {/* FIX: role_title is now string | null */}
+          <p className="text-gray-400 text-xs mt-0.5 truncate">{application.role_title ?? '—'}</p>
         </div>
 
         {confidencePct !== null && (
@@ -76,10 +72,10 @@ const KanbanCard = ({ application }: Props) => {
           </div>
         )}
 
-        {application.emails.length > 0 && (
+        {application.email_count > 0 && (
           <div className="mt-2.5 flex items-center gap-1 text-gray-500 text-xs">
             <Mail size={12} />
-            <span>{application.emails.length} email{application.emails.length > 1 ? 's' : ''}</span>
+            <span>{application.email_count} email{application.email_count > 1 ? 's' : ''}</span>
           </div>
         )}
 

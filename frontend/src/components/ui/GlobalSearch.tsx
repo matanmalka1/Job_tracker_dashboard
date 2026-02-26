@@ -13,10 +13,6 @@ const GlobalSearch = () => {
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // BUG FIX: The original query key was ['applications', 'search-pool'] which
-  // doesn't overlap with the list page's ['applications', 'list'] key.
-  // That's correct. But the staleTime of 60s means the pool can be stale while
-  // the list is up to date (30s stale). Align them.
   const { data } = useQuery({
     queryKey: ['applications', 'search-pool'],
     queryFn: () => fetchApplications({ limit: 500, offset: 0 }),
@@ -29,12 +25,12 @@ const GlobalSearch = () => {
         const q = query.toLowerCase()
         return (
           app.company_name.toLowerCase().includes(q) ||
-          app.role_title.toLowerCase().includes(q) ||
+          // FIX: role_title is now string | null — guard before calling .toLowerCase()
+          (app.role_title?.toLowerCase().includes(q) ?? false) ||
           (app.source ?? '').toLowerCase().includes(q)
         )
       }).slice(0, 8)
 
-  // Open on Cmd/Ctrl+K
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -51,7 +47,6 @@ const GlobalSearch = () => {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -76,7 +71,6 @@ const GlobalSearch = () => {
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Trigger button */}
       <button
         onClick={openSearch}
         className="flex items-center gap-2 bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-1.5 text-gray-500 text-sm hover:border-white/20 hover:text-gray-400 transition-colors w-48"
@@ -84,19 +78,15 @@ const GlobalSearch = () => {
       >
         <Search size={14} />
         <span className="flex-1 text-left text-xs">Search…</span>
-        <kbd className="text-xs bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
-          ⌘K
-        </kbd>
+        <kbd className="text-xs bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">⌘K</kbd>
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div
           className="absolute top-full mt-2 left-0 w-96 bg-[#1a1a24] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
           role="dialog"
           aria-label="Search applications"
         >
-          {/* Input */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
             <Search size={15} className="text-gray-500 shrink-0" />
             <input
@@ -110,23 +100,16 @@ const GlobalSearch = () => {
               aria-label="Search query"
             />
             {query && (
-              <button
-                onClick={() => setQuery('')}
-                className="text-gray-500 hover:text-white"
-                aria-label="Clear search"
-              >
+              <button onClick={() => setQuery('')} className="text-gray-500 hover:text-white" aria-label="Clear search">
                 <X size={14} />
               </button>
             )}
           </div>
 
-          {/* Results */}
           {query.trim().length >= 2 && (
             <div className="max-h-80 overflow-y-auto">
               {results.length === 0 ? (
-                <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                  No applications found
-                </div>
+                <div className="px-4 py-6 text-center text-gray-500 text-sm">No applications found</div>
               ) : (
                 results.map((app) => (
                   <button
@@ -141,7 +124,8 @@ const GlobalSearch = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-medium truncate">{app.company_name}</p>
-                      <p className="text-gray-400 text-xs truncate">{app.role_title}</p>
+                      {/* FIX: role_title is now string | null */}
+                      <p className="text-gray-400 text-xs truncate">{app.role_title ?? '—'}</p>
                     </div>
                     <StatusBadge status={app.status} />
                   </button>
@@ -160,10 +144,7 @@ const GlobalSearch = () => {
                 ].map((item) => (
                   <button
                     key={item.path}
-                    onClick={() => {
-                      navigate(item.path)
-                      setOpen(false)
-                    }}
+                    onClick={() => { navigate(item.path); setOpen(false) }}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 text-xs transition-colors"
                   >
                     {item.icon}
