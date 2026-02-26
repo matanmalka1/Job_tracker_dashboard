@@ -6,7 +6,7 @@ import ApplicationsPage from './pages/ApplicationsPage.tsx'
 import CompaniesPage from './pages/CompaniesPage.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
 import ApplicationDetailPage from './pages/ApplicationDetailPage.tsx'
-import ManageDataUiPage from './pages/manageDataUi/ManageDataUiPage.tsx'
+import ManageDataUiPage from './pages/ManageDataUiPage.tsx'
 import InterviewsPage from './pages/InterviewsPage.tsx'
 
 // FIX: InterviewsPage was imported in InterviewsPage.tsx but never registered in the router

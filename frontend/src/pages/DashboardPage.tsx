@@ -19,10 +19,6 @@ const DashboardPage = () => {
   const {
     data: statsData,
     isLoading: statsLoading,
-    // BUG FIX: removed unused isError from statsData — it was passed to
-    // RecentApplications as `isError={appsError || statsError}` which caused
-    // the entire recent-apps section to show an error if only stats failed.
-    // Each widget now handles its own error state independently.
   } = useQuery({
     queryKey: ['stats'],
     queryFn: fetchStats,
