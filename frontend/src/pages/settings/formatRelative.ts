@@ -8,4 +8,6 @@ export const formatRelative = (iso: string): string => {
   return `${Math.floor(hours / 24)}d ago`
 }
 
+export const relativeTime = formatRelative
+
 export default formatRelative
