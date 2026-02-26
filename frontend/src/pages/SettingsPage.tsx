@@ -6,7 +6,10 @@ import { triggerScan } from '../api/client.ts'
 
 const SettingsPage = () => {
   const queryClient = useQueryClient()
-  const [lastResult, setLastResult] = useState<{ inserted: number } | null>(null)
+  const [lastResult, setLastResult] = useState<{
+    inserted: number
+    applications_created: number
+  } | null>(null)
   const [lastScannedAt, setLastScannedAt] = useState<Date | null>(null)
 
   const { mutate: runScan, isPending } = useMutation({
@@ -16,14 +19,28 @@ const SettingsPage = () => {
       setLastScannedAt(new Date())
       queryClient.invalidateQueries({ queryKey: ['applications'] })
       queryClient.invalidateQueries({ queryKey: ['emails'] })
-      const msg =
-        data.inserted > 0
-          ? `Found ${data.inserted} new application${data.inserted !== 1 ? 's' : ''}`
-          : 'No new applications found'
-      toast.success(msg)
+      const parts: string[] = []
+      if (data.applications_created > 0)
+        parts.push(
+          `${data.applications_created} application${data.applications_created !== 1 ? 's' : ''} created`,
+        )
+      if (data.inserted > 0)
+        parts.push(`${data.inserted} new email${data.inserted !== 1 ? 's' : ''} saved`)
+      toast.success(parts.length ? parts.join(' · ') : 'Inbox is up to date')
     },
     onError: (err: Error) => toast.error(`Scan failed: ${err.message}`),
   })
+
+  const buildResultMessage = (r: { inserted: number; applications_created: number }) => {
+    const parts: string[] = []
+    if (r.applications_created > 0)
+      parts.push(
+        `${r.applications_created} new application${r.applications_created !== 1 ? 's' : ''} detected`,
+      )
+    if (r.inserted > 0)
+      parts.push(`${r.inserted} email${r.inserted !== 1 ? 's' : ''} saved`)
+    return parts.length ? parts.join(' · ') + '.' : 'Scan complete — inbox is up to date.'
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -41,8 +58,8 @@ const SettingsPage = () => {
           <div>
             <h2 className="text-white font-semibold text-sm">Gmail Scan</h2>
             <p className="text-gray-400 text-xs mt-1">
-              Scan your Gmail inbox for job application emails. New applications and email
-              references will be automatically detected and imported.
+              Scan your Gmail inbox for job application emails. Applications are automatically
+              detected from subjects and linked to email threads.
             </p>
           </div>
         </div>
@@ -50,11 +67,7 @@ const SettingsPage = () => {
         {lastResult && (
           <div className="flex items-center gap-2 bg-green-600/10 border border-green-600/20 rounded-lg px-4 py-3">
             <CheckCircle size={15} className="text-green-400 shrink-0" />
-            <p className="text-green-300 text-sm">
-              {lastResult.inserted > 0
-                ? `Found ${lastResult.inserted} new application${lastResult.inserted !== 1 ? 's' : ''} from your inbox.`
-                : 'Scan complete — no new applications found.'}
-            </p>
+            <p className="text-green-300 text-sm">{buildResultMessage(lastResult)}</p>
           </div>
         )}
 

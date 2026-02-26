@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Building2, ChevronDown, ChevronUp, Mail } from 'lucide-react'
-import { useState } from 'react'
 import { fetchApplications } from '../api/client.ts'
 import type { ApplicationStatus, JobApplication } from '../types/index.ts'
 import StatusBadge from '../components/ui/StatusBadge.tsx'
@@ -40,6 +40,7 @@ interface CompanyCardProps {
 
 const CompanyCard = ({ group }: CompanyCardProps) => {
   const [expanded, setExpanded] = useState(false)
+  const navigate = useNavigate()
 
   const count = group.applications.length
 
@@ -105,8 +106,9 @@ const CompanyCard = ({ group }: CompanyCardProps) => {
           {group.applications.map((app, i) => (
             <div
               key={app.id}
+              onClick={() => navigate(`/applications/${app.id}`)}
               className={[
-                'flex items-center gap-4 px-5 py-3',
+                'flex items-center gap-4 px-5 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors',
                 i < group.applications.length - 1 ? 'border-b border-white/5' : '',
               ].join(' ')}
             >

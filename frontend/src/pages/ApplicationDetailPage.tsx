@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { fetchApplication, updateApplication, deleteApplication } from '../api/client.ts'
 import type { ApplicationStatus } from '../types/index.ts'
-import StatusBadge from '../components/ui/StatusBadge.tsx'
 import LoadingSpinner from '../components/ui/LoadingSpinner.tsx'
 import SlideOver from '../components/ui/SlideOver.tsx'
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx'
@@ -101,6 +100,15 @@ const ApplicationDetailPage = () => {
     onError: (err: Error) => toast.error(err.message),
   })
 
+  const { mutate: changeStatus } = useMutation({
+    mutationFn: (status: ApplicationStatus) => updateApplication(appId, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+      toast.success('Status updated')
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
   const openEdit = () => {
     if (!app) return
     setEditForm({
@@ -179,7 +187,15 @@ const ApplicationDetailPage = () => {
               <h1 className="text-white text-xl font-bold">{app.company_name}</h1>
               <p className="text-gray-400 text-sm mt-0.5">{app.role_title}</p>
               <div className="flex items-center gap-3 mt-2">
-                <StatusBadge status={app.status} />
+                <select
+                  value={app.status}
+                  onChange={(e) => changeStatus(e.target.value as ApplicationStatus)}
+                  className="bg-transparent border border-white/10 rounded-lg px-2 py-1 text-xs font-medium text-white focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors cursor-pointer [color-scheme:dark]"
+                >
+                  {ALL_STATUSES.map((s) => (
+                    <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                  ))}
+                </select>
                 {app.source && (
                   <span className="text-gray-500 text-xs">via {app.source}</span>
                 )}
@@ -285,7 +301,16 @@ const ApplicationDetailPage = () => {
                         </span>
                       </div>
                     </div>
-                    <ExternalLink size={13} className="text-gray-600 shrink-0 mt-0.5" />
+                    <a
+                      href={`https://mail.google.com/mail/u/0/#search/rfc822msgid:${encodeURIComponent(email.gmail_message_id)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-gray-600 hover:text-purple-400 transition-colors shrink-0 mt-0.5"
+                      title="Open in Gmail"
+                    >
+                      <ExternalLink size={13} />
+                    </a>
                   </div>
                   {email.snippet && (
                     <p className="text-gray-500 text-xs mt-2 leading-relaxed line-clamp-2">

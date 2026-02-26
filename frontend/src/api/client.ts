@@ -40,9 +40,9 @@ export const fetchEmails = (params?: {
     .get<EmailReferencePage>('/job-tracker/emails', { params })
     .then((r) => r.data)
 
-export const triggerScan = (): Promise<{ inserted: number }> =>
+export const triggerScan = (): Promise<{ inserted: number; applications_created: number }> =>
   apiClient
-    .post<{ inserted: number }>('/job-tracker/scan')
+    .post<{ inserted: number; applications_created: number }>('/job-tracker/scan')
     .then((r) => r.data)
 
 export const createApplication = (

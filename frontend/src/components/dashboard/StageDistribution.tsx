@@ -29,7 +29,7 @@ const StageDistribution = ({ stats, isLoading }: Props) => {
   if (isLoading) {
     return (
       <div className="bg-[#1a1a24] rounded-xl p-5 border border-white/5 h-full">
-        <h3 className="text-white font-semibold text-sm mb-4">Stage Distribution</h3>
+        <h3 className="text-white font-semibold mb-4">Stage Distribution</h3>
         <LoadingSpinner size="md" />
       </div>
     )
@@ -45,7 +45,7 @@ const StageDistribution = ({ stats, isLoading }: Props) => {
 
   return (
     <div className="bg-[#1a1a24] rounded-xl p-5 border border-white/5 h-full">
-      <h3 className="text-white font-semibold text-sm mb-4">Stage Distribution</h3>
+      <h3 className="text-white font-semibold mb-4">Stage Distribution</h3>
 
       {chartData.length === 0 ? (
         <p className="text-gray-500 text-sm text-center py-8">No applications yet.</p>

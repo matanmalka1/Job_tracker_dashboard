@@ -2,7 +2,6 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
   FileText,
-  Calendar,
   Building2,
   Settings,
   Kanban,
@@ -18,7 +17,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
   { to: '/pipeline', label: 'Pipeline', icon: <Kanban size={20} /> },
   { to: '/applications', label: 'Applications', icon: <FileText size={20} /> },
-  { to: '/interviews', label: 'Interviews', icon: <Calendar size={20} /> },
   { to: '/companies', label: 'Companies', icon: <Building2 size={20} /> },
   { to: '/settings', label: 'Settings', icon: <Settings size={20} /> },
 ]

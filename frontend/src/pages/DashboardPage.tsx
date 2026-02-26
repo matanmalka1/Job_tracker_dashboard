@@ -90,13 +90,13 @@ const DashboardPage = () => {
       <StatsCards stats={stats} isLoading={appsLoading} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ActivityTimeline
-          emails={emailsData?.items ?? []}
-          isLoading={emailsLoading}
-          isError={emailsError}
-        />
+        <StageDistribution stats={stats} isLoading={appsLoading} />
         <div className="lg:col-span-2">
-          <StageDistribution stats={stats} isLoading={appsLoading} />
+          <ActivityTimeline
+            emails={emailsData?.items ?? []}
+            isLoading={emailsLoading}
+            isError={emailsError}
+          />
         </div>
       </div>
 

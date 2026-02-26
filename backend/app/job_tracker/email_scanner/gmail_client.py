@@ -122,7 +122,16 @@ class GmailClient:
 
     def _date_query(self) -> str:
         after_date = dt.date.today() - dt.timedelta(days=self.query_window_days)
-        return f"after:{after_date.isoformat()}"
+        return (
+            f"after:{after_date.isoformat()}"
+            ' -subject:"wants to connect"'
+            ' -subject:"accepted your invitation"'
+            ' -subject:"joined your network"'
+            ' -subject:"now following you"'
+            ' -subject:"You have a new message"'
+            ' -from:connected@linkedin.com'
+            ' -from:invitations@linkedin.com'
+        )
 
     def _parse_message(self, msg: Dict) -> Dict:
         headers = {

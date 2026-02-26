@@ -9,7 +9,7 @@ from app.job_tracker.schemas.email_reference import EmailReferenceRead
 class JobApplicationBase(BaseModel):
     company_name: str
     role_title: str
-    status: ApplicationStatus = ApplicationStatus.NEW
+    status: ApplicationStatus = ApplicationStatus.APPLIED
     source: Optional[str] = None
     applied_at: Optional[datetime] = None
     confidence_score: Optional[float] = None

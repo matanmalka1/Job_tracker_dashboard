@@ -78,9 +78,10 @@ async def trigger_scan(
     try:
         from app.job_tracker.services.email_scan_service import EmailScanService
 
-        service = EmailScanService(client, repo)
-        inserted = await service.scan_for_applications()
-        return {"inserted": inserted}
+        app_repo = JobApplicationRepository(session)
+        service = EmailScanService(client, repo, app_repo)
+        result = await service.scan_for_applications()
+        return result
     except RuntimeError as exc:
         # Configuration errors (missing token file, etc.)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))

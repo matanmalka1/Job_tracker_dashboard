@@ -22,7 +22,7 @@ interface FormState {
 const EMPTY: FormState = {
   company_name: '',
   role_title: '',
-  status: 'new',
+  status: 'applied',
   source: '',
   applied_at: '',
 }

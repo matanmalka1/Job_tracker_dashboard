@@ -13,7 +13,6 @@ import type { ApplicationStatus, JobApplication } from '../types/index.ts'
 import StatusBadge from '../components/ui/StatusBadge.tsx'
 import LoadingSpinner from '../components/ui/LoadingSpinner.tsx'
 import ApplicationModal from '../components/ui/ApplicationModal.tsx'
-import SlideOver from '../components/ui/SlideOver.tsx'
 import ConfirmDialog from '../components/ui/ConfirmDialog.tsx'
 
 const ALL_STATUSES: ApplicationStatus[] = [
@@ -32,14 +31,6 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
   offer: 'Offer',
   rejected: 'Rejected',
   hired: 'Hired',
-}
-
-interface EditFormState {
-  company_name: string
-  role_title: string
-  status: ApplicationStatus
-  source: string
-  applied_at: string
 }
 
 const exportCsv = (apps: JobApplication[]) => {
@@ -73,7 +64,6 @@ const ApplicationsPage = () => {
   const [addOpen, setAddOpen] = useState(false)
   const [editApp, setEditApp] = useState<JobApplication | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<JobApplication | null>(null)
-  const [editForm, setEditForm] = useState<EditFormState | null>(null)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['applications', 'list'],
@@ -91,8 +81,8 @@ const ApplicationsPage = () => {
   })
 
   const { mutate: editMutate, isPending: editPending } = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: Partial<JobApplication> }) =>
-      updateApplication(id, body),
+    mutationFn: (body: Parameters<typeof createApplication>[0]) =>
+      updateApplication(editApp!.id, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] })
       toast.success('Application updated')
@@ -132,37 +122,6 @@ const ApplicationsPage = () => {
         })
       : '—'
 
-  const openEdit = (app: JobApplication) => {
-    setEditApp(app)
-    setEditForm({
-      company_name: app.company_name,
-      role_title: app.role_title,
-      status: app.status,
-      source: app.source ?? '',
-      applied_at: app.applied_at ? app.applied_at.slice(0, 10) : '',
-    })
-  }
-
-  const handleEditSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editApp || !editForm) return
-    editMutate({
-      id: editApp.id,
-      body: {
-        company_name: editForm.company_name,
-        role_title: editForm.role_title,
-        status: editForm.status,
-        source: editForm.source || undefined,
-        applied_at: editForm.applied_at ? `${editForm.applied_at}T00:00:00Z` : undefined,
-      },
-    })
-  }
-
-  const setEditField =
-    (key: keyof EditFormState) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setEditForm((prev) => (prev ? { ...prev, [key]: e.target.value } : prev))
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -195,7 +154,6 @@ const ApplicationsPage = () => {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
@@ -207,7 +165,6 @@ const ApplicationsPage = () => {
           />
         </div>
 
-        {/* Status tabs */}
         <div className="flex items-center gap-1 bg-[#1a1a24] p-1 rounded-lg border border-white/5 overflow-x-auto">
           <button
             onClick={() => setStatusFilter('all')}
@@ -236,6 +193,15 @@ const ApplicationsPage = () => {
           ))}
         </div>
       </div>
+
+      {/* Result count when filtering */}
+      {(search || statusFilter !== 'all') && !isLoading && !isError && (
+        <p className="text-gray-500 text-xs -mt-2">
+          {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+          {statusFilter !== 'all' ? ` · ${STATUS_LABELS[statusFilter]}` : ''}
+          {search ? ` matching "${search}"` : ''}
+        </p>
+      )}
 
       {/* Content */}
       {isLoading && <LoadingSpinner size="lg" message="Loading applications…" />}
@@ -297,7 +263,7 @@ const ApplicationsPage = () => {
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2 justify-end">
                       <button
-                        onClick={() => openEdit(app)}
+                        onClick={() => setEditApp(app)}
                         className="text-gray-500 hover:text-purple-400 transition-colors"
                         title="Edit"
                       >
@@ -327,100 +293,14 @@ const ApplicationsPage = () => {
         loading={addPending}
       />
 
-      {/* Edit SlideOver */}
-      <SlideOver
+      {/* Edit Modal — reuses ApplicationModal with initial values */}
+      <ApplicationModal
         open={!!editApp}
-        title="Edit Application"
+        initial={editApp}
         onClose={() => setEditApp(null)}
-      >
-        {editForm && (
-          <form onSubmit={handleEditSubmit} className="space-y-5">
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1.5">Company *</label>
-              <input
-                type="text"
-                required
-                value={editForm.company_name}
-                onChange={setEditField('company_name')}
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1.5">Role *</label>
-              <input
-                type="text"
-                required
-                value={editForm.role_title}
-                onChange={setEditField('role_title')}
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1.5">Status</label>
-              <select
-                value={editForm.status}
-                onChange={setEditField('status')}
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
-              >
-                {ALL_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {STATUS_LABELS[s]}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1.5">Source</label>
-              <input
-                type="text"
-                value={editForm.source}
-                onChange={setEditField('source')}
-                placeholder="e.g. LinkedIn, Referral"
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1.5">Applied Date</label>
-              <input
-                type="date"
-                value={editForm.applied_at}
-                onChange={setEditField('applied_at')}
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors [color-scheme:dark]"
-              />
-            </div>
-
-            {editApp && (
-              <div className="pt-2 border-t border-white/5">
-                <p className="text-gray-600 text-xs mb-1">Emails linked: {editApp.emails.length}</p>
-                <p className="text-gray-600 text-xs">
-                  Created: {formatDate(editApp.created_at)}
-                </p>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setEditApp(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-white/10 text-gray-400 text-sm font-medium hover:text-white hover:border-white/20 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={editPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium transition-colors"
-              >
-                {editPending ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
-        )}
-      </SlideOver>
+        onSubmit={editMutate}
+        loading={editPending}
+      />
 
       {/* Delete Confirm */}
       <ConfirmDialog
