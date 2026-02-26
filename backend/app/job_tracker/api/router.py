@@ -80,9 +80,11 @@ async def trigger_scan(
     )
     try:
         from app.job_tracker.services.email_scan_service import EmailScanService
+        from app.job_tracker.repositories.scan_run_repository import ScanRunRepository
 
         app_repo = JobApplicationRepository(session)
-        service = EmailScanService(client, repo, app_repo)
+        scan_run_repo = ScanRunRepository(session)
+        service = EmailScanService(client, repo, app_repo, scan_run_repo)
         result = await service.scan_for_applications()
         return result
     except RuntimeError as exc:
@@ -113,10 +115,12 @@ async def scan_progress(
 
     async def event_stream():
         from app.job_tracker.services.email_scan_service import EmailScanService
+        from app.job_tracker.repositories.scan_run_repository import ScanRunRepository
 
         repo = EmailReferenceRepository(session)
         app_repo = JobApplicationRepository(session)
-        service = EmailScanService(client, repo, app_repo)
+        scan_run_repo = ScanRunRepository(session)
+        service = EmailScanService(client, repo, app_repo, scan_run_repo)
 
         async def run_scan():
             try:
@@ -151,6 +155,31 @@ async def scan_progress(
     )
 
 
+@router.get("/scan/history")
+async def scan_history(
+    session=Depends(get_session),
+    _=Depends(_auth_dep),
+):
+    """Return the last 10 scan runs."""
+    from app.job_tracker.repositories.scan_run_repository import ScanRunRepository
+    from app.job_tracker.schemas.scan_run import ScanRunRead
+    repo = ScanRunRepository(session)
+    runs = await repo.list_recent()
+    return [ScanRunRead.model_validate(r) for r in runs]
+
+
+# ─── Stats endpoint ────────────────────────────────────────────────────────────
+
+@router.get("/stats")
+async def get_stats(
+    session=Depends(get_session),
+    _=Depends(_auth_dep),
+):
+    """Return pre-aggregated application statistics."""
+    app_repo = JobApplicationRepository(session)
+    return await app_repo.get_stats()
+
+
 # ─── Job Application endpoints ────────────────────────────────────────────────
 
 @router.get("/applications", response_model=JobApplicationPage)
@@ -158,6 +187,8 @@ async def list_applications(
     limit: Optional[int] = Query(None, ge=1, le=500),
     offset: Optional[int] = Query(None, ge=0),
     status_filter: Optional[ApplicationStatus] = Query(None, alias="status"),
+    search: Optional[str] = Query(None, max_length=200),
+    sort: Optional[str] = Query(None, pattern="^(updated_at|applied_at|company_name)$"),
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
@@ -168,7 +199,9 @@ async def list_applications(
     app_repo = JobApplicationRepository(session)
     email_repo = EmailReferenceRepository(session)
     svc = JobApplicationService(app_repo, email_repo)
-    items, total = await svc.list_paginated(limit=limit, offset=offset, status=status_filter)
+    items, total = await svc.list_paginated(
+        limit=limit, offset=offset, status=status_filter, search=search, sort=sort
+    )
     return JobApplicationPage(
         total=total,
         items=[JobApplicationRead.model_validate(i) for i in items],
@@ -256,3 +289,26 @@ async def assign_email_to_application(
             detail="Application or email not found",
         )
     return {"assigned": True}
+
+
+@router.delete(
+    "/applications/{application_id}/emails/{email_id}",
+    status_code=status.HTTP_200_OK,
+)
+async def unassign_email_from_application(
+    application_id: int,
+    email_id: int,
+    session=Depends(get_session),
+    _=Depends(_auth_dep),
+):
+    """Unlink an email reference from a job application."""
+    app_repo = JobApplicationRepository(session)
+    email_repo = EmailReferenceRepository(session)
+    svc = JobApplicationService(app_repo, email_repo)
+    ok = await svc.unassign_email(application_id, email_id)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Email not found or not linked to this application",
+        )
+    return {"unassigned": True}

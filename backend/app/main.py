@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
+from sqlalchemy import text
 
-from app.db import init_db
+from app.db import init_db, get_session
 from app.job_tracker.api.router import router as job_tracker_router
 
 
@@ -23,5 +24,12 @@ app.include_router(job_tracker_router)
 
 
 @app.get("/health")
-async def health():
-    return {"status": "ok"}
+async def health(session=Depends(get_session)):
+    try:
+        await session.execute(text("SELECT 1"))
+        return {"status": "ok", "db": "ok"}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"DB unavailable: {exc}",
+        )

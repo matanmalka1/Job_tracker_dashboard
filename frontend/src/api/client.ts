@@ -3,6 +3,8 @@ import type {
   JobApplication,
   JobApplicationPage,
   EmailReferencePage,
+  DashboardStatsResponse,
+  ScanRun,
 } from '../types/index.ts'
 
 const apiClient = axios.create({
@@ -27,6 +29,8 @@ export const fetchApplications = (params?: {
   limit?: number
   offset?: number
   status?: string
+  search?: string
+  sort?: string
 }): Promise<JobApplicationPage> =>
   apiClient
     .get<JobApplicationPage>('/job-tracker/applications', { params })
@@ -38,6 +42,16 @@ export const fetchEmails = (params?: {
 }): Promise<EmailReferencePage> =>
   apiClient
     .get<EmailReferencePage>('/job-tracker/emails', { params })
+    .then((r) => r.data)
+
+export const fetchStats = (): Promise<DashboardStatsResponse> =>
+  apiClient
+    .get<DashboardStatsResponse>('/job-tracker/stats')
+    .then((r) => r.data)
+
+export const fetchScanHistory = (): Promise<ScanRun[]> =>
+  apiClient
+    .get<ScanRun[]>('/job-tracker/scan/history')
     .then((r) => r.data)
 
 export const triggerScan = (): Promise<{ inserted: number; applications_created: number }> =>
@@ -60,7 +74,15 @@ export const updateApplication = (
   body: Partial<
     Pick<
       JobApplication,
-      'company_name' | 'role_title' | 'status' | 'source' | 'applied_at' | 'confidence_score'
+      | 'company_name'
+      | 'role_title'
+      | 'status'
+      | 'source'
+      | 'applied_at'
+      | 'confidence_score'
+      | 'notes'
+      | 'job_url'
+      | 'next_action_at'
     >
   >,
 ): Promise<JobApplication> =>
@@ -70,3 +92,8 @@ export const updateApplication = (
 
 export const deleteApplication = (id: number): Promise<void> =>
   apiClient.delete(`/job-tracker/applications/${id}`).then(() => undefined)
+
+export const unassignEmail = (applicationId: number, emailId: number): Promise<void> =>
+  apiClient
+    .delete(`/job-tracker/applications/${applicationId}/emails/${emailId}`)
+    .then(() => undefined)

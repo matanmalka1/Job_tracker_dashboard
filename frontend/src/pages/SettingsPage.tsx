@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { Mail, RefreshCw, CheckCircle, XCircle } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Mail, RefreshCw, CheckCircle, XCircle, History } from 'lucide-react'
 import { toast } from 'sonner'
+import { fetchScanHistory } from '../api/client.ts'
+import type { ScanRun } from '../types/index.ts'
 
 interface ScanProgress {
   stage: string
@@ -24,15 +26,59 @@ const STAGE_LABELS: Record<string, string> = {
 
 const STAGE_ORDER = ['fetching', 'filtering', 'saving', 'matching', 'creating', 'done']
 
+const formatRelative = (iso: string): string => {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
+const ScanHistoryRow = ({ run }: { run: ScanRun }) => {
+  const isOk = run.status === 'completed'
+  const isFail = run.status === 'failed'
+  return (
+    <div className="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">
+      <div className={[
+        'shrink-0 w-2 h-2 rounded-full',
+        isOk ? 'bg-green-400' : isFail ? 'bg-red-400' : 'bg-blue-400 animate-pulse',
+      ].join(' ')} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-white text-xs font-medium capitalize">{run.status}</span>
+          {isOk && (
+            <span className="text-gray-400 text-xs">
+              {run.emails_inserted ?? 0} emails · {run.apps_created ?? 0} apps created
+            </span>
+          )}
+          {isFail && run.error && (
+            <span className="text-red-400 text-xs truncate">{run.error}</span>
+          )}
+        </div>
+      </div>
+      <span className="text-gray-600 text-xs shrink-0">
+        {run.completed_at ? formatRelative(run.completed_at) : formatRelative(run.started_at)}
+      </span>
+    </div>
+  )
+}
+
 const SettingsPage = () => {
   const queryClient = useQueryClient()
   const [isScanning, setIsScanning] = useState(false)
   const [progress, setProgress] = useState<ScanProgress | null>(null)
   const [completedStages, setCompletedStages] = useState<string[]>([])
   const [lastResult, setLastResult] = useState<ScanResult | null>(null)
-  const [lastScannedAt, setLastScannedAt] = useState<Date | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
+
+  const { data: scanHistory, refetch: refetchHistory } = useQuery({
+    queryKey: ['scan-history'],
+    queryFn: fetchScanHistory,
+    staleTime: 30_000,
+  })
 
   const runScan = () => {
     if (isScanning) return
@@ -53,12 +99,12 @@ const SettingsPage = () => {
       if (event.stage === 'result') {
         const result = { inserted: event.inserted ?? 0, applications_created: event.applications_created ?? 0 }
         setLastResult(result)
-        setLastScannedAt(new Date())
         setCompletedStages(STAGE_ORDER)
         setProgress({ stage: 'done', detail: `${result.inserted} emails · ${result.applications_created} applications` })
         setIsScanning(false)
         queryClient.invalidateQueries({ queryKey: ['applications'] })
         queryClient.invalidateQueries({ queryKey: ['emails'] })
+        refetchHistory()
         const parts: string[] = []
         if (result.applications_created > 0) parts.push(`${result.applications_created} application${result.applications_created !== 1 ? 's' : ''} created`)
         if (result.inserted > 0) parts.push(`${result.inserted} email${result.inserted !== 1 ? 's' : ''} saved`)
@@ -67,6 +113,7 @@ const SettingsPage = () => {
       } else if (event.stage === 'error') {
         setScanError(event.detail)
         setIsScanning(false)
+        refetchHistory()
         toast.error(`Scan failed: ${event.detail}`)
         es.close()
       } else {
@@ -80,8 +127,6 @@ const SettingsPage = () => {
 
     es.onerror = () => {
       es.close()
-      // onerror fires both on real errors AND after a clean server-side close.
-      // Only surface an error if we haven't already received a result.
       setIsScanning((prev) => {
         if (prev) {
           setScanError('Connection lost. Please try again.')
@@ -91,6 +136,8 @@ const SettingsPage = () => {
       })
     }
   }
+
+  const lastCompleted = scanHistory?.find((r) => r.status === 'completed')
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -185,17 +232,28 @@ const SettingsPage = () => {
             <RefreshCw size={15} className={isScanning ? 'animate-spin' : ''} />
             {isScanning ? 'Scanning…' : 'Run Gmail Scan'}
           </button>
-          {lastScannedAt && !isScanning && (
+          {lastCompleted && !isScanning && (
             <p className="text-gray-500 text-xs">
-              Last scanned:{' '}
-              {lastScannedAt.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-              })}
+              Last scanned: {formatRelative(lastCompleted.completed_at!)}
             </p>
           )}
         </div>
       </div>
+
+      {/* Scan History */}
+      {scanHistory && scanHistory.length > 0 && (
+        <div className="bg-[#1a1a24] border border-white/5 rounded-xl p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <History size={15} className="text-gray-400" />
+            <h2 className="text-white font-semibold text-sm">Scan History</h2>
+          </div>
+          <div>
+            {scanHistory.map((run) => (
+              <ScanHistoryRow key={run.id} run={run} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* App info */}
       <div className="bg-[#1a1a24] border border-white/5 rounded-xl p-6">

@@ -69,6 +69,30 @@ _APPLICATION_SUBJECT_PATTERNS = [
         r"(?:your\s+)?application\s+for\s+(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]+?)(?:\s+has\s+been|\s+was|\s*[|,!]|$)",
         re.IGNORECASE,
     ),
+    # "We received your application for <Role> at <Company>"
+    re.compile(
+        r"(?:we\s+)?received\s+your\s+application\s+(?:for\s+(?P<role>.+?)\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
+    # "Next steps for your application at <Company>" / "Next steps for your candidacy at <Company>"
+    re.compile(
+        r"next\s+steps?\s+(?:for\s+your\s+(?:application|candidacy)\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
+    # "Interview invitation — <Company>" / "<Company> — Interview"
+    re.compile(
+        r"interview\s+invitation[\s\-–—]+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)\s*[\-–—]+\s*(?:interview|phone\s+screen|technical\s+screen)",
+        re.IGNORECASE,
+    ),
+    # "<Company> — <Role> — Application Received" or "<Company>: <Role> application"
+    re.compile(
+        r"^(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]{2,40})\s*[\-–—:]\s*(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]{2,80})\s*[\-–—]\s*application",
+        re.IGNORECASE,
+    ),
 ]
 
 # Status hints derived from subject keywords
@@ -113,11 +137,19 @@ def _extract_sender_domain(sender: str | None) -> str | None:
     # Drop common notification subdomains and TLD, return last two meaningful parts
     skip = {"mail", "email", "notification", "notifications", "noreply",
             "no-reply", "careers", "jobs", "comeet", "greenhouse", "lever",
-            "workday", "bamboohr", "smartrecruiters"}
+            "workday", "bamboohr", "smartrecruiters", "taleo", "icims",
+            "jobvite", "ashbyhq", "ashby", "rippling", "gusto", "myworkday",
+            "successfactors", "oracle", "peoplesoft", "ultipro", "adp",
+            "paychex", "zenefits", "breezy", "jazz", "applytojob",
+            "hire", "recruiting", "workable", "pinpoint", "recruitee"}
     meaningful = [p for p in parts[:-1] if p not in skip]  # drop TLD
     if meaningful:
         return meaningful[-1].capitalize()
-    return parts[0].capitalize() if parts else None
+    # Last resort: first domain part — but only if it's not itself an ATS platform
+    first = parts[0] if parts else None
+    if first and first not in skip:
+        return first.capitalize()
+    return None
 
 
 def _infer_status(text: str) -> ApplicationStatus:
@@ -136,9 +168,14 @@ def _parse_application_from_email(email: EmailReference) -> Optional[dict]:
     snippet = email.snippet or ""
     haystack = f"{subject} {snippet}"
 
-    for pattern in _APPLICATION_SUBJECT_PATTERNS:
-        m = pattern.search(subject)
-        if m:
+    # Try patterns against subject first, then fall back to snippet
+    for search_text in (subject, snippet):
+        if not search_text:
+            continue
+        for pattern in _APPLICATION_SUBJECT_PATTERNS:
+            m = pattern.search(search_text)
+            if not m:
+                continue
             groups = m.groupdict()
             company = groups.get("company", "").strip().rstrip(".,!")
             role = groups.get("role", "").strip().rstrip(".,!")
@@ -210,10 +247,12 @@ class EmailScanService:
         gmail_client: GmailClient,
         repo: EmailReferenceRepository,
         app_repo: Optional[JobApplicationRepository] = None,
+        scan_run_repo=None,
     ):
         self.gmail_client = gmail_client
         self.repo = repo
         self.app_repo = app_repo
+        self.scan_run_repo = scan_run_repo
 
     async def scan_for_applications(
         self,
@@ -223,46 +262,76 @@ class EmailScanService:
         Returns {"inserted": int, "applications_created": int}.
         Calls on_progress(stage: str, detail: str) at key steps if provided.
         """
+        # Record scan start
+        scan_run_id: Optional[int] = None
+        if self.scan_run_repo is not None:
+            try:
+                run = await self.scan_run_repo.create()
+                scan_run_id = run.id
+            except Exception:
+                pass  # non-fatal — don't block scan if history tracking fails
+
         def emit(stage: str, detail: str = ""):
             if on_progress:
                 on_progress(stage, detail)
 
-        emit("fetching", "Connecting to Gmail…")
-        loop = asyncio.get_running_loop()
-        fetch_fn = partial(self.gmail_client.fetch_recent_messages)
-        fetched_messages = await loop.run_in_executor(_get_executor(), fetch_fn)
-        emit("fetching", f"Fetched {len(fetched_messages)} emails from Gmail")
+        try:
+            emit("fetching", "Connecting to Gmail…")
+            loop = asyncio.get_running_loop()
+            fetch_fn = partial(self.gmail_client.fetch_recent_messages)
+            fetched_messages = await loop.run_in_executor(_get_executor(), fetch_fn)
+            emit("fetching", f"Fetched {len(fetched_messages)} emails from Gmail")
 
-        emit("filtering", "Filtering for job-related emails…")
-        matched = [
-            msg for msg in fetched_messages
-            if _matches_keywords(msg.get("subject"), msg.get("snippet"))
-        ]
-        emit("filtering", f"Found {len(matched)} job-related emails")
+            emit("filtering", "Filtering for job-related emails…")
+            matched = [
+                msg for msg in fetched_messages
+                if _matches_keywords(msg.get("subject"), msg.get("snippet"))
+            ]
+            emit("filtering", f"Found {len(matched)} job-related emails")
 
-        emit("saving", f"Saving {len(matched)} emails to database…")
-        inserted, skipped = await self._bulk_insert(matched)
-        emit("saving", f"Saved {inserted} new emails ({skipped} duplicates skipped)")
+            emit("saving", f"Saving {len(matched)} emails to database…")
+            inserted, skipped = await self._bulk_insert(matched)
+            emit("saving", f"Saved {inserted} new emails ({skipped} duplicates skipped)")
 
-        applications_created = 0
-        if self.app_repo is not None:
-            emit("matching", "Matching emails to existing applications…")
-            await self._match_unlinked_emails()
-            emit("creating", "Auto-creating applications from email subjects…")
-            applications_created = await self._auto_create_applications()
-            emit("creating", f"Created {applications_created} new applications")
+            applications_created = 0
+            if self.app_repo is not None:
+                emit("matching", "Matching emails to existing applications…")
+                await self._match_unlinked_emails()
+                emit("creating", "Auto-creating applications from email subjects…")
+                applications_created = await self._auto_create_applications()
+                emit("creating", f"Created {applications_created} new applications")
 
-        emit("done", f"Scan complete — {inserted} emails · {applications_created} applications")
+            emit("done", f"Scan complete — {inserted} emails · {applications_created} applications")
 
-        logger.info(
-            "Email scan completed: fetched=%s matched=%s inserted=%s skipped=%s apps_created=%s",
-            len(fetched_messages),
-            len(matched),
-            inserted,
-            skipped,
-            applications_created,
-        )
-        return {"inserted": inserted, "applications_created": applications_created}
+            logger.info(
+                "Email scan completed: fetched=%s matched=%s inserted=%s skipped=%s apps_created=%s",
+                len(fetched_messages),
+                len(matched),
+                inserted,
+                skipped,
+                applications_created,
+            )
+
+            if scan_run_id is not None and self.scan_run_repo is not None:
+                try:
+                    await self.scan_run_repo.complete(
+                        scan_run_id,
+                        emails_fetched=len(fetched_messages),
+                        emails_inserted=inserted,
+                        apps_created=applications_created,
+                    )
+                except Exception:
+                    pass
+
+            return {"inserted": inserted, "applications_created": applications_created}
+
+        except Exception as exc:
+            if scan_run_id is not None and self.scan_run_repo is not None:
+                try:
+                    await self.scan_run_repo.fail(scan_run_id, str(exc))
+                except Exception:
+                    pass
+            raise
 
     async def _bulk_insert(self, messages: list[dict]) -> tuple[int, int]:
         created, duplicates = await self.repo.bulk_create(messages)
@@ -311,7 +380,7 @@ class EmailScanService:
         )
         still_unlinked = result.scalars().all()
         if not still_unlinked:
-            return
+            return 0
 
         # Build a set of existing (company, role) pairs to avoid duplicates
         apps_result = await session.execute(

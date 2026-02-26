@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from sqlalchemy import Column, DateTime, Enum as SAEnum, Float, Integer, String
+from sqlalchemy import Column, DateTime, Enum as SAEnum, Float, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.db import Base
@@ -30,6 +30,10 @@ class JobApplication(Base):
     applied_at = Column(DateTime(timezone=True), nullable=True)
     last_email_at = Column(DateTime(timezone=True), nullable=True)
     confidence_score = Column(Float, nullable=True)
+
+    notes = Column(Text, nullable=True)
+    job_url = Column(String(2000), nullable=True)
+    next_action_at = Column(DateTime(timezone=True), nullable=True)
 
     emails = relationship("EmailReference", back_populates="application", cascade="all, delete-orphan")
 

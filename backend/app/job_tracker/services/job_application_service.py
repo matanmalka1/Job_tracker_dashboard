@@ -1,6 +1,9 @@
 from typing import Optional
 
+from sqlalchemy import select, func, update
+
 from app.job_tracker.models.job_application import ApplicationStatus, JobApplication
+from app.job_tracker.models.email_reference import EmailReference
 from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
 from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
 
@@ -39,14 +42,15 @@ class JobApplicationService:
         limit: int,
         offset: int,
         status: Optional[ApplicationStatus] = None,
+        search: Optional[str] = None,
+        sort: Optional[str] = None,
     ) -> tuple[list[JobApplication], int]:
-        return await self.app_repo.list_paginated(limit=limit, offset=offset, status=status)
+        return await self.app_repo.list_paginated(
+            limit=limit, offset=offset, status=status, search=search, sort=sort
+        )
 
     async def assign_email(self, application_id: int, email_id: int) -> bool:
         """Link an existing EmailReference to a JobApplication."""
-        from sqlalchemy import select
-        from app.job_tracker.models.email_reference import EmailReference
-
         result = await self.email_repo.session.execute(
             select(EmailReference).where(EmailReference.id == email_id)
         )
@@ -62,5 +66,33 @@ class JobApplicationService:
 
         # Update last_email_at on the application
         await self.app_repo.update_last_email_at(application_id, email.received_at)
+        await self.app_repo.session.commit()
+        return True
+
+    async def unassign_email(self, application_id: int, email_id: int) -> bool:
+        """Unlink an EmailReference from a JobApplication."""
+        result = await self.email_repo.session.execute(
+            select(EmailReference).where(
+                EmailReference.id == email_id,
+                EmailReference.application_id == application_id,
+            )
+        )
+        email = result.scalar_one_or_none()
+        if not email:
+            return False
+
+        email.application_id = None
+
+        # Recalculate last_email_at from remaining linked emails
+        remaining_max = await self.email_repo.session.scalar(
+            select(func.max(EmailReference.received_at)).where(
+                EmailReference.application_id == application_id
+            )
+        )
+        await self.app_repo.session.execute(
+            update(JobApplication)
+            .where(JobApplication.id == application_id)
+            .values(last_email_at=remaining_max)
+        )
         await self.app_repo.session.commit()
         return True

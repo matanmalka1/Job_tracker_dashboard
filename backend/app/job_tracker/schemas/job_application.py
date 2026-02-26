@@ -13,6 +13,9 @@ class JobApplicationBase(BaseModel):
     source: Optional[str] = None
     applied_at: Optional[datetime] = None
     confidence_score: Optional[float] = None
+    notes: Optional[str] = None
+    job_url: Optional[str] = None
+    next_action_at: Optional[datetime] = None
 
 
 class JobApplicationCreate(JobApplicationBase):
@@ -26,6 +29,9 @@ class JobApplicationUpdate(BaseModel):
     source: Optional[str] = None
     applied_at: Optional[datetime] = None
     confidence_score: Optional[float] = None
+    notes: Optional[str] = None
+    job_url: Optional[str] = None
+    next_action_at: Optional[datetime] = None
 
 
 class JobApplicationRead(JobApplicationBase):

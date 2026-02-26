@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, or_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -58,6 +58,8 @@ class JobApplicationRepository:
         limit: int,
         offset: int,
         status: Optional[ApplicationStatus] = None,
+        search: Optional[str] = None,
+        sort: Optional[str] = None,
     ) -> tuple[list[JobApplication], int]:
         query = select(JobApplication).options(selectinload(JobApplication.emails))
         count_query = select(func.count()).select_from(JobApplication)
@@ -66,11 +68,47 @@ class JobApplicationRepository:
             query = query.where(JobApplication.status == status)
             count_query = count_query.where(JobApplication.status == status)
 
+        if search:
+            pattern = f"%{search}%"
+            search_filter = or_(
+                JobApplication.company_name.ilike(pattern),
+                JobApplication.role_title.ilike(pattern),
+            )
+            query = query.where(search_filter)
+            count_query = count_query.where(search_filter)
+
+        sort_col = {
+            "applied_at": JobApplication.applied_at.desc().nulls_last(),
+            "company_name": JobApplication.company_name.asc(),
+        }.get(sort or "", JobApplication.updated_at.desc())
+
         total = await self.session.scalar(count_query)
         result = await self.session.execute(
-            query.order_by(JobApplication.updated_at.desc()).limit(limit).offset(offset)
+            query.order_by(sort_col).limit(limit).offset(offset)
         )
         return list(result.scalars().all()), total or 0
+
+    async def get_stats(self) -> dict:
+        """Return aggregated stats: total, counts by status, reply_rate."""
+        # Count by status
+        status_result = await self.session.execute(
+            select(JobApplication.status, func.count().label("cnt"))
+            .group_by(JobApplication.status)
+        )
+        by_status: dict[str, int] = {s.value: 0 for s in ApplicationStatus}
+        total = 0
+        for row in status_result.all():
+            by_status[row[0].value] = row[1]
+            total += row[1]
+
+        # Count apps that have at least one linked email
+        apps_with_email = await self.session.scalar(
+            select(func.count(func.distinct(EmailReference.application_id)))
+            .where(EmailReference.application_id.isnot(None))
+        )
+        reply_rate = (apps_with_email / total * 100) if total > 0 else 0.0
+
+        return {"total": total, "by_status": by_status, "reply_rate": round(reply_rate, 1)}
 
     async def list_recent(self, limit: int = 10) -> list[JobApplication]:
         result = await self.session.execute(

@@ -41,6 +41,8 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
   // Sync form whenever the modal opens or switches between records
   useEffect(() => {
     if (open) {
+      // Prefill the form when opened or when the record changes
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(
         initial
           ? {

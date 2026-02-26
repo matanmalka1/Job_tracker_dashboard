@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchApplications, fetchEmails } from '../api/client.ts'
-import type { ApplicationStatus, DashboardStats, JobApplication } from '../types/index.ts'
+import { fetchApplications, fetchEmails, fetchStats } from '../api/client.ts'
+import type { DashboardStats } from '../types/index.ts'
 import StatsCards from '../components/dashboard/StatsCards.tsx'
 import ActivityTimeline from '../components/dashboard/ActivityTimeline.tsx'
 import StageDistribution from '../components/dashboard/StageDistribution.tsx'
@@ -15,42 +15,25 @@ const EMPTY_STATS: DashboardStats = {
   statusCounts: { new: 0, applied: 0, interviewing: 0, offer: 0, rejected: 0, hired: 0 },
 }
 
-const computeStats = (applications: JobApplication[]): DashboardStats => {
-  const total = applications.length
-  if (total === 0) return EMPTY_STATS
-
-  const statusCounts: Record<ApplicationStatus, number> = {
-    new: 0,
-    applied: 0,
-    interviewing: 0,
-    offer: 0,
-    rejected: 0,
-    hired: 0,
-  }
-
-  let appsWithReply = 0
-  for (const app of applications) {
-    statusCounts[app.status] = (statusCounts[app.status] ?? 0) + 1
-    if (app.emails.length > 0) appsWithReply++
-  }
-
-  return {
-    totalApplications: total,
-    activeInterviews: statusCounts.interviewing,
-    offersReceived: statusCounts.offer + statusCounts.hired,
-    replyRate: (appsWithReply / total) * 100,
-    statusCounts,
-  }
-}
-
 const DashboardPage = () => {
+  const {
+    data: statsData,
+    isLoading: statsLoading,
+    isError: statsError,
+  } = useQuery({
+    queryKey: ['stats'],
+    queryFn: fetchStats,
+    staleTime: 30_000,
+  })
+
   const {
     data: appsData,
     isLoading: appsLoading,
     isError: appsError,
   } = useQuery({
-    queryKey: ['applications', 'dashboard-all'],
-    queryFn: () => fetchApplications({ limit: 500, offset: 0 }),
+    queryKey: ['applications', 'dashboard-recent'],
+    queryFn: () => fetchApplications({ limit: 5, offset: 0, sort: 'updated_at' }),
+    staleTime: 30_000,
   })
 
   const {
@@ -62,21 +45,26 @@ const DashboardPage = () => {
     queryFn: () => fetchEmails({ limit: 10, offset: 0 }),
   })
 
-  const stats = useMemo<DashboardStats>(
-    () => (appsData ? computeStats(appsData.items) : EMPTY_STATS),
-    [appsData],
-  )
+  const stats = useMemo<DashboardStats>(() => {
+    if (!statsData) return EMPTY_STATS
+    return {
+      totalApplications: statsData.total,
+      activeInterviews: statsData.by_status.interviewing ?? 0,
+      offersReceived: (statsData.by_status.offer ?? 0) + (statsData.by_status.hired ?? 0),
+      replyRate: statsData.reply_rate,
+      statusCounts: {
+        new: statsData.by_status.new ?? 0,
+        applied: statsData.by_status.applied ?? 0,
+        interviewing: statsData.by_status.interviewing ?? 0,
+        offer: statsData.by_status.offer ?? 0,
+        rejected: statsData.by_status.rejected ?? 0,
+        hired: statsData.by_status.hired ?? 0,
+      },
+    }
+  }, [statsData])
 
   const recentApplications = useMemo(
-    () =>
-      appsData
-        ? [...appsData.items]
-            .sort(
-              (a, b) =>
-                new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-            )
-            .slice(0, 5)
-        : [],
+    () => appsData?.items ?? [],
     [appsData],
   )
 
@@ -87,10 +75,10 @@ const DashboardPage = () => {
         <p className="text-gray-400 text-sm mt-1">Your job search at a glance</p>
       </div>
 
-      <StatsCards stats={stats} isLoading={appsLoading} />
+      <StatsCards stats={stats} isLoading={statsLoading} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <StageDistribution stats={stats} isLoading={appsLoading} />
+        <StageDistribution stats={stats} isLoading={statsLoading} />
         <div className="lg:col-span-2">
           <ActivityTimeline
             emails={emailsData?.items ?? []}
@@ -103,7 +91,7 @@ const DashboardPage = () => {
       <RecentApplications
         applications={recentApplications}
         isLoading={appsLoading}
-        isError={appsError}
+        isError={appsError || statsError}
       />
     </div>
   )

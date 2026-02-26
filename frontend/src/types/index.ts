@@ -25,6 +25,9 @@ export interface JobApplication {
   applied_at?: string
   confidence_score?: number
   last_email_at?: string
+  notes?: string
+  job_url?: string
+  next_action_at?: string
   created_at: string
   updated_at: string
   emails: EmailReference[]
@@ -46,4 +49,21 @@ export interface DashboardStats {
   offersReceived: number
   replyRate: number
   statusCounts: Record<ApplicationStatus, number>
+}
+
+export interface DashboardStatsResponse {
+  total: number
+  by_status: Record<ApplicationStatus, number>
+  reply_rate: number
+}
+
+export interface ScanRun {
+  id: number
+  started_at: string
+  completed_at?: string
+  status: 'running' | 'completed' | 'failed'
+  emails_fetched?: number
+  emails_inserted?: number
+  apps_created?: number
+  error?: string
 }

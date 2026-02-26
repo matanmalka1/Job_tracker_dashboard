@@ -62,6 +62,9 @@ interface EditFormState {
   status: ApplicationStatus
   source: string
   applied_at: string
+  notes: string
+  job_url: string
+  next_action_at: string
 }
 
 const ApplicationDetailPage = () => {
@@ -117,6 +120,9 @@ const ApplicationDetailPage = () => {
       status: app.status,
       source: app.source ?? '',
       applied_at: app.applied_at ? app.applied_at.slice(0, 10) : '',
+      notes: app.notes ?? '',
+      job_url: app.job_url ?? '',
+      next_action_at: app.next_action_at ? app.next_action_at.slice(0, 10) : '',
     })
     setEditOpen(true)
   }
@@ -130,6 +136,9 @@ const ApplicationDetailPage = () => {
       status: editForm.status,
       source: editForm.source || undefined,
       applied_at: editForm.applied_at ? `${editForm.applied_at}T00:00:00Z` : undefined,
+      notes: editForm.notes || undefined,
+      job_url: editForm.job_url || undefined,
+      next_action_at: editForm.next_action_at ? `${editForm.next_action_at}T00:00:00Z` : undefined,
     })
   }
 
@@ -250,7 +259,37 @@ const ApplicationDetailPage = () => {
               </div>
             </div>
           )}
+          {app.next_action_at && (
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Follow-up</p>
+              <p className="text-yellow-400 text-sm">{formatDate(app.next_action_at)}</p>
+            </div>
+          )}
         </div>
+
+        {(app.job_url || app.notes) && (
+          <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+            {app.job_url && (
+              <div className="flex items-center gap-2">
+                <p className="text-gray-500 text-xs w-20 shrink-0">Job URL</p>
+                <a
+                  href={app.job_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-400 text-xs hover:text-purple-300 truncate transition-colors"
+                >
+                  {app.job_url}
+                </a>
+              </div>
+            )}
+            {app.notes && (
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Notes</p>
+                <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{app.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Email thread */}
@@ -421,6 +460,35 @@ const ApplicationDetailPage = () => {
                 value={editForm.applied_at}
                 onChange={setEditField('applied_at')}
                 className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors [color-scheme:dark]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 font-medium mb-1.5">Job URL</label>
+              <input
+                type="url"
+                value={editForm.job_url}
+                onChange={setEditField('job_url')}
+                placeholder="https://…"
+                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 font-medium mb-1.5">Follow-up Date</label>
+              <input
+                type="date"
+                value={editForm.next_action_at}
+                onChange={setEditField('next_action_at')}
+                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors [color-scheme:dark]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 font-medium mb-1.5">Notes</label>
+              <textarea
+                value={editForm.notes}
+                onChange={(e) => setEditForm((prev) => prev ? { ...prev, notes: e.target.value } : prev)}
+                placeholder="Interview prep, impressions, contacts…"
+                rows={4}
+                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors resize-none"
               />
             </div>
             <div className="flex gap-3 pt-2">
