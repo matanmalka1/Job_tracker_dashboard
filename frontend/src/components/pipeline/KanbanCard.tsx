@@ -1,4 +1,5 @@
 import { useSortable } from '@dnd-kit/sortable'
+import { useNavigate } from 'react-router-dom'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Mail } from 'lucide-react'
 import type { JobApplication } from '../../types/index.ts'
@@ -10,6 +11,7 @@ interface Props {
 const KanbanCard = ({ application }: Props) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: application.id })
+  const navigate = useNavigate()
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -34,6 +36,7 @@ const KanbanCard = ({ application }: Props) => {
     <div
       ref={setNodeRef}
       style={style}
+      onClick={() => navigate(`/applications/${application.id}`)}
       className="bg-[#0f0f13] rounded-lg p-3.5 border border-white/5 cursor-default select-none"
     >
       <div className="flex items-start justify-between gap-2">

@@ -81,8 +81,10 @@ const ApplicationsPage = () => {
   })
 
   const { mutate: editMutate, isPending: editPending } = useMutation({
-    mutationFn: (body: Parameters<typeof createApplication>[0]) =>
-      updateApplication(editApp!.id, body),
+    mutationFn: (body: Parameters<typeof createApplication>[0]) => {
+      if (!editApp) return Promise.reject(new Error('No application selected'))
+      return updateApplication(editApp.id, body)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] })
       toast.success('Application updated')

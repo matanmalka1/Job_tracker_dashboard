@@ -11,6 +11,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/applications': 'Applications',
   '/companies': 'Companies',
   '/settings': 'Settings',
+  '/manage-data': 'Manage Data',
 }
 
 const Layout = () => {

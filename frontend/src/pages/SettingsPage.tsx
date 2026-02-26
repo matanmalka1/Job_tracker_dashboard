@@ -79,14 +79,16 @@ const SettingsPage = () => {
     }
 
     es.onerror = () => {
-      // onerror also fires after the server closes the stream on success — ignore it then
-      setIsScanning(prev => {
+      es.close()
+      // onerror fires both on real errors AND after a clean server-side close.
+      // Only surface an error if we haven't already received a result.
+      setIsScanning((prev) => {
         if (prev) {
           setScanError('Connection lost. Please try again.')
+          toast.error('Scan connection lost. Please try again.')
         }
         return false
       })
-      es.close()
     }
   }
 

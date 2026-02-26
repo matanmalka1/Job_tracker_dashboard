@@ -92,7 +92,10 @@ const ManageDataUiPage = () => {
   })
 
   const { mutate: updateMutate, isPending: updateLoading } = useMutation({
-    mutationFn: (body: Parameters<typeof createApplication>[0]) => updateApplication(editing!.id, body),
+    mutationFn: (body: Parameters<typeof createApplication>[0]) => {
+      if (!editing) return Promise.reject(new Error('No record selected'))
+      return updateApplication(editing.id, body)
+    },
     onSuccess: () => {
       toast.success('Record updated')
       queryClient.invalidateQueries({ queryKey: ['applications'] })
