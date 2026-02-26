@@ -6,6 +6,7 @@ import ApplicationsPage from './pages/ApplicationsPage.tsx'
 import CompaniesPage from './pages/CompaniesPage.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
 import ApplicationDetailPage from './pages/ApplicationDetailPage.tsx'
+import ManageDataUiPage from './pages/manageDataUi/ManageDataUiPage.tsx'
 
 const App = () => (
   <Routes>
@@ -17,6 +18,7 @@ const App = () => (
       <Route path="applications/:id" element={<ApplicationDetailPage />} />
       <Route path="companies" element={<CompaniesPage />} />
       <Route path="settings" element={<SettingsPage />} />
+      <Route path="manage-data" element={<ManageDataUiPage />} />
     </Route>
   </Routes>
 )

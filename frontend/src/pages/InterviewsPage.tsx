@@ -141,7 +141,7 @@ const InterviewsPage = () => {
     onError: (err: Error) => toast.error(err.message),
   })
 
-  const interviews = data?.items ?? []
+  const interviews = useMemo(() => data?.items ?? [], [data])
 
   // Group by week using applied_at or created_at
   const grouped = useMemo(() => {

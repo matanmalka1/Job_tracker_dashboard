@@ -1,9 +1,12 @@
+import asyncio
 import importlib
 import importlib.util
+import json
 from functools import lru_cache
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 
 from app.config import get_settings
 from app.db import get_session
@@ -83,10 +86,69 @@ async def trigger_scan(
         result = await service.scan_for_applications()
         return result
     except RuntimeError as exc:
-        # Configuration errors (missing token file, etc.)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+
+@router.get("/scan/progress")
+async def scan_progress(
+    session=Depends(get_session),
+    _=Depends(_auth_dep),
+):
+    """SSE endpoint: streams scan progress events then a final result."""
+    settings = get_settings()
+    client = GmailClient(
+        token_file=settings.GMAIL_TOKEN_FILE,
+        delegated_user=settings.GMAIL_DELEGATED_USER,
+        query_window_days=settings.GMAIL_QUERY_WINDOW_DAYS,
+        max_messages=settings.GMAIL_MAX_MESSAGES,
+        page_size=settings.GMAIL_LIST_PAGE_SIZE,
+    )
+
+    queue: asyncio.Queue = asyncio.Queue()
+
+    def on_progress(stage: str, detail: str):
+        queue.put_nowait({"stage": stage, "detail": detail})
+
+    async def event_stream():
+        from app.job_tracker.services.email_scan_service import EmailScanService
+
+        repo = EmailReferenceRepository(session)
+        app_repo = JobApplicationRepository(session)
+        service = EmailScanService(client, repo, app_repo)
+
+        async def run_scan():
+            try:
+                result = await service.scan_for_applications(on_progress=on_progress)
+                queue.put_nowait({"stage": "result", "detail": "", **result})
+            except Exception as exc:
+                queue.put_nowait({"stage": "error", "detail": str(exc)})
+
+        scan_task = asyncio.create_task(run_scan())
+
+        while True:
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=60.0)
+            except asyncio.TimeoutError:
+                yield "data: {}\n\n"
+                break
+
+            yield f"data: {json.dumps(event)}\n\n"
+
+            if event.get("stage") in ("result", "error"):
+                break
+
+        await scan_task
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # ─── Job Application endpoints ────────────────────────────────────────────────

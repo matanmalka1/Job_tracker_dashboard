@@ -159,6 +159,7 @@ class GmailClient:
         cleaned = date_str.strip()
         cleaned = re.sub(r"\s+\([^)]+\)$", "", cleaned)  # strip (UTC), (PST), …
         cleaned = re.sub(r"\s+GMT$", " +0000", cleaned)   # normalize bare GMT
+        cleaned = re.sub(r"\bUT$", "+0000", cleaned)       # normalize bare UT
 
         for fmt in ("%a, %d %b %Y %H:%M:%S %z", "%d %b %Y %H:%M:%S %z"):
             try:

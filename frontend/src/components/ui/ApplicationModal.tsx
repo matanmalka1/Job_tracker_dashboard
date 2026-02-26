@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { X } from 'lucide-react'
 import type { ApplicationStatus, JobApplication } from '../../types/index.ts'
 
@@ -36,23 +36,17 @@ interface Props {
 }
 
 const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) => {
-  const [form, setForm] = useState<FormState>(EMPTY)
+  const initialForm: FormState = initial
+    ? {
+        company_name: initial.company_name,
+        role_title: initial.role_title,
+        status: initial.status,
+        source: initial.source ?? '',
+        applied_at: initial.applied_at ? initial.applied_at.slice(0, 10) : '',
+      }
+    : EMPTY
 
-  useEffect(() => {
-    if (open) {
-      setForm(
-        initial
-          ? {
-              company_name: initial.company_name,
-              role_title: initial.role_title,
-              status: initial.status,
-              source: initial.source ?? '',
-              applied_at: initial.applied_at ? initial.applied_at.slice(0, 10) : '',
-            }
-          : EMPTY,
-      )
-    }
-  }, [open, initial])
+  const [form, setForm] = useState<FormState>(initialForm)
 
   if (!open) return null
 

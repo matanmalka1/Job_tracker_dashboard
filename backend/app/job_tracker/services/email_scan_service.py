@@ -215,25 +215,44 @@ class EmailScanService:
         self.repo = repo
         self.app_repo = app_repo
 
-    async def scan_for_applications(self) -> dict:
+    async def scan_for_applications(
+        self,
+        on_progress: Optional[callable] = None,
+    ) -> dict:
         """
-        Returns {"inserted": int, "applications_created": int}
+        Returns {"inserted": int, "applications_created": int}.
+        Calls on_progress(stage: str, detail: str) at key steps if provided.
         """
+        def emit(stage: str, detail: str = ""):
+            if on_progress:
+                on_progress(stage, detail)
+
+        emit("fetching", "Connecting to Gmail…")
         loop = asyncio.get_running_loop()
         fetch_fn = partial(self.gmail_client.fetch_recent_messages)
         fetched_messages = await loop.run_in_executor(_get_executor(), fetch_fn)
+        emit("fetching", f"Fetched {len(fetched_messages)} emails from Gmail")
 
+        emit("filtering", "Filtering for job-related emails…")
         matched = [
             msg for msg in fetched_messages
             if _matches_keywords(msg.get("subject"), msg.get("snippet"))
         ]
+        emit("filtering", f"Found {len(matched)} job-related emails")
 
+        emit("saving", f"Saving {len(matched)} emails to database…")
         inserted, skipped = await self._bulk_insert(matched)
-        applications_created = 0
+        emit("saving", f"Saved {inserted} new emails ({skipped} duplicates skipped)")
 
+        applications_created = 0
         if self.app_repo is not None:
+            emit("matching", "Matching emails to existing applications…")
             await self._match_unlinked_emails()
+            emit("creating", "Auto-creating applications from email subjects…")
             applications_created = await self._auto_create_applications()
+            emit("creating", f"Created {applications_created} new applications")
+
+        emit("done", f"Scan complete — {inserted} emails · {applications_created} applications")
 
         logger.info(
             "Email scan completed: fetched=%s matched=%s inserted=%s skipped=%s apps_created=%s",

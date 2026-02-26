@@ -352,15 +352,17 @@ const ApplicationDetailPage = () => {
               </div>
             </div>
           )}
-          <div className="flex items-start gap-3">
-            <div className="shrink-0 w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mt-0.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+          {app.source === 'Gmail' && (
+            <div className="flex items-start gap-3">
+              <div className="shrink-0 w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mt-0.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+              </div>
+              <div>
+                <p className="text-gray-300 text-sm">Detected via Gmail scan</p>
+                <p className="text-gray-500 text-xs mt-0.5">{formatDateTime(app.created_at)}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-gray-300 text-sm">Added to tracker</p>
-              <p className="text-gray-500 text-xs mt-0.5">{formatDateTime(app.created_at)}</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

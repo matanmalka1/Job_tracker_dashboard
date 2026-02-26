@@ -5,6 +5,7 @@ import {
   Building2,
   Settings,
   Kanban,
+  Database,
 } from 'lucide-react'
 
 interface NavItem {
@@ -19,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/applications', label: 'Applications', icon: <FileText size={20} /> },
   { to: '/companies', label: 'Companies', icon: <Building2 size={20} /> },
   { to: '/settings', label: 'Settings', icon: <Settings size={20} /> },
+  { to: '/manage-data', label: 'Manage Data', icon: <Database size={20} /> },
 ]
 
 interface SidebarProps {
