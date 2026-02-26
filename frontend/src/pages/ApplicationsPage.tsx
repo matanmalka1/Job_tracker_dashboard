@@ -9,7 +9,7 @@ import {
   updateApplication,
   deleteApplication,
 } from '../api/client.ts'
-import type { ApplicationStatus, JobApplication } from '../types/index.ts'
+import type { ApplicationStatus, ApplicationWritePayload, JobApplication } from '../types/index.ts'
 import StatusBadge from '../components/ui/StatusBadge.tsx'
 import LoadingSpinner from '../components/ui/LoadingSpinner.tsx'
 import ApplicationModal from '../components/ui/ApplicationModal.tsx'
@@ -47,7 +47,9 @@ const exportCsv = (apps: JobApplication[]) => {
   const csv = [headers, ...rows]
     .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
     .join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
+  // BUG FIX: prepend UTF-8 BOM so Excel opens the file correctly with special
+  // characters (accented letters, etc.) rather than showing mojibake.
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -74,19 +76,24 @@ const ApplicationsPage = () => {
     mutationFn: createApplication,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
       toast.success('Application added')
       setAddOpen(false)
     },
     onError: (err: Error) => toast.error(err.message),
   })
 
+  // BUG FIX: editMutate previously used `Parameters<typeof createApplication>[0]`
+  // as the mutation arg type, which is the full create payload. The PATCH endpoint
+  // takes Partial<ApplicationWritePayload>, so the type is now correct.
   const { mutate: editMutate, isPending: editPending } = useMutation({
-    mutationFn: (body: Parameters<typeof createApplication>[0]) => {
+    mutationFn: (body: Partial<ApplicationWritePayload>) => {
       if (!editApp) return Promise.reject(new Error('No application selected'))
       return updateApplication(editApp.id, body)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
       toast.success('Application updated')
       setEditApp(null)
     },
@@ -97,6 +104,7 @@ const ApplicationsPage = () => {
     mutationFn: (id: number) => deleteApplication(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
       toast.success('Application deleted')
       setDeleteTarget(null)
     },
@@ -262,12 +270,15 @@ const ApplicationsPage = () => {
                       {formatDate(app.applied_at ?? app.created_at)}
                     </span>
                   </td>
+                  {/* BUG FIX: stopPropagation is critical here to prevent the
+                      row click from navigating while clicking the action buttons. */}
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2 justify-end">
                       <button
                         onClick={() => setEditApp(app)}
                         className="text-gray-500 hover:text-purple-400 transition-colors"
                         title="Edit"
+                        aria-label={`Edit ${app.company_name}`}
                       >
                         <Pencil size={15} />
                       </button>
@@ -275,6 +286,7 @@ const ApplicationsPage = () => {
                         onClick={() => setDeleteTarget(app)}
                         className="text-gray-500 hover:text-red-400 transition-colors"
                         title="Delete"
+                        aria-label={`Delete ${app.company_name}`}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -291,16 +303,16 @@ const ApplicationsPage = () => {
       <ApplicationModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onSubmit={addApp}
+        onSubmit={(data) => addApp(data)}
         loading={addPending}
       />
 
-      {/* Edit Modal — reuses ApplicationModal with initial values */}
+      {/* Edit Modal */}
       <ApplicationModal
         open={!!editApp}
         initial={editApp}
         onClose={() => setEditApp(null)}
-        onSubmit={editMutate}
+        onSubmit={(data) => editMutate(data)}
         loading={editPending}
       />
 

@@ -16,6 +16,14 @@ class Settings(BaseSettings):
     PAGINATION_LIMIT_DEFAULT: int = 50
     PAGINATION_OFFSET_DEFAULT: int = 0
 
+    # CORS: allow frontend dev server and common local ports
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ]
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

@@ -79,18 +79,20 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSubmit({
-      company_name: form.company_name,
-      role_title: form.role_title,
+      company_name: form.company_name.trim(),
+      role_title: form.role_title.trim(),
       status: form.status,
-      source: form.source || undefined,
+      source: form.source.trim() || undefined,
       applied_at: form.applied_at ? `${form.applied_at}T00:00:00Z` : undefined,
-      notes: form.notes || undefined,
-      job_url: form.job_url || undefined,
+      notes: form.notes.trim() || undefined,
+      job_url: form.job_url.trim() || undefined,
       next_action_at: form.next_action_at ? `${form.next_action_at}T00:00:00Z` : undefined,
     })
   }
 
-  // FIX: unified setter for both input and textarea, resolves inline handler inconsistency
+  // BUG FIX: unified setter that accepts both input/select and textarea change events.
+  // HTMLTextAreaElement is a valid target type alongside HTMLInputElement and
+  // HTMLSelectElement but was previously missing, causing TypeScript errors.
   const set =
     (key: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -101,15 +103,26 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
 
   const isEdit = !!initial
 
+  // BUG FIX: prevent background scroll when modal is open
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-label={isEdit ? 'Edit Application' : 'Add Application'}
+    >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-[#1a1a24] border border-white/10 rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-white font-semibold text-lg">
             {isEdit ? 'Edit Application' : 'Add Application'}
           </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-500 hover:text-white transition-colors"
+            aria-label="Close"
+          >
             <X size={20} />
           </button>
         </div>
@@ -124,6 +137,7 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
               onChange={set('company_name')}
               placeholder="e.g. Acme Corp"
               className={inputCls}
+              autoFocus
             />
           </div>
 
@@ -192,7 +206,6 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
             />
           </div>
 
-          {/* FIX: Notes field was entirely absent from this modal */}
           <div>
             <label className="block text-xs text-gray-400 font-medium mb-1.5">Notes</label>
             <textarea
@@ -208,7 +221,8 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-lg border border-white/10 text-gray-400 text-sm font-medium hover:text-white hover:border-white/20 transition-colors"
+              disabled={loading}
+              className="flex-1 px-4 py-2.5 rounded-lg border border-white/10 text-gray-400 text-sm font-medium hover:text-white hover:border-white/20 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>

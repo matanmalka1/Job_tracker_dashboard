@@ -80,13 +80,15 @@ const ApplicationDetailPage = () => {
   const { data: app, isLoading, isError } = useQuery({
     queryKey: ['applications', appId],
     queryFn: () => fetchApplication(appId),
-    enabled: !isNaN(appId),
+    // BUG FIX: don't run the query if appId is not a valid integer
+    enabled: !isNaN(appId) && appId > 0,
   })
 
   const { mutate: editMutate, isPending: editPending } = useMutation({
     mutationFn: (body: Partial<EditFormState>) => updateApplication(appId, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
       toast.success('Application updated')
       setEditOpen(false)
     },
@@ -97,6 +99,7 @@ const ApplicationDetailPage = () => {
     mutationFn: () => deleteApplication(appId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
       toast.success('Application deleted')
       navigate('/applications')
     },
@@ -107,6 +110,7 @@ const ApplicationDetailPage = () => {
     mutationFn: (status: ApplicationStatus) => updateApplication(appId, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
       toast.success('Status updated')
     },
     onError: (err: Error) => toast.error(err.message),
@@ -142,9 +146,10 @@ const ApplicationDetailPage = () => {
     })
   }
 
+  // BUG FIX: setEditField now accepts textarea change events too.
   const setEditField =
     (key: keyof EditFormState) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setEditForm((prev) => (prev ? { ...prev, [key]: e.target.value } : prev))
 
   if (isLoading) {
@@ -171,6 +176,9 @@ const ApplicationDetailPage = () => {
       </div>
     )
   }
+
+  const inputCls =
+    'w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors'
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -411,99 +419,53 @@ const ApplicationDetailPage = () => {
           <form onSubmit={handleEditSubmit} className="space-y-5">
             <div>
               <label className="block text-xs text-gray-400 font-medium mb-1.5">Company *</label>
-              <input
-                type="text"
-                required
-                value={editForm.company_name}
-                onChange={setEditField('company_name')}
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
-              />
+              <input type="text" required value={editForm.company_name} onChange={setEditField('company_name')} className={inputCls} />
             </div>
             <div>
               <label className="block text-xs text-gray-400 font-medium mb-1.5">Role *</label>
-              <input
-                type="text"
-                required
-                value={editForm.role_title}
-                onChange={setEditField('role_title')}
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
-              />
+              <input type="text" required value={editForm.role_title} onChange={setEditField('role_title')} className={inputCls} />
             </div>
             <div>
               <label className="block text-xs text-gray-400 font-medium mb-1.5">Status</label>
-              <select
-                value={editForm.status}
-                onChange={setEditField('status')}
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
-              >
+              <select value={editForm.status} onChange={setEditField('status')} className={inputCls}>
                 {ALL_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {STATUS_LABELS[s]}
-                  </option>
+                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                 ))}
               </select>
             </div>
             <div>
               <label className="block text-xs text-gray-400 font-medium mb-1.5">Source</label>
-              <input
-                type="text"
-                value={editForm.source}
-                onChange={setEditField('source')}
-                placeholder="e.g. LinkedIn, Referral"
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
-              />
+              <input type="text" value={editForm.source} onChange={setEditField('source')} placeholder="e.g. LinkedIn, Referral" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs text-gray-400 font-medium mb-1.5">Applied Date</label>
-              <input
-                type="date"
-                value={editForm.applied_at}
-                onChange={setEditField('applied_at')}
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors [color-scheme:dark]"
-              />
+              <input type="date" value={editForm.applied_at} onChange={setEditField('applied_at')} className={`${inputCls} [color-scheme:dark]`} />
             </div>
             <div>
               <label className="block text-xs text-gray-400 font-medium mb-1.5">Job URL</label>
-              <input
-                type="url"
-                value={editForm.job_url}
-                onChange={setEditField('job_url')}
-                placeholder="https://…"
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
-              />
+              <input type="url" value={editForm.job_url} onChange={setEditField('job_url')} placeholder="https://…" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs text-gray-400 font-medium mb-1.5">Follow-up Date</label>
-              <input
-                type="date"
-                value={editForm.next_action_at}
-                onChange={setEditField('next_action_at')}
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors [color-scheme:dark]"
-              />
+              <input type="date" value={editForm.next_action_at} onChange={setEditField('next_action_at')} className={`${inputCls} [color-scheme:dark]`} />
             </div>
+            {/* BUG FIX: notes textarea was using an inline handler with wrong type.
+                setEditField now supports HTMLTextAreaElement events. */}
             <div>
               <label className="block text-xs text-gray-400 font-medium mb-1.5">Notes</label>
               <textarea
                 value={editForm.notes}
-                onChange={(e) => setEditForm((prev) => prev ? { ...prev, notes: e.target.value } : prev)}
+                onChange={setEditField('notes')}
                 placeholder="Interview prep, impressions, contacts…"
                 rows={4}
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors resize-none"
+                className={`${inputCls} resize-none`}
               />
             </div>
             <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setEditOpen(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-white/10 text-gray-400 text-sm font-medium hover:text-white hover:border-white/20 transition-colors"
-              >
+              <button type="button" onClick={() => setEditOpen(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-white/10 text-gray-400 text-sm font-medium hover:text-white hover:border-white/20 transition-colors">
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={editPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium transition-colors"
-              >
+              <button type="submit" disabled={editPending} className="flex-1 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium transition-colors">
                 {editPending ? 'Saving…' : 'Save Changes'}
               </button>
             </div>

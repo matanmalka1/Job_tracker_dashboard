@@ -13,7 +13,7 @@ import {
 import SlideOver from '../../components/ui/SlideOver.tsx'
 import ConfirmDialog from '../../components/ui/ConfirmDialog.tsx'
 import LoadingSpinner from '../../components/ui/LoadingSpinner.tsx'
-import type { ApplicationStatus, JobApplication } from '../../types/index.ts'
+import type { ApplicationStatus, ApplicationWritePayload, JobApplication } from '../../types/index.ts'
 import {
   fetchApplications,
   createApplication,
@@ -80,25 +80,33 @@ const ManageDataUiPage = () => {
     queryFn: () => fetchApplications({ limit: 500, offset: 0 }),
   })
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['applications'] })
+    queryClient.invalidateQueries({ queryKey: ['stats'] })
+  }
+
   const { mutate: createMutate, isPending: createLoading } = useMutation({
     mutationFn: createApplication,
     onSuccess: () => {
       toast.success('Record created')
-      queryClient.invalidateQueries({ queryKey: ['applications'] })
+      invalidateAll()
       setDrawerOpen(false)
       setForm(EMPTY_FORM)
     },
     onError: (err: Error) => toast.error(err.message),
   })
 
+  // BUG FIX: updateMutate's mutationFn argument type was
+  // `Parameters<typeof createApplication>[0]` (required fields) instead of
+  // `Partial<ApplicationWritePayload>` (all optional for PATCH).
   const { mutate: updateMutate, isPending: updateLoading } = useMutation({
-    mutationFn: (body: Parameters<typeof createApplication>[0]) => {
+    mutationFn: (body: Partial<ApplicationWritePayload>) => {
       if (!editing) return Promise.reject(new Error('No record selected'))
       return updateApplication(editing.id, body)
     },
     onSuccess: () => {
       toast.success('Record updated')
-      queryClient.invalidateQueries({ queryKey: ['applications'] })
+      invalidateAll()
       setDrawerOpen(false)
       setEditing(null)
       setForm(EMPTY_FORM)
@@ -110,7 +118,7 @@ const ManageDataUiPage = () => {
     mutationFn: (id: number) => deleteApplication(id),
     onSuccess: () => {
       toast.success('Record deleted')
-      queryClient.invalidateQueries({ queryKey: ['applications'] })
+      invalidateAll()
       setDeleteTarget(null)
     },
     onError: (err: Error) => toast.error(err.message),
@@ -153,17 +161,25 @@ const ManageDataUiPage = () => {
     setDrawerOpen(true)
   }
 
+  const closeDrawer = () => {
+    setDrawerOpen(false)
+    setEditing(null)
+    setForm(EMPTY_FORM)
+  }
+
   const onSubmit = () => {
     if (!form.company_name.trim() || !form.role_title.trim()) return
 
-    const payload = {
+    const payload: ApplicationWritePayload = {
       company_name: form.company_name.trim(),
       role_title: form.role_title.trim(),
       status: form.status,
       source: form.source.trim() || undefined,
       applied_at: form.applied_at ? `${form.applied_at}T00:00:00Z` : undefined,
       confidence_score:
-        form.confidence_score.trim() === '' ? undefined : Number(form.confidence_score) / 100,
+        form.confidence_score.trim() === ''
+          ? undefined
+          : Number(form.confidence_score) / 100,
     }
 
     if (editing) {
@@ -189,7 +205,7 @@ const ManageDataUiPage = () => {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => refetch()}
+              onClick={() => void refetch()}
               className="p-2 rounded-lg border border-white/10 text-gray-300 hover:text-white hover:border-white/20 transition-colors"
               title="Refresh"
             >
@@ -292,6 +308,7 @@ const ManageDataUiPage = () => {
                           onClick={() => openEdit(app)}
                           className="p-2 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:border-white/20 transition-colors"
                           title="Edit"
+                          aria-label={`Edit ${app.company_name}`}
                         >
                           <Pencil size={14} />
                         </button>
@@ -299,6 +316,7 @@ const ManageDataUiPage = () => {
                           onClick={() => setDeleteTarget(app)}
                           className="p-2 rounded-md bg-red-500/10 border border-red-500/30 text-red-200 hover:text-white hover:border-red-400/60 transition-colors"
                           title="Delete"
+                          aria-label={`Delete ${app.company_name}`}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -326,11 +344,7 @@ const ManageDataUiPage = () => {
       <SlideOver
         open={drawerOpen}
         title={editing ? 'Edit record' : 'Create record'}
-        onClose={() => {
-          setDrawerOpen(false)
-          setEditing(null)
-          setForm(EMPTY_FORM)
-        }}
+        onClose={closeDrawer}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -340,6 +354,7 @@ const ManageDataUiPage = () => {
                 value={form.company_name}
                 onChange={(e) => setForm((f) => ({ ...f, company_name: e.target.value }))}
                 className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50"
+                autoFocus
               />
             </div>
             <div>
@@ -404,11 +419,7 @@ const ManageDataUiPage = () => {
 
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
-              onClick={() => {
-                setDrawerOpen(false)
-                setEditing(null)
-                setForm(EMPTY_FORM)
-              }}
+              onClick={closeDrawer}
               className="px-4 py-2 rounded-lg border border-white/10 text-sm text-gray-400 hover:text-white hover:border-white/20"
             >
               Cancel

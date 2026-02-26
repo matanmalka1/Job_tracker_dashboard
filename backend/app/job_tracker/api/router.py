@@ -2,6 +2,7 @@ import asyncio
 import importlib
 import importlib.util
 import json
+import logging
 from functools import lru_cache
 from typing import Optional
 
@@ -23,6 +24,8 @@ from app.job_tracker.schemas.job_application import (
 )
 from app.job_tracker.services.job_application_service import JobApplicationService
 
+logger = logging.getLogger(__name__)
+
 
 @lru_cache(maxsize=1)
 def _resolve_auth_dep():
@@ -38,10 +41,18 @@ def _resolve_auth_dep():
 
 
 router = APIRouter(prefix="/job-tracker", tags=["job-tracker"])
-
-# NOTE: _resolve_auth_dep() is called here (at import time) intentionally —
-# the resolved callable is what FastAPI wraps as a dependency per-request.
 _auth_dep = _resolve_auth_dep()
+
+
+def _make_gmail_client(settings) -> GmailClient:
+    """Factory so client construction is not repeated across endpoints."""
+    return GmailClient(
+        token_file=settings.GMAIL_TOKEN_FILE,
+        delegated_user=settings.GMAIL_DELEGATED_USER,
+        query_window_days=settings.GMAIL_QUERY_WINDOW_DAYS,
+        max_messages=settings.GMAIL_MAX_MESSAGES,
+        page_size=settings.GMAIL_LIST_PAGE_SIZE,
+    )
 
 
 # ─── Email endpoints ───────────────────────────────────────────────────────────
@@ -68,20 +79,14 @@ async def trigger_scan(
     _=Depends(_auth_dep),
 ):
     """Trigger a Gmail scan and store matching emails in the database."""
-    repo = EmailReferenceRepository(session)
     settings = get_settings()
+    client = _make_gmail_client(settings)
 
-    client = GmailClient(
-        token_file=settings.GMAIL_TOKEN_FILE,
-        delegated_user=settings.GMAIL_DELEGATED_USER,
-        query_window_days=settings.GMAIL_QUERY_WINDOW_DAYS,
-        max_messages=settings.GMAIL_MAX_MESSAGES,
-        page_size=settings.GMAIL_LIST_PAGE_SIZE,
-    )
     try:
         from app.job_tracker.services.email_scan_service import EmailScanService
         from app.job_tracker.repositories.scan_run_repository import ScanRunRepository
 
+        repo = EmailReferenceRepository(session)
         app_repo = JobApplicationRepository(session)
         scan_run_repo = ScanRunRepository(session)
         service = EmailScanService(client, repo, app_repo, scan_run_repo)
@@ -90,6 +95,7 @@ async def trigger_scan(
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
     except Exception as exc:
+        logger.exception("Scan failed")
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
 
 
@@ -100,14 +106,7 @@ async def scan_progress(
 ):
     """SSE endpoint: streams scan progress events then a final result."""
     settings = get_settings()
-    client = GmailClient(
-        token_file=settings.GMAIL_TOKEN_FILE,
-        delegated_user=settings.GMAIL_DELEGATED_USER,
-        query_window_days=settings.GMAIL_QUERY_WINDOW_DAYS,
-        max_messages=settings.GMAIL_MAX_MESSAGES,
-        page_size=settings.GMAIL_LIST_PAGE_SIZE,
-    )
-
+    client = _make_gmail_client(settings)
     queue: asyncio.Queue = asyncio.Queue()
 
     def on_progress(stage: str, detail: str):
@@ -122,28 +121,41 @@ async def scan_progress(
         scan_run_repo = ScanRunRepository(session)
         service = EmailScanService(client, repo, app_repo, scan_run_repo)
 
+        scan_task: Optional[asyncio.Task] = None
+
         async def run_scan():
             try:
                 result = await service.scan_for_applications(on_progress=on_progress)
                 queue.put_nowait({"stage": "result", "detail": "", **result})
             except Exception as exc:
+                logger.exception("SSE scan failed")
                 queue.put_nowait({"stage": "error", "detail": str(exc)})
 
-        scan_task = asyncio.create_task(run_scan())
+        try:
+            scan_task = asyncio.create_task(run_scan())
 
-        while True:
-            try:
-                event = await asyncio.wait_for(queue.get(), timeout=60.0)
-            except asyncio.TimeoutError:
-                yield "data: {}\n\n"
-                break
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=60.0)
+                except asyncio.TimeoutError:
+                    # BUG FIX: send a keepalive comment instead of empty data so
+                    # the client doesn't try to parse "{}" as a progress event.
+                    yield ": keepalive\n\n"
+                    break
 
-            yield f"data: {json.dumps(event)}\n\n"
+                yield f"data: {json.dumps(event)}\n\n"
 
-            if event.get("stage") in ("result", "error"):
-                break
-
-        await scan_task
+                if event.get("stage") in ("result", "error"):
+                    break
+        finally:
+            # BUG FIX: always await the scan task to avoid "Task was destroyed
+            # but it is pending!" warnings when the client disconnects early.
+            if scan_task is not None and not scan_task.done():
+                scan_task.cancel()
+                try:
+                    await scan_task
+                except (asyncio.CancelledError, Exception):
+                    pass
 
     return StreamingResponse(
         event_stream(),
@@ -151,6 +163,9 @@ async def scan_progress(
         headers={
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
+            # BUG FIX: Connection header is required by some proxies/browsers
+            # to keep SSE connections alive.
+            "Connection": "keep-alive",
         },
     )
 
@@ -246,8 +261,6 @@ async def update_application(
     app_repo = JobApplicationRepository(session)
     email_repo = EmailReferenceRepository(session)
     svc = JobApplicationService(app_repo, email_repo)
-    # exclude_unset=True so that fields not provided are not patched;
-    # exclude_none is intentionally NOT used here so callers can explicitly clear nullable fields.
     app = await svc.update(application_id, body.model_dump(exclude_unset=True))
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")

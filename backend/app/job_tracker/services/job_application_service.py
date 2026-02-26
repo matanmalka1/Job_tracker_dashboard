@@ -17,9 +17,19 @@ class JobApplicationService:
         self.app_repo = app_repo
         self.email_repo = email_repo
 
+    # BUG FIX: All methods use self.app_repo.session as the single source of
+    # truth. Previously unassign_email used self.email_repo.session and
+    # self.app_repo.session interchangeably — these could be different objects
+    # if they were constructed with different sessions (they share the same
+    # session in practice via get_session, but the code was fragile).
+
+    @property
+    def _session(self):
+        return self.app_repo.session
+
     async def create(self, data: dict) -> JobApplication:
         app = await self.app_repo.create(data)
-        await self.app_repo.session.commit()
+        await self._session.commit()
         return await self.app_repo.get_by_id(app.id)
 
     async def get_by_id(self, application_id: int) -> Optional[JobApplication]:
@@ -28,13 +38,13 @@ class JobApplicationService:
     async def update(self, application_id: int, data: dict) -> Optional[JobApplication]:
         app = await self.app_repo.update(application_id, data)
         if app:
-            await self.app_repo.session.commit()
+            await self._session.commit()
         return app
 
     async def delete(self, application_id: int) -> bool:
         deleted = await self.app_repo.delete(application_id)
         if deleted:
-            await self.app_repo.session.commit()
+            await self._session.commit()
         return deleted
 
     async def list_paginated(
@@ -51,7 +61,7 @@ class JobApplicationService:
 
     async def assign_email(self, application_id: int, email_id: int) -> bool:
         """Link an existing EmailReference to a JobApplication."""
-        result = await self.email_repo.session.execute(
+        result = await self._session.execute(
             select(EmailReference).where(EmailReference.id == email_id)
         )
         email = result.scalar_one_or_none()
@@ -63,15 +73,13 @@ class JobApplicationService:
             return False
 
         email.application_id = application_id
-
-        # Update last_email_at on the application
         await self.app_repo.update_last_email_at(application_id, email.received_at)
-        await self.app_repo.session.commit()
+        await self._session.commit()
         return True
 
     async def unassign_email(self, application_id: int, email_id: int) -> bool:
         """Unlink an EmailReference from a JobApplication."""
-        result = await self.email_repo.session.execute(
+        result = await self._session.execute(
             select(EmailReference).where(
                 EmailReference.id == email_id,
                 EmailReference.application_id == application_id,
@@ -84,15 +92,15 @@ class JobApplicationService:
         email.application_id = None
 
         # Recalculate last_email_at from remaining linked emails
-        remaining_max = await self.email_repo.session.scalar(
+        remaining_max = await self._session.scalar(
             select(func.max(EmailReference.received_at)).where(
                 EmailReference.application_id == application_id
             )
         )
-        await self.app_repo.session.execute(
+        await self._session.execute(
             update(JobApplication)
             .where(JobApplication.id == application_id)
             .values(last_email_at=remaining_max)
         )
-        await self.app_repo.session.commit()
+        await self._session.commit()
         return True

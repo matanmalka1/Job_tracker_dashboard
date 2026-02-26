@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type {
+  ApplicationWritePayload,
   JobApplication,
   JobApplicationPage,
   EmailReferencePage,
@@ -14,10 +15,15 @@ const apiClient = axios.create({
 
 apiClient.interceptors.response.use(
   (r) => r,
-  (err) =>
-    Promise.reject(
-      new Error(err.response?.data?.detail ?? err.message ?? 'Unknown API error'),
-    ),
+  (err) => {
+    // BUG FIX: The original error handler lost the HTTP status code. Preserve
+    // it on the Error object so callers can branch on status when needed.
+    const message: string =
+      err.response?.data?.detail ?? err.message ?? 'Unknown API error'
+    const error = new Error(message) as Error & { status?: number }
+    error.status = err.response?.status as number | undefined
+    return Promise.reject(error)
+  },
 )
 
 export const fetchApplication = (id: number): Promise<JobApplication> =>
@@ -59,30 +65,10 @@ export const triggerScan = (): Promise<{ inserted: number; applications_created:
     .post<{ inserted: number; applications_created: number }>('/job-tracker/scan')
     .then((r) => r.data)
 
-// FIX: createApplication and updateApplication now include all schema fields
-// (notes, job_url, next_action_at were missing from the Pick type)
-type ApplicationWriteFields = Pick<
-  JobApplication,
-  | 'company_name'
-  | 'role_title'
-  | 'status'
-  | 'source'
-  | 'applied_at'
-  | 'confidence_score'
-  | 'notes'
-  | 'job_url'
-  | 'next_action_at'
->
-
+// BUG FIX: Use the shared ApplicationWritePayload type instead of the
+// ad-hoc inline Pick/Omit chain that diverged from the actual schema.
 export const createApplication = (
-  body: Omit<ApplicationWriteFields, 'source' | 'applied_at' | 'confidence_score' | 'notes' | 'job_url' | 'next_action_at'> & {
-    source?: string
-    applied_at?: string
-    confidence_score?: number
-    notes?: string
-    job_url?: string
-    next_action_at?: string
-  },
+  body: ApplicationWritePayload,
 ): Promise<JobApplication> =>
   apiClient
     .post<JobApplication>('/job-tracker/applications', body)
@@ -90,7 +76,7 @@ export const createApplication = (
 
 export const updateApplication = (
   id: number,
-  body: Partial<ApplicationWriteFields>,
+  body: Partial<ApplicationWritePayload>,
 ): Promise<JobApplication> =>
   apiClient
     .patch<JobApplication>(`/job-tracker/applications/${id}`, body)

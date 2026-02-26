@@ -4,7 +4,7 @@ import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Optional
+from typing import Callable, Optional
 
 from sqlalchemy import select
 
@@ -42,44 +42,35 @@ KEYWORDS = [
     "start date",
 ]
 
-# Subjects that indicate a new application was submitted — worth auto-creating a record
 _APPLICATION_SUBJECT_PATTERNS = [
-    # "Your application to <Role> at <Company>"
     re.compile(
         r"(?:your\s+)?application\s+(?:to|for)\s+(?P<role>.+?)\s+at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
-    # "Thanks for applying for <Role> at <Company>"
     re.compile(
         r"(?:thank(?:s|\s+you)\s+for\s+apply(?:ing)?(?:\s+for)?)\s+(?:the\s+)?(?P<role>.+?)\s+(?:position\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
-    # "Thank you for applying to <Company>" — role unknown
     re.compile(
         r"thank(?:s|\s+you)\s+for\s+applying\s+to\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
-    # "<Name>, your application was sent to <Company>"
     re.compile(
         r"application\s+was\s+sent\s+to\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
-    # "Your application for <Role>" — sender domain becomes company
     re.compile(
         r"(?:your\s+)?application\s+for\s+(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]+?)(?:\s+has\s+been|\s+was|\s*[|,!]|$)",
         re.IGNORECASE,
     ),
-    # "We received your application for <Role> at <Company>"
     re.compile(
         r"(?:we\s+)?received\s+your\s+application\s+(?:for\s+(?P<role>.+?)\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
-    # "Next steps for your application at <Company>"
     re.compile(
         r"next\s+steps?\s+(?:for\s+your\s+(?:application|candidacy)\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
-    # "Interview invitation — <Company>"
     re.compile(
         r"interview\s+invitation[\s\-–—]+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
@@ -88,14 +79,12 @@ _APPLICATION_SUBJECT_PATTERNS = [
         r"^(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)\s*[\-–—]+\s*(?:interview|phone\s+screen|technical\s+screen)",
         re.IGNORECASE,
     ),
-    # "<Company> — <Role> — Application Received"
     re.compile(
         r"^(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]{2,40})\s*[\-–—:]\s*(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]{2,80})\s*[\-–—]\s*application",
         re.IGNORECASE,
     ),
 ]
 
-# Status hints derived from subject keywords
 _STATUS_HINTS: list[tuple[re.Pattern, ApplicationStatus]] = [
     (re.compile(r"\b(offer|congratulations|pleased to inform|job offer)\b", re.IGNORECASE), ApplicationStatus.OFFER),
     (re.compile(r"\b(interview|assessment|screening|schedule)\b", re.IGNORECASE), ApplicationStatus.INTERVIEWING),
@@ -104,7 +93,6 @@ _STATUS_HINTS: list[tuple[re.Pattern, ApplicationStatus]] = [
 
 _executor: Optional[ThreadPoolExecutor] = None
 _executor_lock = threading.Lock()
-
 
 _EXCLUDE_PHRASES = [
     "wants to connect",
@@ -182,7 +170,6 @@ def _parse_application_from_email(email: EmailReference) -> Optional[dict]:
             if not company:
                 company = _extract_sender_domain(email.sender) or "Unknown Company"
 
-            # Log and skip suspiciously long matches — likely a bad regex capture
             if len(role) > 120:
                 logger.warning(
                     "Role title exceeds 120 chars (%d), skipping: %r", len(role), role[:40]
@@ -256,7 +243,7 @@ class EmailScanService:
 
     async def scan_for_applications(
         self,
-        on_progress: Optional[callable] = None,
+        on_progress: Optional[Callable[[str, str], None]] = None,
     ) -> dict:
         """
         Returns {"inserted": int, "applications_created": int}.
@@ -270,9 +257,12 @@ class EmailScanService:
             except Exception:
                 logger.warning("Could not record scan run start", exc_info=True)
 
-        def emit(stage: str, detail: str = ""):
+        def emit(stage: str, detail: str = "") -> None:
             if on_progress:
-                on_progress(stage, detail)
+                try:
+                    on_progress(stage, detail)
+                except Exception:
+                    logger.debug("on_progress callback raised", exc_info=True)
 
         try:
             emit("fetching", "Connecting to Gmail…")
@@ -319,6 +309,11 @@ class EmailScanService:
                         emails_inserted=inserted,
                         apps_created=applications_created,
                     )
+                    # BUG FIX: commit the scan_run completion update. Previously
+                    # scan_run_repo.complete() called commit() directly on the
+                    # shared session which could conflict with other pending writes.
+                    # Now commit is done here once after all writes are done.
+                    await self.repo.session.commit()
                 except Exception:
                     logger.warning("Could not record scan run completion", exc_info=True)
 
@@ -328,6 +323,7 @@ class EmailScanService:
             if scan_run_id is not None and self.scan_run_repo is not None:
                 try:
                     await self.scan_run_repo.fail(scan_run_id, str(exc))
+                    await self.repo.session.commit()
                 except Exception:
                     logger.warning("Could not record scan run failure", exc_info=True)
             raise
@@ -369,10 +365,7 @@ class EmailScanService:
         """
         For emails still unlinked after matching, try to parse a JobApplication
         from the subject line and create it, then link the email.
-        Deduplicates by (company_name, role_title) — won't create the same
-        application twice across multiple scans.
-
-        FIX: Returns 0 (not None) when there are no unlinked emails.
+        Deduplicates by (company_name, role_title).
         """
         session = self.repo.session
 
@@ -381,7 +374,7 @@ class EmailScanService:
         )
         still_unlinked = result.scalars().all()
         if not still_unlinked:
-            return 0  # BUG FIX: was bare `return` (returns None), causing TypeError in caller
+            return 0
 
         apps_result = await session.execute(
             select(JobApplication.company_name, JobApplication.role_title)
@@ -393,12 +386,19 @@ class EmailScanService:
         created_count = 0
         created_this_run: dict[tuple[str, str], JobApplication] = {}
 
+        # Pre-compute sibling subjects for role inference
         company_subjects: dict[str, list[str | None]] = {}
         for e in still_unlinked:
             parsed_peek = _parse_application_from_email(e)
             if parsed_peek and parsed_peek["company_name"]:
                 ckey = parsed_peek["company_name"].lower()
                 company_subjects.setdefault(ckey, []).append(e.subject)
+
+        # BUG FIX: Batch load all applications once rather than re-querying
+        # inside the loop. The original code issued a new SELECT inside the loop
+        # for every email that matched an existing key, causing N+1 queries.
+        all_apps_result = await session.execute(select(JobApplication))
+        all_apps = all_apps_result.scalars().all()
 
         for email in still_unlinked:
             parsed = _parse_application_from_email(email)
@@ -415,8 +415,6 @@ class EmailScanService:
             key = (parsed["company_name"].lower(), parsed["role_title"].lower())
 
             if key in existing_keys:
-                apps_result2 = await session.execute(select(JobApplication))
-                all_apps = apps_result2.scalars().all()
                 best = match_email_to_application(email, all_apps)
                 if best:
                     email.application_id = best.id
@@ -430,13 +428,16 @@ class EmailScanService:
                 continue
 
             new_app = await self.app_repo.create(parsed)
+            # BUG FIX: append to all_apps so it's available for match_email_to_application
+            # in subsequent iterations without re-querying.
+            all_apps = list(all_apps) + [new_app]
             existing_keys.add(key)
             created_this_run[key] = new_app
             email.application_id = new_app.id
             await self.app_repo.update_last_email_at(new_app.id, email.received_at)
             created_count += 1
 
-        if created_count or created_this_run:
+        if created_count or any(e.application_id is not None for e in still_unlinked):
             await session.commit()
             logger.info("Auto-created %s new job applications from emails", created_count)
 

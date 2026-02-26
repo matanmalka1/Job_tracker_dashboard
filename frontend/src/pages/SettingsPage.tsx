@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Mail, RefreshCw, CheckCircle, XCircle, History } from 'lucide-react'
 import { toast } from 'sonner'
@@ -74,6 +74,14 @@ const SettingsPage = () => {
   const [scanError, setScanError] = useState<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
 
+  // BUG FIX: close the EventSource when the component unmounts to avoid
+  // "memory leak" and stale state updates after navigation.
+  useEffect(() => {
+    return () => {
+      esRef.current?.close()
+    }
+  }, [])
+
   const { data: scanHistory, refetch: refetchHistory } = useQuery({
     queryKey: ['scan-history'],
     queryFn: fetchScanHistory,
@@ -82,6 +90,10 @@ const SettingsPage = () => {
 
   const runScan = () => {
     if (isScanning) return
+
+    // BUG FIX: close any lingering connection from a previous scan before
+    // opening a new one, to prevent duplicate event handlers.
+    esRef.current?.close()
 
     setIsScanning(true)
     setProgress(null)
@@ -92,28 +104,42 @@ const SettingsPage = () => {
     const es = new EventSource('/job-tracker/scan/progress')
     esRef.current = es
 
-    es.onmessage = (e) => {
-      if (!e.data || e.data === '{}') return
-      const event = JSON.parse(e.data) as ScanProgress & Partial<ScanResult> & { stage: string }
+    es.onmessage = (e: MessageEvent<string>) => {
+      // BUG FIX: the backend sends SSE keepalive comments (": keepalive\n\n")
+      // which browsers deliver as empty-string data. Guard against that here.
+      if (!e.data || e.data.trim() === '' || e.data.trim() === '{}') return
+
+      let event: ScanProgress & Partial<ScanResult> & { stage: string }
+      try {
+        event = JSON.parse(e.data) as typeof event
+      } catch {
+        return // ignore malformed events
+      }
 
       if (event.stage === 'result') {
-        const result = { inserted: event.inserted ?? 0, applications_created: event.applications_created ?? 0 }
+        const result: ScanResult = {
+          inserted: event.inserted ?? 0,
+          applications_created: event.applications_created ?? 0,
+        }
         setLastResult(result)
         setCompletedStages(STAGE_ORDER)
         setProgress({ stage: 'done', detail: `${result.inserted} emails · ${result.applications_created} applications` })
         setIsScanning(false)
         queryClient.invalidateQueries({ queryKey: ['applications'] })
         queryClient.invalidateQueries({ queryKey: ['emails'] })
-        refetchHistory()
+        queryClient.invalidateQueries({ queryKey: ['stats'] })
+        void refetchHistory()
         const parts: string[] = []
-        if (result.applications_created > 0) parts.push(`${result.applications_created} application${result.applications_created !== 1 ? 's' : ''} created`)
-        if (result.inserted > 0) parts.push(`${result.inserted} email${result.inserted !== 1 ? 's' : ''} saved`)
+        if (result.applications_created > 0)
+          parts.push(`${result.applications_created} application${result.applications_created !== 1 ? 's' : ''} created`)
+        if (result.inserted > 0)
+          parts.push(`${result.inserted} email${result.inserted !== 1 ? 's' : ''} saved`)
         toast.success(parts.length ? parts.join(' · ') : 'Inbox is up to date')
         es.close()
       } else if (event.stage === 'error') {
         setScanError(event.detail)
         setIsScanning(false)
-        refetchHistory()
+        void refetchHistory()
         toast.error(`Scan failed: ${event.detail}`)
         es.close()
       } else {
@@ -127,6 +153,8 @@ const SettingsPage = () => {
 
     es.onerror = () => {
       es.close()
+      // BUG FIX: Only report error if we were still scanning (not if the
+      // connection closed normally after the scan finished).
       setIsScanning((prev) => {
         if (prev) {
           setScanError('Connection lost. Please try again.')
@@ -163,81 +191,40 @@ const SettingsPage = () => {
 
         {/* Progress steps */}
         {isScanning && (
-          <div className="border border-white/5 rounded-lg p-4 space-y-4 bg-gradient-to-br from-white/5 via-white/0 to-blue-500/5">
-            {(() => {
-              const totalStages = STAGE_ORDER.length - 1 // exclude done label
-              const completed = completedStages.length
-              const percent = Math.min(100, Math.round((completed / totalStages) * 100))
+          <div className="border border-white/5 rounded-lg p-4 space-y-3">
+            {STAGE_ORDER.filter((s) => s !== 'done').map((stage) => {
+              const done = completedStages.includes(stage)
+              const active = progress?.stage === stage
 
               return (
-                <div>
-                  <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                    <span>Scan progress</span>
-                    <span>{percent}%</span>
+                <div key={stage} className="flex items-start gap-3">
+                  <div className="shrink-0 mt-0.5">
+                    {done ? (
+                      <div className="w-4 h-4 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                      </div>
+                    ) : active ? (
+                      <div className="w-4 h-4 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                      </div>
+                    ) : (
+                      <div className="w-4 h-4 rounded-full bg-white/5 border border-white/10" />
+                    )}
                   </div>
-                  <div className="relative h-2 rounded-full bg-white/5 overflow-hidden">
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-300 shadow-[0_0_20px_-6px_rgba(59,130,246,0.8)] animate-shimmer"
-                      style={{ width: `${Math.max(6, percent)}%` }}
-                    />
-                    <div className="absolute inset-0 ring-1 ring-white/10 rounded-full" />
+                  <div className="flex-1 min-w-0">
+                    <p className={[
+                      'text-sm font-medium',
+                      done ? 'text-green-400' : active ? 'text-white' : 'text-gray-600',
+                    ].join(' ')}>
+                      {STAGE_LABELS[stage]}
+                    </p>
+                    {active && progress?.detail && (
+                      <p className="text-gray-400 text-xs mt-0.5 truncate">{progress.detail}</p>
+                    )}
                   </div>
                 </div>
               )
-            })()}
-
-            <div className="space-y-3">
-              {STAGE_ORDER.filter(s => s !== 'done').map((stage, idx) => {
-                const done = completedStages.includes(stage)
-                const active = progress?.stage === stage
-                const nextDone = completedStages.includes(STAGE_ORDER[idx + 1])
-
-                return (
-                  <div key={stage} className="flex items-start gap-3">
-                    <div className="shrink-0 flex flex-col items-center">
-                      <div className={[
-                        'w-4 h-4 rounded-full border flex items-center justify-center shadow-[0_0_0_6px_rgba(59,130,246,0.06)]',
-                        done
-                          ? 'bg-green-500/20 border-green-500/60'
-                          : active
-                            ? 'bg-blue-500/20 border-blue-500/60 animate-pulse'
-                            : 'bg-white/5 border-white/15',
-                      ].join(' ')}>
-                        <div className={[
-                          'w-1.5 h-1.5 rounded-full',
-                          done ? 'bg-green-400' : active ? 'bg-blue-300' : 'bg-gray-500',
-                        ].join(' ')} />
-                      </div>
-                      {idx < STAGE_ORDER.length - 2 && (
-                        <div className={[
-                          'flex-1 w-px mt-1',
-                          nextDone ? 'bg-green-500/40' : active ? 'bg-blue-500/30' : 'bg-white/10',
-                        ].join(' ')} />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className={[
-                          'text-sm font-medium',
-                          done ? 'text-green-300' : active ? 'text-white' : 'text-gray-600',
-                        ].join(' ')}>
-                          {STAGE_LABELS[stage]}
-                        </p>
-                        {active && (
-                          <span className="text-[10px] uppercase tracking-[0.08em] text-blue-200 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">Live</span>
-                        )}
-                      </div>
-                      {active && progress?.detail && (
-                        <p className="text-gray-300 text-xs mt-0.5 truncate">
-                          {progress.detail}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            })}
           </div>
         )}
 
@@ -248,9 +235,13 @@ const SettingsPage = () => {
             <p className="text-green-300 text-sm">
               {lastResult.applications_created > 0 || lastResult.inserted > 0
                 ? [
-                    lastResult.applications_created > 0 && `${lastResult.applications_created} new application${lastResult.applications_created !== 1 ? 's' : ''} detected`,
-                    lastResult.inserted > 0 && `${lastResult.inserted} email${lastResult.inserted !== 1 ? 's' : ''} saved`,
-                  ].filter(Boolean).join(' · ') + '.'
+                    lastResult.applications_created > 0 &&
+                      `${lastResult.applications_created} new application${lastResult.applications_created !== 1 ? 's' : ''} detected`,
+                    lastResult.inserted > 0 &&
+                      `${lastResult.inserted} email${lastResult.inserted !== 1 ? 's' : ''} saved`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') + '.'
                 : 'Scan complete — inbox is up to date.'}
             </p>
           </div>

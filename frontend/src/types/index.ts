@@ -67,3 +67,22 @@ export interface ScanRun {
   apps_created?: number
   error?: string
 }
+
+// ─── API write payloads ───────────────────────────────────────────────────────
+
+/**
+ * BUG FIX: Centralise the write-payload shape so api/client.ts and all
+ * form components can share a single source of truth instead of duplicating
+ * (and diverging) the field list.
+ */
+export interface ApplicationWritePayload {
+  company_name: string
+  role_title: string
+  status?: ApplicationStatus
+  source?: string
+  applied_at?: string
+  confidence_score?: number
+  notes?: string
+  job_url?: string
+  next_action_at?: string
+}

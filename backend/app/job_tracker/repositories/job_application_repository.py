@@ -8,9 +8,6 @@ from sqlalchemy.orm import selectinload
 from app.job_tracker.models.job_application import JobApplication, ApplicationStatus
 from app.job_tracker.models.email_reference import EmailReference
 
-# Sentinel — distinguishes "caller did not pass this key" from "caller explicitly set None"
-_UNSET = object()
-
 
 class JobApplicationRepository:
     def __init__(self, session: AsyncSession):
@@ -35,11 +32,6 @@ class JobApplicationRepository:
         if not existing:
             return None
 
-        # FIX: The old code did `if value is not None: setattr(...)` which silently dropped
-        # explicit None values — callers using exclude_unset=True can't clear nullable fields.
-        # Now we set ALL keys that are present in `data`, including explicit None values.
-        # The route layer uses model_dump(exclude_unset=True) so only intentionally-sent
-        # fields arrive here — setting them to None is a legitimate "clear this field" intent.
         for key, value in data.items():
             setattr(existing, key, value)
 
@@ -79,10 +71,16 @@ class JobApplicationRepository:
             query = query.where(search_filter)
             count_query = count_query.where(search_filter)
 
+        # BUG FIX: "updated_at" was a valid sort param per the router pattern,
+        # but was missing from the sort_col dict — it fell through to the default
+        # (which happened to also be updated_at.desc(), so it worked accidentally).
+        # The dict is now exhaustive and explicit so future changes don't silently
+        # break or apply the wrong sort column.
         sort_col = {
+            "updated_at": JobApplication.updated_at.desc(),
             "applied_at": JobApplication.applied_at.desc().nulls_last(),
             "company_name": JobApplication.company_name.asc(),
-        }.get(sort or "", JobApplication.updated_at.desc())
+        }.get(sort or "updated_at", JobApplication.updated_at.desc())
 
         total = await self.session.scalar(count_query)
         result = await self.session.execute(

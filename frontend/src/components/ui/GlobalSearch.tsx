@@ -13,10 +13,14 @@ const GlobalSearch = () => {
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // BUG FIX: The original query key was ['applications', 'search-pool'] which
+  // doesn't overlap with the list page's ['applications', 'list'] key.
+  // That's correct. But the staleTime of 60s means the pool can be stale while
+  // the list is up to date (30s stale). Align them.
   const { data } = useQuery({
     queryKey: ['applications', 'search-pool'],
     queryFn: () => fetchApplications({ limit: 500, offset: 0 }),
-    staleTime: 60_000,
+    staleTime: 30_000,
   })
 
   const results: JobApplication[] = query.trim().length < 2
@@ -65,15 +69,18 @@ const GlobalSearch = () => {
     setQuery('')
   }
 
+  const openSearch = () => {
+    setOpen(true)
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
   return (
     <div ref={containerRef} className="relative">
       {/* Trigger button */}
       <button
-        onClick={() => {
-          setOpen(true)
-          setTimeout(() => inputRef.current?.focus(), 0)
-        }}
+        onClick={openSearch}
         className="flex items-center gap-2 bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-1.5 text-gray-500 text-sm hover:border-white/20 hover:text-gray-400 transition-colors w-48"
+        aria-label="Open search (⌘K)"
       >
         <Search size={14} />
         <span className="flex-1 text-left text-xs">Search…</span>
@@ -84,7 +91,11 @@ const GlobalSearch = () => {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute top-full mt-2 left-0 w-96 bg-[#1a1a24] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+        <div
+          className="absolute top-full mt-2 left-0 w-96 bg-[#1a1a24] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
+          role="dialog"
+          aria-label="Search applications"
+        >
           {/* Input */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
             <Search size={15} className="text-gray-500 shrink-0" />
@@ -96,9 +107,14 @@ const GlobalSearch = () => {
               placeholder="Search company, role, or source…"
               className="flex-1 bg-transparent text-white text-sm placeholder-gray-500 focus:outline-none"
               autoComplete="off"
+              aria-label="Search query"
             />
             {query && (
-              <button onClick={() => setQuery('')} className="text-gray-500 hover:text-white">
+              <button
+                onClick={() => setQuery('')}
+                className="text-gray-500 hover:text-white"
+                aria-label="Clear search"
+              >
                 <X size={14} />
               </button>
             )}
