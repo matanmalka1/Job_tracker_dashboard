@@ -163,40 +163,81 @@ const SettingsPage = () => {
 
         {/* Progress steps */}
         {isScanning && (
-          <div className="border border-white/5 rounded-lg p-4 space-y-3">
-            {STAGE_ORDER.filter(s => s !== 'done').map((stage) => {
-              const done = completedStages.includes(stage)
-              const active = progress?.stage === stage
+          <div className="border border-white/5 rounded-lg p-4 space-y-4 bg-gradient-to-br from-white/5 via-white/0 to-blue-500/5">
+            {(() => {
+              const totalStages = STAGE_ORDER.length - 1 // exclude done label
+              const completed = completedStages.length
+              const percent = Math.min(100, Math.round((completed / totalStages) * 100))
 
               return (
-                <div key={stage} className="flex items-start gap-3">
-                  <div className="shrink-0 mt-0.5">
-                    {done ? (
-                      <div className="w-4 h-4 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                      </div>
-                    ) : active ? (
-                      <div className="w-4 h-4 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                      </div>
-                    ) : (
-                      <div className="w-4 h-4 rounded-full bg-white/5 border border-white/10" />
-                    )}
+                <div>
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                    <span>Scan progress</span>
+                    <span>{percent}%</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={[
-                      'text-sm font-medium',
-                      done ? 'text-green-400' : active ? 'text-white' : 'text-gray-600',
-                    ].join(' ')}>
-                      {STAGE_LABELS[stage]}
-                    </p>
-                    {active && progress?.detail && (
-                      <p className="text-gray-400 text-xs mt-0.5 truncate">{progress.detail}</p>
-                    )}
+                  <div className="relative h-2 rounded-full bg-white/5 overflow-hidden">
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-300 shadow-[0_0_20px_-6px_rgba(59,130,246,0.8)] animate-shimmer"
+                      style={{ width: `${Math.max(6, percent)}%` }}
+                    />
+                    <div className="absolute inset-0 ring-1 ring-white/10 rounded-full" />
                   </div>
                 </div>
               )
-            })}
+            })()}
+
+            <div className="space-y-3">
+              {STAGE_ORDER.filter(s => s !== 'done').map((stage, idx) => {
+                const done = completedStages.includes(stage)
+                const active = progress?.stage === stage
+                const nextDone = completedStages.includes(STAGE_ORDER[idx + 1])
+
+                return (
+                  <div key={stage} className="flex items-start gap-3">
+                    <div className="shrink-0 flex flex-col items-center">
+                      <div className={[
+                        'w-4 h-4 rounded-full border flex items-center justify-center shadow-[0_0_0_6px_rgba(59,130,246,0.06)]',
+                        done
+                          ? 'bg-green-500/20 border-green-500/60'
+                          : active
+                            ? 'bg-blue-500/20 border-blue-500/60 animate-pulse'
+                            : 'bg-white/5 border-white/15',
+                      ].join(' ')}>
+                        <div className={[
+                          'w-1.5 h-1.5 rounded-full',
+                          done ? 'bg-green-400' : active ? 'bg-blue-300' : 'bg-gray-500',
+                        ].join(' ')} />
+                      </div>
+                      {idx < STAGE_ORDER.length - 2 && (
+                        <div className={[
+                          'flex-1 w-px mt-1',
+                          nextDone ? 'bg-green-500/40' : active ? 'bg-blue-500/30' : 'bg-white/10',
+                        ].join(' ')} />
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className={[
+                          'text-sm font-medium',
+                          done ? 'text-green-300' : active ? 'text-white' : 'text-gray-600',
+                        ].join(' ')}>
+                          {STAGE_LABELS[stage]}
+                        </p>
+                        {active && (
+                          <span className="text-[10px] uppercase tracking-[0.08em] text-blue-200 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">Live</span>
+                        )}
+                      </div>
+                      {active && progress?.detail && (
+                        <p className="text-gray-300 text-xs mt-0.5 truncate">
+                          {progress.detail}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
