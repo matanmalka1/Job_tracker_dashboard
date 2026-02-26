@@ -2,6 +2,7 @@ import datetime as dt
 import logging
 import os
 import re
+import time
 from typing import Dict, List, Optional
 
 from google.auth.transport.requests import Request
@@ -98,27 +99,80 @@ class GmailClient:
                 if not page_token:
                     break
 
-            results: List[Dict] = []
-            for msg in messages:
-                msg_detail = (
-                    service.users()
-                    .messages()
-                    .get(
-                        userId=self._user_id,
-                        id=msg["id"],
-                        format="metadata",
-                        metadataHeaders=["Subject", "From", "Date"],
-                        fields="id,payload/headers,snippet",
-                    )
-                    .execute()
-                )
-                results.append(self._parse_message(msg_detail))
+            message_ids = [msg["id"] for msg in messages]
+            results = self._fetch_message_details(service, message_ids)
 
             logger.info("Fetched %s Gmail messages", len(results))
             return results
         except HttpError:
             logger.exception("Gmail API error")
             raise
+
+    def _fetch_message_details(self, service, message_ids: List[str]) -> List[Dict]:
+        """Batch-fetch message metadata in chunks of 100 (Gmail batch API limit).
+
+        Each batch costs 1 HTTP round-trip instead of 1 per message,
+        reducing 1000 sequential calls to ~10 batch calls.
+
+        Any messages that fail due to transient 429 rate-limit errors are
+        retried once with a short backoff before being silently skipped.
+        """
+        BATCH_SIZE = 100
+        fetched: Dict[str, Dict] = {}
+        failed_ids: List[str] = []
+
+        def _callback(request_id: str, response, exception) -> None:
+            if exception:
+                from googleapiclient.errors import HttpError as _HttpError
+                if isinstance(exception, _HttpError) and exception.resp.status == 429:
+                    failed_ids.append(request_id)
+                else:
+                    logger.warning("Batch get failed for message %s: %s", request_id, exception)
+                return
+            fetched[request_id] = self._parse_message(response)
+
+        for i in range(0, len(message_ids), BATCH_SIZE):
+            chunk = message_ids[i : i + BATCH_SIZE]
+            batch = service.new_batch_http_request(callback=_callback)
+            for msg_id in chunk:
+                batch.add(
+                    service.users()
+                    .messages()
+                    .get(
+                        userId=self._user_id,
+                        id=msg_id,
+                        format="metadata",
+                        metadataHeaders=["Subject", "From", "Date"],
+                        fields="id,payload/headers,snippet",
+                    ),
+                    request_id=msg_id,
+                )
+            batch.execute()
+
+        # Retry 429-throttled messages once after a short backoff, still in ≤100 chunks
+        if failed_ids:
+            logger.info("Retrying %s rate-limited messages after backoff", len(failed_ids))
+            time.sleep(2)
+            for i in range(0, len(failed_ids), BATCH_SIZE):
+                retry_chunk = failed_ids[i : i + BATCH_SIZE]
+                retry_batch = service.new_batch_http_request(callback=_callback)
+                for msg_id in retry_chunk:
+                    retry_batch.add(
+                        service.users()
+                        .messages()
+                        .get(
+                            userId=self._user_id,
+                            id=msg_id,
+                            format="metadata",
+                            metadataHeaders=["Subject", "From", "Date"],
+                            fields="id,payload/headers,snippet",
+                        ),
+                        request_id=msg_id,
+                    )
+                retry_batch.execute()
+
+        # Return in original order, skipping any that permanently errored
+        return [fetched[mid] for mid in message_ids if mid in fetched]
 
     def _date_query(self) -> str:
         after_date = dt.date.today() - dt.timedelta(days=self.query_window_days)

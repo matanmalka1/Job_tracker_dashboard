@@ -8,6 +8,7 @@ import SettingsPage from './pages/SettingsPage.tsx'
 import ApplicationDetailPage from './pages/ApplicationDetailPage.tsx'
 import ManageDataUiPage from './pages/ManageDataUiPage.tsx'
 import InterviewsPage from './pages/InterviewsPage.tsx'
+import LiveLoggerPage from './pages/LiveLoggerPage.tsx'
 
 // FIX: InterviewsPage was imported in InterviewsPage.tsx but never registered in the router
 
@@ -23,6 +24,7 @@ const App = () => (
       <Route path="companies" element={<CompaniesPage />} />
       <Route path="settings" element={<SettingsPage />} />
       <Route path="manage-data" element={<ManageDataUiPage />} />
+      <Route path="live-logger" element={<LiveLoggerPage />} />
     </Route>
   </Routes>
 )

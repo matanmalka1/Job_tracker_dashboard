@@ -7,6 +7,7 @@ import {
   Kanban,
   Database,
   Calendar,
+  Plug,
 } from 'lucide-react'
 
 interface NavItem {
@@ -17,12 +18,13 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-  { to: '/pipeline', label: 'Pipeline', icon: <Kanban size={20} /> },
   { to: '/applications', label: 'Applications', icon: <FileText size={20} /> },
+  { to: '/pipeline', label: 'Pipeline', icon: <Kanban size={20} /> },
   { to: '/interviews', label: 'Interviews', icon: <Calendar size={20} /> },
   { to: '/companies', label: 'Companies', icon: <Building2 size={20} /> },
   { to: '/settings', label: 'Settings', icon: <Settings size={20} /> },
   { to: '/manage-data', label: 'Manage Data', icon: <Database size={20} /> },
+  { to: '/live-logger', label: 'Live Logger', icon: <Plug size={20} /> },
 ]
 
 interface SidebarProps {

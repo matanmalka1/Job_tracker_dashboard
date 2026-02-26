@@ -10,6 +10,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/pipeline': 'Pipeline',
   '/applications': 'Applications',
   '/companies': 'Companies',
+  '/live-logger': 'Live Logger',
   '/settings': 'Settings',
   '/manage-data': 'Manage Data',
 }

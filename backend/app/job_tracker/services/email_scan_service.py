@@ -43,42 +43,97 @@ KEYWORDS = [
 ]
 
 _APPLICATION_SUBJECT_PATTERNS = [
+    # "your application for ROLE at COMPANY"
     re.compile(
         r"(?:your\s+)?application\s+(?:to|for)\s+(?P<role>.+?)\s+at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
+    # "thanks for applying for ROLE at COMPANY"
     re.compile(
         r"(?:thank(?:s|\s+you)\s+for\s+apply(?:ing)?(?:\s+for)?)\s+(?:the\s+)?(?P<role>.+?)\s+(?:position\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
+    # "thank you for applying to COMPANY"
     re.compile(
         r"thank(?:s|\s+you)\s+for\s+applying\s+to\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
+    # "thanks for applying to COMPANY" / "Thanks for applying to COMPANY" (no "you")
     re.compile(
-        r"application\s+was\s+sent\s+to\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
+        r"thanks?\s+for\s+applying\s+to\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
+    # LinkedIn: "application was sent to COMPANY" — strip parenthetical suffixes like "(TSX: ADCO)"
+    re.compile(
+        r"application\s+was\s+sent\s+to\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*\([^)]*\))?(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
+    # LinkedIn: "application was viewed by COMPANY"
+    re.compile(
+        r"application\s+was\s+viewed\s+by\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
+    # "Application Update from COMPANY"
+    re.compile(
+        r"application\s+update\s+from\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
+    # "Your application to COMPANY" / "Re: Your application to COMPANY"
+    re.compile(
+        r"(?:re:\s*)?(?:your\s+)?application\s+to\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
+    # "COMPANY - Thank you for your application - ROLE"
+    re.compile(
+        r"^(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]{1,50}?)\s*[\-–—]\s*thank\s+you\s+for\s+your\s+application\s*[\-–—]\s*(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]+?)(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
+    # "We Got It: Thanks for applying for ROLE" / "Thanks for applying for ROLE"
+    re.compile(
+        r"(?:we\s+got\s+it[:\s]+)?thanks?\s+for\s+applying\s+for\s+(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]+?)(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
+    # "ROLE opportunity at COMPANY"
+    re.compile(
+        r"(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]{2,60}?)\s+opportunity\s+at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
+    # "your application - ROLE"
+    re.compile(
+        r"(?:your\s+)?application\s*[\-–—]\s*(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]{3,80}?)(?:\s*[\-–—]|$)",
+        re.IGNORECASE,
+    ),
+    # "interest in joining us at COMPANY" / "recent interest in joining at COMPANY"
+    re.compile(
+        r"interest\s+in\s+joining\s+(?:us\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
+    # "your application for ROLE" (has been / was reviewed…)
     re.compile(
         r"(?:your\s+)?application\s+for\s+(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]+?)(?:\s+has\s+been|\s+was|\s*[|,!]|$)",
         re.IGNORECASE,
     ),
+    # "received your application [for ROLE] at COMPANY"
     re.compile(
         r"(?:we\s+)?received\s+your\s+application\s+(?:for\s+(?P<role>.+?)\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
+    # "next steps at COMPANY"
     re.compile(
         r"next\s+steps?\s+(?:for\s+your\s+(?:application|candidacy)\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
+    # "interview invitation — COMPANY"
     re.compile(
         r"interview\s+invitation[\s\-–—]+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
+    # "COMPANY — interview / phone screen / technical screen"
     re.compile(
         r"^(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)\s*[\-–—]+\s*(?:interview|phone\s+screen|technical\s+screen)",
         re.IGNORECASE,
     ),
+    # "COMPANY — ROLE — application"
     re.compile(
         r"^(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]{2,40})\s*[\-–—:]\s*(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]{2,80})\s*[\-–—]\s*application",
         re.IGNORECASE,
@@ -380,7 +435,7 @@ class EmailScanService:
             select(JobApplication.company_name, JobApplication.role_title)
         )
         existing_keys: set[tuple[str, str]] = {
-            (row[0].lower(), row[1].lower()) for row in apps_result.all()
+            (row[0].lower(), (row[1] or "").lower()) for row in apps_result.all()
         }
 
         created_count = 0
@@ -409,10 +464,10 @@ class EmailScanService:
                 ckey = parsed["company_name"].lower()
                 sibling_subjects = [s for s in company_subjects.get(ckey, []) if s != email.subject]
                 parsed["role_title"] = _extract_role_from_subjects(sibling_subjects)
-                if not parsed["role_title"]:
-                    continue
+                # Allow company-only applications when no role can be inferred.
+                # role_title=None is valid; dedup key uses empty string as sentinel.
 
-            key = (parsed["company_name"].lower(), parsed["role_title"].lower())
+            key = (parsed["company_name"].lower(), (parsed["role_title"] or "").lower())
 
             if key in existing_keys:
                 best = match_email_to_application(email, all_apps)
