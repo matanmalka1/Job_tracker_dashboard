@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchApplications } from '../api/client.ts'
 import KanbanBoard from '../components/pipeline/KanbanBoard.tsx'
 import LoadingSpinner from '../components/ui/LoadingSpinner.tsx'
+import PipelineHeader from './pipeline/components/PipelineHeader.tsx'
 
 const PipelinePage = () => {
   const { data, isLoading, isError } = useQuery({
@@ -13,12 +14,7 @@ const PipelinePage = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-white text-2xl font-bold">Pipeline Board</h1>
-        <p className="text-gray-400 text-sm mt-1">
-          {data ? `${data.total} application${data.total !== 1 ? 's' : ''}` : 'Loading...'}
-        </p>
-      </div>
+      <PipelineHeader total={data?.total} />
 
       {isLoading && <LoadingSpinner size="lg" message="Loading pipeline..." />}
 
@@ -28,9 +24,7 @@ const PipelinePage = () => {
         </div>
       )}
 
-      {!isLoading && !isError && (
-        <KanbanBoard applications={applications} />
-      )}
+      {!isLoading && !isError && <KanbanBoard applications={applications} />}
     </div>
   )
 }
