@@ -109,10 +109,10 @@ const ManageDataUiPage = () => {
   }
 
   const onSubmit = () => {
-    if (!form.company_name.trim() || !form.role_title.trim()) return
+    if (!form.company_name.trim()) return
     const payload: ApplicationWritePayload = {
       company_name: form.company_name.trim(),
-      role_title: form.role_title.trim(),
+      role_title: form.role_title.trim() || undefined,
       status: form.status,
       source: form.source.trim() || undefined,
       applied_at: form.applied_at ? `${form.applied_at}T00:00:00Z` : undefined,

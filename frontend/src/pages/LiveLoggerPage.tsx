@@ -1,43 +1,68 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Activity, AlertTriangle, PlugZap, Play, StopCircle, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Radio, Play, StopCircle, Trash2 } from 'lucide-react'
 
-type LogLevel = 'info' | 'success' | 'warn' | 'error'
+// Same color maps as the Settings Terminal for consistency
+const STAGE_COLOR: Record<string, string> = {
+  fetching:  '#38bdf8',
+  filtering: '#818cf8',
+  saving:    '#34d399',
+  matching:  '#fb923c',
+  creating:  '#f472b6',
+  done:      '#34d399',
+  error:     '#f87171',
+  sys:       '#64748b',
+  system:    '#64748b',
+  result:    '#34d399',
+  event:     '#94a3b8',
+}
+
+const LEVEL_COLOR: Record<string, string> = {
+  info:    '#94a3b8',
+  success: '#34d399',
+  error:   '#f87171',
+  warn:    '#fb923c',
+}
+
+const PRESETS = [
+  { label: 'Scan progress', url: '/job-tracker/scan/progress' },
+]
+
+type Status = 'idle' | 'connecting' | 'open' | 'error'
 
 interface LogEntry {
   id: number
   ts: number
   stage: string
   text: string
-  level: LogLevel
+  level: string
 }
 
-const STATUS_META: Record<ConnectionStatus, { label: string; color: string; bg: string }> = {
-  idle: { label: 'Idle', color: '#94a3b8', bg: '#0f172a' },
-  connecting: { label: 'Connecting', color: '#38bdf8', bg: '#0b1530' },
-  open: { label: 'Live', color: '#34d399', bg: '#0b1e16' },
-  error: { label: 'Error', color: '#f87171', bg: '#1f0e0e' },
+const STATUS_DOT: Record<Status, string> = {
+  idle:       '#475569',
+  connecting: '#38bdf8',
+  open:       '#34d399',
+  error:      '#f87171',
 }
-
-const LEVEL_COLOR: Record<LogLevel, string> = {
-  info: '#94a3b8',
-  success: '#34d399',
-  warn: '#facc15',
-  error: '#f87171',
+const STATUS_LABEL: Record<Status, string> = {
+  idle:       'Idle',
+  connecting: 'Connecting…',
+  open:       'Live',
+  error:      'Error',
 }
-
-type ConnectionStatus = 'idle' | 'connecting' | 'open' | 'error'
 
 const MAX_LINES = 400
 
+let _id = 0
+
 const LiveLoggerPage = () => {
-  const [streamUrl, setStreamUrl] = useState('/job-tracker/scan/progress')
-  const [status, setStatus] = useState<ConnectionStatus>('idle')
+  const [url, setUrl] = useState('/job-tracker/scan/progress')
+  const [status, setStatus] = useState<Status>('idle')
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [autoScroll, setAutoScroll] = useState(true)
-  const [lastEvent, setLastEvent] = useState<string>('—')
+  const [lastParsed, setLastParsed] = useState<Record<string, unknown> | null>(null)
 
   const esRef = useRef<EventSource | null>(null)
-  const logIdRef = useRef(0)
+  const intentionalCloseRef = useRef(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => () => esRef.current?.close(), [])
@@ -46,161 +71,182 @@ const LiveLoggerPage = () => {
     if (autoScroll) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs, autoScroll])
 
-  const parsedHost = useMemo(() => {
-    try {
-      const u = new URL(streamUrl, window.location.href)
-      return u.host
-    } catch {
-      return 'Invalid URL'
-    }
-  }, [streamUrl])
+  const push = (entry: Omit<LogEntry, 'id' | 'ts'>) =>
+    setLogs((prev) => [
+      ...prev.slice(-(MAX_LINES - 1)),
+      { ...entry, id: _id++, ts: Date.now() },
+    ])
 
-  const pushLog = (entry: Omit<LogEntry, 'id' | 'ts'>) => {
-    setLogs((prev) => {
-      const next: LogEntry[] = [...prev.slice(-(MAX_LINES - 1)), { ...entry, id: logIdRef.current++, ts: Date.now() }]
-      return next
-    })
-  }
-
-  const disconnect = () => {
+  const close = () => {
+    intentionalCloseRef.current = true
     esRef.current?.close()
     esRef.current = null
     setStatus('idle')
   }
 
   const connect = () => {
-    if (!streamUrl.trim()) return
-    disconnect()
+    if (status === 'connecting' || status === 'open') return
+    if (!url.trim()) return
+    close()
+    intentionalCloseRef.current = false
     setStatus('connecting')
 
-    try {
-      const es = new EventSource(streamUrl.trim())
-      esRef.current = es
+    const es = new EventSource(url.trim())
+    esRef.current = es
 
-      es.onopen = () => {
-        setStatus('open')
-        pushLog({ stage: 'system', text: 'Connected to stream', level: 'success' })
-      }
+    es.onopen = () => {
+      setStatus('open')
+      push({ stage: 'system', text: `Connected — ${url.trim()}`, level: 'success' })
+    }
 
-      es.onmessage = (ev: MessageEvent<string>) => {
-        if (!ev.data) return
-        let stage = 'event'
-        let text = ev.data
-        let level: LogLevel = 'info'
+    es.onmessage = (ev: MessageEvent<string>) => {
+      if (!ev.data?.trim()) return
 
-        try {
-          const parsed = JSON.parse(ev.data) as { stage?: string; detail?: string; message?: string; level?: LogLevel }
-          stage = parsed.stage ?? stage
-          text = parsed.detail ?? parsed.message ?? ev.data
-          if (parsed.level) level = parsed.level
-          else if (stage === 'error') level = 'error'
-          else if (stage === 'result') level = 'success'
-        } catch {
-          // plain text payload
+      let stage = 'event'
+      let text = ev.data
+      let level = 'info'
+
+      try {
+        const parsed = JSON.parse(ev.data) as Record<string, unknown>
+        stage = String(parsed.stage ?? 'event')
+        text = String(parsed.detail ?? parsed.message ?? ev.data)
+        if (typeof parsed.level === 'string') level = parsed.level
+        else if (stage === 'error') level = 'error'
+        else if (stage === 'result' || stage === 'done') level = 'success'
+        setLastParsed(parsed)
+
+        // Server signals end of stream — close cleanly to suppress spurious onerror
+        if (stage === 'result' || stage === 'error') {
+          intentionalCloseRef.current = true
+          es.close()
+          esRef.current = null
+          setStatus('idle')
         }
-
-        setLastEvent(stage)
-        pushLog({ stage, text, level })
+      } catch {
+        // plain-text payload — keep defaults
       }
 
-      es.onerror = () => {
-        pushLog({ stage: 'error', text: 'Stream disconnected or unavailable', level: 'error' })
-        setStatus('error')
-        es.close()
-        esRef.current = null
-      }
-    } catch (err) {
-      pushLog({ stage: 'error', text: (err as Error).message, level: 'error' })
+      push({ stage, text, level })
+    }
+
+    es.onerror = () => {
+      if (intentionalCloseRef.current) return
+      push({ stage: 'error', text: 'Stream closed or unavailable', level: 'error' })
       setStatus('error')
+      es.close()
+      esRef.current = null
     }
   }
 
-  const clearLogs = () => setLogs([])
-
-  const statusMeta = STATUS_META[status]
+  const dotColor = STATUS_DOT[status]
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
+    <>
+      <style>{`
+        @keyframes logIn {
+          from { opacity: 0; transform: translateX(-6px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
+
+      <div className="space-y-5 max-w-4xl">
         <div>
-          <h1 className="text-white text-2xl font-bold">Live Logger</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Stream server events in real time. Defaults to the Gmail scan progress feed.
-          </p>
+          <h1 className="text-white text-2xl font-bold tracking-tight">Live Logger</h1>
+          <p className="text-gray-500 text-sm mt-0.5">Stream SSE events in real time</p>
         </div>
 
-        <div
-          className="px-3 py-2 rounded-xl text-xs font-mono uppercase tracking-widest flex items-center gap-2"
-          style={{ background: statusMeta.bg, color: statusMeta.color, border: `1px solid ${statusMeta.color}30` }}
-        >
-          <span
-            className="w-2 h-2 rounded-full"
-            style={{ background: statusMeta.color, boxShadow: status === 'open' ? `0 0 0 6px ${statusMeta.color}1f` : 'none' }}
-          />
-          {statusMeta.label}
-        </div>
-      </div>
+        <div className="rounded-2xl overflow-hidden" style={{ background: '#0e0e1a', border: '1px solid #ffffff0a' }}>
+          {/* Header */}
+          <div className="px-5 py-4 flex items-center justify-between border-b" style={{ background: '#0b0b16', borderColor: '#ffffff07' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#1b1b2a' }}>
+                <Radio size={15} className="text-purple-300" />
+              </div>
+              <div>
+                <p className="text-white text-sm font-semibold">SSE Stream</p>
+                <p className="text-gray-600 text-[11px] font-mono mt-px truncate max-w-[260px]">{url}</p>
+              </div>
+            </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_0.95fr] gap-5">
-        <div className="rounded-2xl border border-white/5" style={{ background: '#0e0e1a' }}>
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#1b1b2a' }}>
-              <Activity size={18} className="text-purple-300" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-semibold">Log Stream</p>
-              <p className="text-gray-600 text-xs truncate">{streamUrl}</p>
-            </div>
             <div className="flex items-center gap-2">
+              {/* Status pill */}
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-widest"
+                style={{ background: `${dotColor}12`, border: `1px solid ${dotColor}28`, color: dotColor }}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ background: dotColor, animation: status === 'open' ? 'pulse 1s ease-in-out infinite' : 'none' }}
+                />
+                {STATUS_LABEL[status]}
+              </div>
+
               <button
-                onClick={status === 'open' ? disconnect : connect}
-                className="px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors"
+                onClick={status === 'open' ? close : connect}
+                disabled={status === 'connecting'}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   background: status === 'open' ? '#1f2937' : '#4f46e5',
-                  color: status === 'open' ? '#e2e8f0' : '#fff',
+                  color: '#fff',
                   border: '1px solid #ffffff14',
                 }}
               >
-                {status === 'open' ? <StopCircle size={14} /> : <Play size={14} />}
-                {status === 'open' ? 'Stop' : status === 'connecting' ? 'Connecting…' : 'Start'}
+                {status === 'open' ? <StopCircle size={13} /> : <Play size={13} />}
+                {status === 'open' ? 'Stop' : 'Start'}
               </button>
+
               <button
-                onClick={clearLogs}
-                className="px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 text-gray-300"
+                onClick={() => setLogs([])}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors"
                 style={{ background: '#1b1b2a', border: '1px solid #ffffff10' }}
               >
-                <Trash2 size={14} />
+                <Trash2 size={13} />
                 Clear
               </button>
             </div>
           </div>
 
-          <div className="p-5 space-y-3">
-            <label className="block text-xs text-gray-500 font-medium">Stream URL</label>
-            <input
-              value={streamUrl}
-              onChange={(e) => setStreamUrl(e.target.value)}
-              spellCheck={false}
-              className="w-full rounded-lg bg-[#0a0a16] border border-white/10 text-sm text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
-            />
-
-            <div className="text-[11px] text-gray-600 font-mono flex items-center gap-2">
-              <PlugZap size={12} />
-              Target host: {parsedHost}
+          <div className="p-5 space-y-4">
+            {/* URL input + presets */}
+            <div className="flex items-center gap-2">
+              <input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={status === 'open' || status === 'connecting'}
+                spellCheck={false}
+                placeholder="/job-tracker/scan/progress"
+                className="flex-1 rounded-lg bg-[#0a0a16] border border-white/10 text-sm text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:opacity-50 font-mono"
+              />
+              {PRESETS.map((p) => (
+                <button
+                  key={p.url}
+                  onClick={() => setUrl(p.url)}
+                  disabled={status === 'open' || status === 'connecting'}
+                  className="px-2.5 py-2 rounded-lg text-[11px] font-mono text-gray-400 hover:text-white transition-colors disabled:opacity-40 whitespace-nowrap"
+                  style={{ background: '#1b1b2a', border: '1px solid #ffffff0a' }}
+                  title={p.url}
+                >
+                  {p.label}
+                </button>
+              ))}
             </div>
 
-            <div
-              className="rounded-xl border border-white/5 overflow-hidden"
-              style={{ background: '#07070f', minHeight: 280, maxHeight: 420 }}
-            >
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-[#0c0c18]">
-                <div className="flex items-center gap-2 text-[11px] text-gray-500 font-mono">
+            {/* Terminal */}
+            <div className="rounded-xl overflow-hidden" style={{ background: '#07070f', border: '1px solid #ffffff08' }}>
+              <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ background: '#0c0c18', borderColor: '#ffffff07' }}>
+                <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
                   <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
                   <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
-                  <span className="ml-3 text-gray-600">live.log</span>
+                  <span className="ml-3 font-mono text-[10px] text-gray-600">live.log</span>
+                  {status === 'open' && (
+                    <div className="ml-3 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                      <span className="font-mono text-[10px] text-green-500 tracking-widest">LIVE</span>
+                    </div>
+                  )}
                 </div>
-                <label className="flex items-center gap-2 text-[11px] text-gray-500 font-mono">
+                <label className="flex items-center gap-1.5 text-[11px] text-gray-500 font-mono cursor-pointer select-none">
                   <input
                     type="checkbox"
                     className="accent-purple-500"
@@ -213,25 +259,31 @@ const LiveLoggerPage = () => {
 
               <div
                 className="p-4 space-y-1.5 overflow-y-auto"
-                style={{ fontFamily: '"JetBrains Mono", "Fira Code", monospace', maxHeight: 360 }}
+                style={{ minHeight: 200, maxHeight: 420, fontFamily: '"JetBrains Mono", "Fira Code", monospace' }}
               >
                 {logs.length === 0 ? (
-                  <div className="text-[11px] text-gray-700">{'> '}
-                    <span className="animate-pulse">waiting…</span>
+                  <div className="text-[11px] text-gray-700">
+                    {'> '}<span className="animate-pulse">waiting for stream…</span>
                   </div>
                 ) : (
                   logs.map((line) => (
-                    <div key={line.id} className="flex gap-3 text-[11px] leading-5" style={{ animation: 'logIn 0.12s ease-out both' }}>
+                    <div
+                      key={line.id}
+                      className="flex gap-3 text-[11px] leading-5"
+                      style={{ animation: 'logIn 0.12s ease-out both' }}
+                    >
                       <span className="text-gray-700 shrink-0 tabular-nums select-none">
                         {new Date(line.ts).toLocaleTimeString('en-US', { hour12: false })}
                       </span>
                       <span
-                        className="shrink-0 w-[6ch] text-right font-bold uppercase tracking-wider select-none"
-                        style={{ color: LEVEL_COLOR[line.level] }}
+                        className="shrink-0 w-[5.5ch] text-right font-bold uppercase tracking-wider select-none"
+                        style={{ color: STAGE_COLOR[line.stage] ?? '#475569' }}
                       >
-                        {line.stage.slice(0, 6)}
+                        {line.stage.slice(0, 5)}
                       </span>
-                      <span style={{ color: LEVEL_COLOR[line.level] }}>{line.text}</span>
+                      <span style={{ color: LEVEL_COLOR[line.level] ?? '#94a3b8' }}>
+                        {line.text}
+                      </span>
                     </div>
                   ))
                 )}
@@ -243,43 +295,29 @@ const LiveLoggerPage = () => {
                 <div ref={bottomRef} />
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="space-y-4">
-          <div className="rounded-2xl p-5 border border-white/5" style={{ background: '#0e0e1a' }}>
-            <div className="flex items-center gap-2 text-gray-300">
-              <AlertTriangle size={16} className="text-amber-400" />
-              <p className="text-sm font-semibold">How it works</p>
+            {/* Footer stats + last event inspector */}
+            <div className="flex items-center gap-4 text-[11px] font-mono text-gray-600">
+              <span>{logs.length} / {MAX_LINES} lines</span>
+              {lastParsed && (
+                <span>
+                  last stage: <span className="text-gray-400">{String(lastParsed.stage ?? '—')}</span>
+                </span>
+              )}
             </div>
-            <ol className="mt-3 space-y-2 text-sm text-gray-500 list-decimal list-inside">
-              <li>Enter any Server-Sent Events (SSE) endpoint. The default triggers Gmail scan progress.</li>
-              <li>Click Start to open the stream. New events appear in the console below.</li>
-              <li>Use Stop to close the connection or Clear to reset the buffer (keeps the URL).</li>
-            </ol>
-            <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-gray-500 font-mono">
-              <div className="rounded-xl border border-white/5 p-3" style={{ background: '#0a0a16' }}>
-                <p className="text-gray-600">Last event</p>
-                <p className="text-white text-sm mt-1">{lastEvent}</p>
-              </div>
-              <div className="rounded-xl border border-white/5 p-3" style={{ background: '#0a0a16' }}>
-                <p className="text-gray-600">Lines buffered</p>
-                <p className="text-white text-sm mt-1">{logs.length} / {MAX_LINES}</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="rounded-2xl p-5 border border-white/5" style={{ background: '#0e0e1a' }}>
-            <p className="text-sm text-gray-300 font-semibold mb-2">Tips</p>
-            <ul className="space-y-1.5 text-sm text-gray-500">
-              <li>Streams send text lines or JSON. JSON fields <code className="text-gray-300">stage</code> and <code className="text-gray-300">detail/message</code> are highlighted.</li>
-              <li>We keep the newest {MAX_LINES} events to avoid runaway buffers.</li>
-              <li>Close the tab or hit Stop to release server connections.</li>
-            </ul>
+            {lastParsed && (
+              <div className="rounded-xl p-4" style={{ background: '#0a0a16', border: '1px solid #ffffff07' }}>
+                <p className="font-mono text-[10px] text-gray-700 uppercase tracking-widest mb-2">Last event payload</p>
+                <pre className="text-[11px] text-gray-300 font-mono whitespace-pre-wrap break-all leading-5">
+                  {JSON.stringify(lastParsed, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

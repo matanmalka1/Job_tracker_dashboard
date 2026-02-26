@@ -7,7 +7,7 @@ import {
   Kanban,
   Database,
   Calendar,
-  Plug,
+  Radio,
 } from 'lucide-react'
 
 interface NavItem {
@@ -24,7 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/companies', label: 'Companies', icon: <Building2 size={20} /> },
   { to: '/settings', label: 'Settings', icon: <Settings size={20} /> },
   { to: '/manage-data', label: 'Manage Data', icon: <Database size={20} /> },
-  { to: '/live-logger', label: 'Live Logger', icon: <Plug size={20} /> },
+  { to: '/live-logger', label: 'Live Logger', icon: <Radio size={20} /> },
 ]
 
 interface SidebarProps {

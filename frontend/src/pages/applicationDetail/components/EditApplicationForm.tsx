@@ -20,8 +20,8 @@ const EditApplicationForm = ({ form, onChange, onSubmit, onCancel, loading }: Pr
       <input type="text" required value={form.company_name} onChange={onChange('company_name')} className={inputCls} />
     </div>
     <div>
-      <label className="block text-xs text-gray-400 font-medium mb-1.5">Role *</label>
-      <input type="text" required value={form.role_title} onChange={onChange('role_title')} className={inputCls} />
+      <label className="block text-xs text-gray-400 font-medium mb-1.5">Role</label>
+      <input type="text" value={form.role_title} onChange={onChange('role_title')} placeholder="e.g. Software Engineer" className={inputCls} />
     </div>
     <div>
       <label className="block text-xs text-gray-400 font-medium mb-1.5">Status</label>

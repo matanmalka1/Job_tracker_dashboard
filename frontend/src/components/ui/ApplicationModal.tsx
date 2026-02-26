@@ -35,7 +35,7 @@ const EMPTY: FormState = {
 
 type SubmitPayload = {
   company_name: string
-  role_title: string
+  role_title?: string
   status: ApplicationStatus
   source?: string
   applied_at?: string
@@ -83,7 +83,7 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
     e.preventDefault()
     onSubmit({
       company_name: form.company_name.trim(),
-      role_title: form.role_title.trim(),
+      role_title: form.role_title.trim() || undefined,
       status: form.status,
       source: form.source.trim() || undefined,
       applied_at: form.applied_at ? `${form.applied_at}T00:00:00Z` : undefined,
@@ -128,8 +128,8 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 font-medium mb-1.5">Role *</label>
-            <input type="text" required value={form.role_title} onChange={set('role_title')} placeholder="e.g. Senior Engineer" className={inputCls} />
+            <label className="block text-xs text-gray-400 font-medium mb-1.5">Role</label>
+            <input type="text" value={form.role_title} onChange={set('role_title')} placeholder="e.g. Senior Engineer" className={inputCls} />
           </div>
 
           <div>

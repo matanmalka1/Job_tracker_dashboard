@@ -24,7 +24,7 @@ class JobApplication(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     company_name = Column(String(255), nullable=False)
-    role_title = Column(String(255), nullable=False)
+    role_title = Column(String(255), nullable=True)
     status = Column(SAEnum(ApplicationStatus), nullable=False, default=ApplicationStatus.APPLIED)
     source = Column(String(255), nullable=True)
     applied_at = Column(DateTime(timezone=True), nullable=True)

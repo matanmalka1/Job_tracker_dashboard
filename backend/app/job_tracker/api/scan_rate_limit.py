@@ -7,7 +7,7 @@ For a single-user app this is sufficient without Redis.
 import asyncio
 import time
 
-WINDOW_SECONDS = 60  # minimum seconds between scans
+WINDOW_SECONDS = 10  # minimum seconds between scans
 
 _last_scan_at: float = 0.0
 _lock = asyncio.Lock()

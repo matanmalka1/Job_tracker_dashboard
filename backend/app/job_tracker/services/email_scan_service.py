@@ -118,6 +118,11 @@ _APPLICATION_SUBJECT_PATTERNS = [
         r"(?:we\s+)?received\s+your\s+application\s+(?:for\s+(?P<role>.+?)\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
         re.IGNORECASE,
     ),
+    # "Next Steps for Your Job Application: ROLE at COMPANY"
+    re.compile(
+        r"next\s+steps?\s+for\s+your\s+(?:job\s+)?application[:\s]+(?P<role>[A-Za-z0-9][A-Za-z0-9\s&.,'\-/]+?)\s+at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",
+        re.IGNORECASE,
+    ),
     # "next steps at COMPANY"
     re.compile(
         r"next\s+steps?\s+(?:for\s+your\s+(?:application|candidacy)\s+)?at\s+(?P<company>[A-Za-z0-9][A-Za-z0-9\s&.,'\-]+?)(?:\s*[|,!]|$)",

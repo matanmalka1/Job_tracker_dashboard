@@ -41,7 +41,7 @@ const DashboardPage = () => {
     isError: emailsError,
   } = useQuery({
     queryKey: ['emails', 'recent'],
-    queryFn: () => fetchEmails({ limit: 10, offset: 0 }),
+    queryFn: () => fetchEmails({ limit: 50, offset: 0 }),
     staleTime: 30_000,
   })
 

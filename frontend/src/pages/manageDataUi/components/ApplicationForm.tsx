@@ -25,7 +25,7 @@ const ApplicationForm = ({ form, setForm, onSubmit, onCancel, loading, editing }
         />
       </div>
       <div>
-        <label className="text-xs text-gray-500">Role *</label>
+        <label className="text-xs text-gray-500">Role</label>
         <input
           value={form.role_title}
           onChange={(e) => setForm((f) => ({ ...f, role_title: e.target.value }))}
@@ -93,7 +93,7 @@ const ApplicationForm = ({ form, setForm, onSubmit, onCancel, loading, editing }
       </button>
       <button
         onClick={onSubmit}
-        disabled={!form.company_name.trim() || !form.role_title.trim() || loading}
+        disabled={!form.company_name.trim() || loading}
         className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-sm text-white font-medium"
       >
         {loading ? 'Saving…' : editing ? 'Save changes' : 'Create record'}

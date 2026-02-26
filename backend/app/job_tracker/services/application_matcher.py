@@ -57,18 +57,18 @@ def match_email_to_application(email_reference, applications: list) -> Optional[
     for app in applications:
         score = 0
         company_lower = app.company_name.lower()
-        role_lower = app.role_title.lower()
+        role_lower = (app.role_title or "").lower()
 
         # Exact substring match is strong signal
         if company_lower in haystack:
             score += 10
-        if role_lower in haystack:
+        if role_lower and role_lower in haystack:
             score += 8
 
         # Keyword overlap as secondary signal
         hay_kw = _extract_keywords(haystack)
         company_kw = _extract_keywords(company_lower)
-        role_kw = _extract_keywords(role_lower)
+        role_kw = _extract_keywords(role_lower) if role_lower else set()
 
         company_overlap = len(hay_kw & company_kw)
         role_overlap = len(hay_kw & role_kw)
