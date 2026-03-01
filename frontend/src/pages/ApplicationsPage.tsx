@@ -47,7 +47,7 @@ const ApplicationsPage = () => {
     offset: page * PAGE_SIZE,
     status: statusFilter !== 'all' ? statusFilter : undefined,
     search: debouncedSearch || undefined,
-    sort: 'updated_at' as const,
+    sort: 'last_email_at' as const,
   }
 
   const { data, isLoading, isError, isFetching } = useQuery({

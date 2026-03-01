@@ -69,15 +69,16 @@ const ManageDataUiPage = () => {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return applications.filter((app) => {
-      const matchesStatus = statusFilter === 'all' || app.status === statusFilter
-      const matchesSearch =
-        !q ||
-        app.company_name.toLowerCase().includes(q) ||
-        (app.role_title?.toLowerCase().includes(q) ?? false) ||
-        (app.source ?? '').toLowerCase().includes(q)
-      return matchesStatus && matchesSearch
-    })
+    return applications
+      .filter((app) => {
+        const matchesStatus = statusFilter === 'all' || app.status === statusFilter
+        const matchesSearch =
+          !q ||
+          app.company_name.toLowerCase().includes(q) ||
+          (app.role_title?.toLowerCase().includes(q) ?? false) ||
+          (app.source ?? '').toLowerCase().includes(q)
+        return matchesStatus && matchesSearch
+      })
   }, [applications, search, statusFilter])
 
   const openCreate = () => {

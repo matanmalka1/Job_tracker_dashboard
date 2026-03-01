@@ -79,8 +79,9 @@ class JobApplicationRepository:
         sort_col = {
             "updated_at": JobApplication.updated_at.desc(),
             "applied_at": JobApplication.applied_at.desc().nulls_last(),
+            "last_email_at": JobApplication.last_email_at.desc().nulls_last(),
             "company_name": JobApplication.company_name.asc(),
-        }.get(sort or "updated_at", JobApplication.updated_at.desc())
+        }.get(sort or "last_email_at", JobApplication.last_email_at.desc().nulls_last())
 
         total = await self.session.scalar(count_query)
         result = await self.session.execute(

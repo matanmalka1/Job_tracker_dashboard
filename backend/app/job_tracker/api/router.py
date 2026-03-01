@@ -213,7 +213,7 @@ async def list_applications(
     offset: Optional[int] = Query(None, ge=0),
     status_filter: Optional[ApplicationStatus] = Query(None, alias="status"),
     search: Optional[str] = Query(None, max_length=200),
-    sort: Optional[str] = Query(None, pattern="^(updated_at|applied_at|company_name)$"),
+    sort: Optional[str] = Query(None, pattern="^(updated_at|applied_at|last_email_at|company_name)$"),
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
