@@ -63,7 +63,7 @@ const StatsCards = ({ stats, isLoading }: Props) => {
           <TrendingUp size={18} className="text-yellow-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Reply Rate</p>
+          <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Response Rate</p>
           <p className="text-white text-3xl font-bold mt-1">{stats.replyRate.toFixed(1)}%</p>
           <span
             className={[

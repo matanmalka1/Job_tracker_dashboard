@@ -101,11 +101,18 @@ class JobApplicationRepository:
             by_status[row[0].value] = row[1]
             total += row[1]
 
-        apps_with_email = await self.session.scalar(
-            select(func.count(func.distinct(EmailReference.application_id)))
-            .where(EmailReference.application_id.isnot(None))
+        responded_statuses = [
+            ApplicationStatus.interviewing,
+            ApplicationStatus.offer,
+            ApplicationStatus.hired,
+            ApplicationStatus.rejected,
+        ]
+        apps_with_response = await self.session.scalar(
+            select(func.count())
+            .select_from(JobApplication)
+            .where(JobApplication.status.in_(responded_statuses))
         )
-        reply_rate = (apps_with_email / total * 100) if total > 0 else 0.0
+        reply_rate = (apps_with_response / total * 100) if total > 0 else 0.0
 
         return {"total": total, "by_status": by_status, "reply_rate": round(reply_rate, 1)}
 
