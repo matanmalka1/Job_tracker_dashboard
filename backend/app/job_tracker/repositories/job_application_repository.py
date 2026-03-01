@@ -104,10 +104,10 @@ class JobApplicationRepository:
                 total += row[1]
 
         responded_statuses = [
-            ApplicationStatus.interviewing,
-            ApplicationStatus.offer,
-            ApplicationStatus.hired,
-            ApplicationStatus.rejected,
+            ApplicationStatus.INTERVIEWING,
+            ApplicationStatus.OFFER,
+            ApplicationStatus.HIRED,
+            ApplicationStatus.REJECTED,
         ]
         apps_with_response = await self.session.scalar(
             select(func.count())

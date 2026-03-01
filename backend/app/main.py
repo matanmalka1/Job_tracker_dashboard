@@ -73,6 +73,17 @@ def create_app() -> FastAPI:
 
     application.include_router(job_tracker_router)
 
+    @application.get("/health")
+    async def health(session=Depends(get_session)):
+        try:
+            await session.execute(text("SELECT 1"))
+            return {"status": "ok", "db": "ok"}
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"DB unavailable: {exc}",
+            )
+
     # Serve the built React frontend.
     # In production the frontend is built into ../frontend/dist relative to
     # the backend/ directory (i.e. the repo root's frontend/dist).
@@ -89,15 +100,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
-
-@app.get("/health")
-async def health(session=Depends(get_session)):
-    try:
-        await session.execute(text("SELECT 1"))
-        return {"status": "ok", "db": "ok"}
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"DB unavailable: {exc}",
-        )
