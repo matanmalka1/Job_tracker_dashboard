@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
@@ -81,12 +80,6 @@ def create_app() -> FastAPI:
     _frontend_dist = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
     _frontend_dist = os.path.normpath(_frontend_dist)
     if os.path.isdir(_frontend_dist):
-        _index_html = os.path.join(_frontend_dist, "index.html")
-
-        @application.get("/{_:path}", include_in_schema=False)
-        async def _spa_fallback(_: str = ""):
-            return FileResponse(_index_html)
-
         application.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")
         logger.info("Serving frontend from %s", _frontend_dist)
     else:
