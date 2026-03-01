@@ -16,7 +16,9 @@ class Settings(BaseSettings):
     PAGINATION_LIMIT_DEFAULT: int = 50
     PAGINATION_OFFSET_DEFAULT: int = 0
 
-    # CORS: allow frontend dev server and common local ports
+    # CORS: allow frontend dev server and common local ports.
+    # Override with CORS_ORIGINS env var in production, e.g.:
+    #   CORS_ORIGINS=["https://job-dashboard.onrender.com"]
     CORS_ORIGINS: list[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
