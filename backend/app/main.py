@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
@@ -87,11 +88,22 @@ def create_app() -> FastAPI:
     # Serve the built React frontend.
     # In production the frontend is built into ../frontend/dist relative to
     # the backend/ directory (i.e. the repo root's frontend/dist).
-    # We mount it AFTER all API routes so API paths are never shadowed.
+    # Static assets (JS/CSS/images) are mounted at /assets.
+    # A catch-all route returns index.html for all other paths so that
+    # React Router can handle client-side navigation on hard refresh.
     _frontend_dist = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
     _frontend_dist = os.path.normpath(_frontend_dist)
     if os.path.isdir(_frontend_dist):
-        application.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")
+        application.mount(
+            "/assets",
+            StaticFiles(directory=os.path.join(_frontend_dist, "assets")),
+            name="assets",
+        )
+
+        @application.get("/{full_path:path}", include_in_schema=False)
+        async def spa_fallback(full_path: str):
+            return FileResponse(os.path.join(_frontend_dist, "index.html"))
+
         logger.info("Serving frontend from %s", _frontend_dist)
     else:
         logger.info("Frontend dist not found at %s — skipping static mount (dev mode)", _frontend_dist)
