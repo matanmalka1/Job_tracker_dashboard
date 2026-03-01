@@ -98,8 +98,10 @@ class JobApplicationRepository:
         by_status: dict[str, int] = {s.value: 0 for s in ApplicationStatus}
         total = 0
         for row in status_result.all():
-            by_status[row[0].value] = row[1]
-            total += row[1]
+            key = row[0].value if isinstance(row[0], ApplicationStatus) else str(row[0])
+            if key in by_status:
+                by_status[key] = row[1]
+                total += row[1]
 
         responded_statuses = [
             ApplicationStatus.interviewing,
