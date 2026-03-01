@@ -398,7 +398,7 @@ const SettingsPage = () => {
           <dl className="space-y-3">
             {[
               ['Version', 'v1.0.0'],
-              ['Backend', 'http://localhost:8000'],
+              ['Backend', window.location.origin],
               ['Stack', 'React 19 · FastAPI · SQLite'],
             ].map(([l, v]) => (
               <div key={l} className="flex items-center">
