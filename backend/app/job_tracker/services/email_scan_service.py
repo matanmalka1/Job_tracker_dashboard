@@ -3,7 +3,6 @@ import logging
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial
 from typing import Callable, Optional
 
 from sqlalchemy import select
@@ -328,8 +327,7 @@ class EmailScanService:
         try:
             emit("fetching", "Connecting to Gmail…")
             loop = asyncio.get_running_loop()
-            fetch_fn = partial(self.gmail_client.fetch_recent_messages)
-            fetched_messages = await loop.run_in_executor(_get_executor(), fetch_fn)
+            fetched_messages = await loop.run_in_executor(_get_executor(), self.gmail_client.fetch_recent_messages)
             emit("fetching", f"Fetched {len(fetched_messages)} emails from Gmail")
 
             emit("filtering", "Filtering for job-related emails…")
@@ -370,10 +368,6 @@ class EmailScanService:
                         emails_inserted=inserted,
                         apps_created=applications_created,
                     )
-                    # BUG FIX: commit the scan_run completion update. Previously
-                    # scan_run_repo.complete() called commit() directly on the
-                    # shared session which could conflict with other pending writes.
-                    # Now commit is done here once after all writes are done.
                     await self.repo.session.commit()
                 except Exception:
                     logger.warning("Could not record scan run completion", exc_info=True)
@@ -455,9 +449,6 @@ class EmailScanService:
                 ckey = parsed_peek["company_name"].lower()
                 company_subjects.setdefault(ckey, []).append(e.subject)
 
-        # BUG FIX: Batch load all applications once rather than re-querying
-        # inside the loop. The original code issued a new SELECT inside the loop
-        # for every email that matched an existing key, causing N+1 queries.
         all_apps_result = await session.execute(select(JobApplication))
         all_apps = all_apps_result.scalars().all()
 
@@ -489,8 +480,6 @@ class EmailScanService:
                 continue
 
             new_app = await self.app_repo.create(parsed)
-            # BUG FIX: append to all_apps so it's available for match_email_to_application
-            # in subsequent iterations without re-querying.
             all_apps = list(all_apps) + [new_app]
             existing_keys.add(key)
             created_this_run[key] = new_app

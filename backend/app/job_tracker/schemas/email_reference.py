@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
 
 
 class EmailReferenceRead(BaseModel):
@@ -17,4 +18,4 @@ class EmailReferenceRead(BaseModel):
 
 class EmailReferencePage(BaseModel):
     total: int
-    items: List[EmailReferenceRead]
+    items: list[EmailReferenceRead]

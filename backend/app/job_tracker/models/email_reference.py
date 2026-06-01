@@ -1,12 +1,7 @@
-from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
-from app.db import Base
-
-
-def _utcnow():
-    return datetime.now(timezone.utc)
+from app.db import Base, utcnow
 
 
 class EmailReference(Base):
@@ -23,4 +18,7 @@ class EmailReference(Base):
 
     application = relationship("JobApplication", back_populates="emails")
 
-    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<EmailReference id={self.id} gmail_id={self.gmail_message_id!r}>"

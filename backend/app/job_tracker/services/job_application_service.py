@@ -17,15 +17,10 @@ class JobApplicationService:
         self.app_repo = app_repo
         self.email_repo = email_repo
 
-    # BUG FIX: All methods use self.app_repo.session as the single source of
-    # truth. Previously unassign_email used self.email_repo.session and
-    # self.app_repo.session interchangeably — these could be different objects
-    # if they were constructed with different sessions (they share the same
-    # session in practice via get_session, but the code was fragile).
-
     @property
     def _session(self):
         return self.app_repo.session
+
 
     async def create(self, data: dict) -> JobApplication:
         app = await self.app_repo.create(data)
@@ -47,6 +42,12 @@ class JobApplicationService:
             await self._session.commit()
         return deleted
 
+    async def bulk_delete(self, ids: list[int]) -> tuple[int, list[int]]:
+        deleted_count, not_found = await self.app_repo.bulk_delete(ids)
+        if deleted_count:
+            await self._session.commit()
+        return deleted_count, not_found
+
     async def list_paginated(
         self,
         limit: int,
@@ -61,10 +62,7 @@ class JobApplicationService:
 
     async def assign_email(self, application_id: int, email_id: int) -> bool:
         """Link an existing EmailReference to a JobApplication."""
-        result = await self._session.execute(
-            select(EmailReference).where(EmailReference.id == email_id)
-        )
-        email = result.scalar_one_or_none()
+        email = await self.email_repo.get_by_id(email_id)
         if not email:
             return False
 
@@ -79,19 +77,12 @@ class JobApplicationService:
 
     async def unassign_email(self, application_id: int, email_id: int) -> bool:
         """Unlink an EmailReference from a JobApplication."""
-        result = await self._session.execute(
-            select(EmailReference).where(
-                EmailReference.id == email_id,
-                EmailReference.application_id == application_id,
-            )
-        )
-        email = result.scalar_one_or_none()
+        email = await self.email_repo.get_linked(email_id, application_id)
         if not email:
             return False
 
         email.application_id = None
 
-        # Recalculate last_email_at from remaining linked emails
         remaining_max = await self._session.scalar(
             select(func.max(EmailReference.received_at)).where(
                 EmailReference.application_id == application_id

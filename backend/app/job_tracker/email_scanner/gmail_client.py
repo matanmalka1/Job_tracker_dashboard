@@ -3,7 +3,7 @@ import logging
 import os
 import re
 import time
-from typing import Dict, List, Optional
+from typing import Optional
 
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
@@ -20,7 +20,6 @@ class GmailClient:
         self,
         *,
         token_file: Optional[str] = None,
-        service_account_file: Optional[str] = None,  # deprecated alias
         delegated_user: Optional[str],
         query_window_days: int,
         max_messages: int,
@@ -28,7 +27,7 @@ class GmailClient:
         batch_size: int = 100,
         retry_backoff_seconds: int = 2,
     ):
-        self._token_file = token_file or service_account_file
+        self._token_file = token_file
         self.delegated_user = delegated_user
         self.query_window_days = max(1, query_window_days)
         self.max_messages = max(1, max_messages)
@@ -89,11 +88,11 @@ class GmailClient:
             self._service = build("gmail", "v1", credentials=creds, cache_discovery=False)
         return self._service
 
-    def fetch_recent_messages(self) -> List[Dict]:
+    def fetch_recent_messages(self) -> list[dict]:
         try:
             service = self._get_service()
             query = self._date_query()
-            messages: List[Dict] = []
+            messages: list[dict] = []
             page_token: Optional[str] = None
 
             while len(messages) < self.max_messages:
@@ -123,7 +122,7 @@ class GmailClient:
             logger.exception("Gmail API error")
             raise
 
-    def _fetch_message_details(self, service, message_ids: List[str]) -> List[Dict]:
+    def _fetch_message_details(self, service, message_ids: list[str]) -> list[dict]:
         """Batch-fetch message metadata in chunks of 100 (Gmail batch API limit).
 
         Each batch costs 1 HTTP round-trip instead of 1 per message,
@@ -133,8 +132,8 @@ class GmailClient:
         retried once with a short backoff before being silently skipped.
         """
         batch_size = self.batch_size
-        fetched: Dict[str, Dict] = {}
-        failed_ids: List[str] = []
+        fetched: dict[str, dict] = {}
+        failed_ids: list[str] = []
 
         def _callback(request_id: str, response, exception) -> None:
             if exception:
@@ -201,7 +200,7 @@ class GmailClient:
             ' -from:invitations@linkedin.com'
         )
 
-    def _parse_message(self, msg: Dict) -> Dict:
+    def _parse_message(self, msg: dict) -> dict:
         headers = {
             h["name"].lower(): h.get("value")
             for h in msg.get("payload", {}).get("headers", [])

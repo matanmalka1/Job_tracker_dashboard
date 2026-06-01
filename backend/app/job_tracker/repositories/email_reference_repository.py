@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,7 +10,21 @@ class EmailReferenceRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_from_raw_message(self, data: dict) -> tuple[EmailReference | None, bool]:
+    async def get_by_id(self, email_id: int) -> Optional[EmailReference]:
+        return await self.session.scalar(
+            select(EmailReference).where(EmailReference.id == email_id)
+        )
+
+    async def get_linked(self, email_id: int, application_id: int) -> Optional[EmailReference]:
+        """Return email only if it is currently linked to the given application."""
+        return await self.session.scalar(
+            select(EmailReference).where(
+                EmailReference.id == email_id,
+                EmailReference.application_id == application_id,
+            )
+        )
+
+    async def create_from_raw_message(self, data: dict) -> tuple[Optional[EmailReference], bool]:
         message_id = data.get("gmail_message_id")
         if not message_id:
             return None, False
@@ -28,7 +44,7 @@ class EmailReferenceRepository:
             return 0, 0
 
         ids = [item.get("gmail_message_id") for item in items if item.get("gmail_message_id")]
-        existing_ids = set()
+        existing_ids: set[str] = set()
         if ids:
             result = await self.session.execute(
                 select(EmailReference.gmail_message_id).where(EmailReference.gmail_message_id.in_(ids))
@@ -43,12 +59,10 @@ class EmailReferenceRepository:
 
     async def list_paginated(self, limit: int, offset: int) -> tuple[list[EmailReference], int]:
         total = await self.session.scalar(select(func.count()).select_from(EmailReference))
-
         result = await self.session.execute(
             select(EmailReference)
             .order_by(EmailReference.received_at.desc())
             .limit(limit)
             .offset(offset)
         )
-        items = result.scalars().all()
-        return list(items), total or 0
+        return list(result.scalars().all()), total or 0

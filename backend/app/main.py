@@ -33,8 +33,10 @@ def _bootstrap_gmail_token() -> None:
     if os.path.exists(token_file):
         return  # already written (e.g. refreshed token survives within the same dyno)
 
-    os.makedirs(os.path.dirname(token_file), exist_ok=True)
-    with open(token_file, "w") as fh:
+    token_dir = os.path.dirname(token_file)
+    if token_dir:
+        os.makedirs(token_dir, exist_ok=True)
+    with open(token_file, "w", opener=lambda path, flags: os.open(path, flags, 0o600)) as fh:
         fh.write(base64.b64decode(token_b64).decode())
     logger.info("Gmail token written to %s from GMAIL_TOKEN_JSON env var", token_file)
 
@@ -61,9 +63,6 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # ── CORS ──────────────────────────────────────────────────────────────────
-    # BUG FIX: CORS was missing entirely, causing all browser requests from the
-    # Vite dev server (port 5173) to be blocked with CORS errors.
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,

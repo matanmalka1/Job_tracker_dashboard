@@ -1,10 +1,4 @@
-"""
-pytest test suite for the Job Dashboard API.
-
-Run with:
-    pip install pytest pytest-asyncio httpx aiosqlite
-    pytest tests/ -v
-"""
+"""pytest test suite for the Job Dashboard API. Run: pytest -v"""
 import datetime as dt
 import pytest
 import pytest_asyncio

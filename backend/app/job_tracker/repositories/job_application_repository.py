@@ -1,12 +1,12 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import select, func, update, or_
+from sqlalchemy import delete, select, func, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.db import utcnow
 from app.job_tracker.models.job_application import JobApplication, ApplicationStatus
-from app.job_tracker.models.email_reference import EmailReference
 
 
 class JobApplicationRepository:
@@ -35,7 +35,7 @@ class JobApplicationRepository:
         for key, value in data.items():
             setattr(existing, key, value)
 
-        existing.updated_at = datetime.now(timezone.utc)
+        existing.updated_at = utcnow()
         await self.session.flush()
         return existing
 
@@ -46,6 +46,22 @@ class JobApplicationRepository:
         await self.session.delete(existing)
         await self.session.flush()
         return True
+
+    async def bulk_delete(self, ids: list[int]) -> tuple[int, list[int]]:
+        """Delete multiple applications by ID. Returns (deleted_count, not_found_ids)."""
+        if not ids:
+            return 0, []
+        existing_result = await self.session.execute(
+            select(JobApplication.id).where(JobApplication.id.in_(ids))
+        )
+        found_ids = set(existing_result.scalars().all())
+        not_found = [i for i in ids if i not in found_ids]
+        if found_ids:
+            await self.session.execute(
+                delete(JobApplication).where(JobApplication.id.in_(found_ids))
+            )
+            await self.session.flush()
+        return len(found_ids), not_found
 
     async def list_paginated(
         self,

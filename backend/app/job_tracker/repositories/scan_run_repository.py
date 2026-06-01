@@ -1,10 +1,10 @@
 import logging
-from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.db import utcnow
 from app.job_tracker.models.scan_run import ScanRun
 
 logger = logging.getLogger(__name__)
@@ -15,18 +15,6 @@ class ScanRunRepository:
         self.session = session
 
     async def create(self) -> ScanRun:
-        """
-        Insert a new scan run record.
-
-        BUG FIX: The original code called session.commit() here, which committed
-        ALL pending changes in the shared session — not just the ScanRun row.
-        This could accidentally commit partial application/email writes that
-        should only commit after the full scan succeeds.
-
-        Instead, we now only flush() to get the PK. The scan service is
-        responsible for its own commit boundaries. The scan_run row will be
-        committed when the service calls scan_run_repo.complete() or .fail().
-        """
         run = ScanRun(status="running")
         self.session.add(run)
         await self.session.flush()
@@ -39,26 +27,22 @@ class ScanRunRepository:
         emails_inserted: int,
         apps_created: int,
     ) -> None:
-        result = await self.session.execute(select(ScanRun).where(ScanRun.id == run_id))
-        run = result.scalar_one_or_none()
+        run = await self.session.scalar(select(ScanRun).where(ScanRun.id == run_id))
         if run:
             run.status = "completed"
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = utcnow()
             run.emails_fetched = emails_fetched
             run.emails_inserted = emails_inserted
             run.apps_created = apps_created
-            # NOTE: commit is handled by the caller (EmailScanService) so the
-            # scan_run update is part of the same transaction as the email/app writes.
         else:
             logger.warning("ScanRun id=%s not found when trying to complete", run_id)
 
     async def fail(self, run_id: int, error: str) -> None:
-        result = await self.session.execute(select(ScanRun).where(ScanRun.id == run_id))
-        run = result.scalar_one_or_none()
+        run = await self.session.scalar(select(ScanRun).where(ScanRun.id == run_id))
         if run:
             run.status = "failed"
-            run.completed_at = datetime.now(timezone.utc)
-            run.error = error[:get_settings().ERROR_TRUNCATE_LENGTH]
+            run.completed_at = utcnow()
+            run.error = error[: get_settings().ERROR_TRUNCATE_LENGTH]
         else:
             logger.warning("ScanRun id=%s not found when trying to fail", run_id)
 

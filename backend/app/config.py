@@ -30,8 +30,12 @@ class Settings(BaseSettings):
     PAGINATION_LIMIT_DEFAULT: int = 50
     PAGINATION_OFFSET_DEFAULT: int = 0
     BULK_DELETE_MAX_IDS: int = 100        # max IDs accepted by bulk-delete
-    SEARCH_MAX_LENGTH: int = 200          # max chars for ?search= query param
     ERROR_TRUNCATE_LENGTH: int = 2000     # max chars stored in scan_run.error
+
+    # ── API key guard ─────────────────────────────────────────────────────────
+    # Set JOB_TRACKER_API_KEY to require X-Api-Key header on all /job-tracker routes.
+    # When unset, the guard is disabled (local dev default).
+    JOB_TRACKER_API_KEY: str | None = None
 
     # ── CORS ──────────────────────────────────────────────────────────────────
     CORS_ORIGINS: list[str] = [

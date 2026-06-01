@@ -1,12 +1,9 @@
 import asyncio
-import importlib
-import importlib.util
 import json
 import logging
-from functools import lru_cache
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
 from app.config import get_settings
@@ -15,6 +12,7 @@ from app.job_tracker.email_scanner.gmail_client import GmailClient
 from app.job_tracker.models.job_application import ApplicationStatus
 from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
 from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
+from app.job_tracker.repositories.scan_run_repository import ScanRunRepository
 from app.job_tracker.schemas.email_reference import EmailReferencePage, EmailReferenceRead
 from app.job_tracker.schemas.job_application import (
     JobApplicationCreate,
@@ -22,27 +20,23 @@ from app.job_tracker.schemas.job_application import (
     JobApplicationRead,
     JobApplicationUpdate,
 )
+from app.job_tracker.schemas.scan_run import ScanRunRead
+from app.job_tracker.services.email_scan_service import EmailScanService
 from app.job_tracker.services.job_application_service import JobApplicationService
 from app.job_tracker.api.scan_rate_limit import acquire_scan_slot
 
 logger = logging.getLogger(__name__)
 
 
-@lru_cache(maxsize=1)
-def _resolve_auth_dep():
-    """Return a FastAPI-compatible dependency for auth, or a no-op if app.auth is absent."""
-    spec = importlib.util.find_spec("app.auth")
-    if spec is None:
-        async def _noop():
-            return None
-        return _noop
-
-    module = importlib.import_module("app.auth")
-    return getattr(module, "get_current_user", lambda: None)
+async def _check_api_key(x_api_key: Optional[str] = Header(None, alias="X-Api-Key")) -> None:
+    """Optional API key guard. Skipped when JOB_TRACKER_API_KEY is not set."""
+    required = get_settings().JOB_TRACKER_API_KEY
+    if required and x_api_key != required:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing API key")
 
 
 router = APIRouter(prefix="/job-tracker", tags=["job-tracker"])
-_auth_dep = _resolve_auth_dep()
+_auth_dep = _check_api_key
 
 
 def _make_gmail_client(settings) -> GmailClient:
@@ -54,6 +48,13 @@ def _make_gmail_client(settings) -> GmailClient:
         page_size=settings.GMAIL_LIST_PAGE_SIZE,
         batch_size=settings.GMAIL_BATCH_SIZE,
         retry_backoff_seconds=settings.GMAIL_RETRY_BACKOFF_SECONDS,
+    )
+
+
+def _make_svc(session) -> JobApplicationService:
+    return JobApplicationService(
+        JobApplicationRepository(session),
+        EmailReferenceRepository(session),
     )
 
 
@@ -80,7 +81,7 @@ async def trigger_scan(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    """Trigger a Gmail scan (rate-limited to once per 60 s)."""
+    """Trigger a Gmail scan (rate-limited)."""
     allowed, retry_after = await acquire_scan_slot()
     if not allowed:
         raise HTTPException(
@@ -93,15 +94,13 @@ async def trigger_scan(
     client = _make_gmail_client(settings)
 
     try:
-        from app.job_tracker.services.email_scan_service import EmailScanService
-        from app.job_tracker.repositories.scan_run_repository import ScanRunRepository
-
-        repo = EmailReferenceRepository(session)
-        app_repo = JobApplicationRepository(session)
-        scan_run_repo = ScanRunRepository(session)
-        service = EmailScanService(client, repo, app_repo, scan_run_repo)
-        result = await service.scan_for_applications()
-        return result
+        service = EmailScanService(
+            client,
+            EmailReferenceRepository(session),
+            JobApplicationRepository(session),
+            ScanRunRepository(session),
+        )
+        return await service.scan_for_applications()
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
     except Exception as exc:
@@ -131,13 +130,12 @@ async def scan_progress(
         queue.put_nowait({"stage": stage, "detail": detail})
 
     async def event_stream():
-        from app.job_tracker.services.email_scan_service import EmailScanService
-        from app.job_tracker.repositories.scan_run_repository import ScanRunRepository
-
-        repo = EmailReferenceRepository(session)
-        app_repo = JobApplicationRepository(session)
-        scan_run_repo = ScanRunRepository(session)
-        service = EmailScanService(client, repo, app_repo, scan_run_repo)
+        service = EmailScanService(
+            client,
+            EmailReferenceRepository(session),
+            JobApplicationRepository(session),
+            ScanRunRepository(session),
+        )
 
         scan_task: Optional[asyncio.Task] = None
 
@@ -187,11 +185,8 @@ async def scan_history(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    from app.job_tracker.repositories.scan_run_repository import ScanRunRepository
-    from app.job_tracker.schemas.scan_run import ScanRunRead
     limit = get_settings().SCAN_HISTORY_LIMIT
-    repo = ScanRunRepository(session)
-    runs = await repo.list_recent(limit=limit)
+    runs = await ScanRunRepository(session).list_recent(limit=limit)
     return [ScanRunRead.model_validate(r) for r in runs]
 
 
@@ -202,9 +197,7 @@ async def get_stats(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    """Return pre-aggregated application statistics."""
-    app_repo = JobApplicationRepository(session)
-    return await app_repo.get_stats()
+    return await JobApplicationRepository(session).get_stats()
 
 
 # ─── Job Application endpoints ────────────────────────────────────────────────
@@ -214,7 +207,7 @@ async def list_applications(
     limit: Optional[int] = Query(None, ge=1, le=500),
     offset: Optional[int] = Query(None, ge=0),
     status_filter: Optional[ApplicationStatus] = Query(None, alias="status"),
-    search: Optional[str] = Query(None, max_length=200),  # validated; limit set in settings
+    search: Optional[str] = Query(None, max_length=200),
     sort: Optional[str] = Query(None, pattern="^(updated_at|applied_at|last_email_at|company_name)$"),
     session=Depends(get_session),
     _=Depends(_auth_dep),
@@ -223,10 +216,7 @@ async def list_applications(
     limit = limit if limit is not None else settings.PAGINATION_LIMIT_DEFAULT
     offset = offset if offset is not None else settings.PAGINATION_OFFSET_DEFAULT
 
-    app_repo = JobApplicationRepository(session)
-    email_repo = EmailReferenceRepository(session)
-    svc = JobApplicationService(app_repo, email_repo)
-    items, total = await svc.list_paginated(
+    items, total = await _make_svc(session).list_paginated(
         limit=limit, offset=offset, status=status_filter, search=search, sort=sort
     )
     return JobApplicationPage(
@@ -241,10 +231,7 @@ async def create_application(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    app_repo = JobApplicationRepository(session)
-    email_repo = EmailReferenceRepository(session)
-    svc = JobApplicationService(app_repo, email_repo)
-    app = await svc.create(body.model_dump())
+    app = await _make_svc(session).create(body.model_dump())
     return JobApplicationRead.model_validate(app)
 
 
@@ -254,10 +241,7 @@ async def get_application(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    app_repo = JobApplicationRepository(session)
-    email_repo = EmailReferenceRepository(session)
-    svc = JobApplicationService(app_repo, email_repo)
-    app = await svc.get_by_id(application_id)
+    app = await _make_svc(session).get_by_id(application_id)
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
     return JobApplicationRead.model_validate(app)
@@ -270,10 +254,7 @@ async def update_application(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    app_repo = JobApplicationRepository(session)
-    email_repo = EmailReferenceRepository(session)
-    svc = JobApplicationService(app_repo, email_repo)
-    app = await svc.update(application_id, body.model_dump(exclude_unset=True))
+    app = await _make_svc(session).update(application_id, body.model_dump(exclude_unset=True))
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
     return JobApplicationRead.model_validate(app)
@@ -285,10 +266,7 @@ async def delete_application(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    app_repo = JobApplicationRepository(session)
-    email_repo = EmailReferenceRepository(session)
-    svc = JobApplicationService(app_repo, email_repo)
-    deleted = await svc.delete(application_id)
+    deleted = await _make_svc(session).delete(application_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
 
@@ -299,28 +277,16 @@ async def bulk_delete_applications(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    """
-    Bulk-delete multiple applications by ID.
-    Returns counts of deleted and not-found records.
-    """
+    """Bulk-delete multiple applications. Returns deleted/not_found counts."""
     max_ids = get_settings().BULK_DELETE_MAX_IDS
     if not ids:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No IDs provided")
     if len(ids) > max_ids:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot delete more than {max_ids} at once")
-
-    app_repo = JobApplicationRepository(session)
-
-    deleted_count = 0
-    not_found = []
-    for app_id in ids:
-        ok = await app_repo.delete(app_id)
-        if ok:
-            deleted_count += 1
-        else:
-            not_found.append(app_id)
-
-    await session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete more than {max_ids} at once",
+        )
+    deleted_count, not_found = await _make_svc(session).bulk_delete(ids)
     return {"deleted": deleted_count, "not_found": not_found}
 
 
@@ -334,10 +300,7 @@ async def assign_email_to_application(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    app_repo = JobApplicationRepository(session)
-    email_repo = EmailReferenceRepository(session)
-    svc = JobApplicationService(app_repo, email_repo)
-    ok = await svc.assign_email(application_id, email_id)
+    ok = await _make_svc(session).assign_email(application_id, email_id)
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -356,10 +319,7 @@ async def unassign_email_from_application(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    app_repo = JobApplicationRepository(session)
-    email_repo = EmailReferenceRepository(session)
-    svc = JobApplicationService(app_repo, email_repo)
-    ok = await svc.unassign_email(application_id, email_id)
+    ok = await _make_svc(session).unassign_email(application_id, email_id)
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

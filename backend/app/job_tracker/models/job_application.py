@@ -1,13 +1,9 @@
-from datetime import datetime, timezone
 from enum import Enum
-from sqlalchemy import Column, DateTime, Enum as SAEnum, Float, Integer, String, Text
+
+from sqlalchemy import Column, DateTime, Enum as SAEnum, Float, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
-from app.db import Base
-
-
-def _utcnow():
-    return datetime.now(timezone.utc)
+from app.db import Base, utcnow
 
 
 class ApplicationStatus(str, Enum):
@@ -21,6 +17,10 @@ class ApplicationStatus(str, Enum):
 
 class JobApplication(Base):
     __tablename__ = "job_applications"
+    __table_args__ = (
+        Index("ix_job_applications_status", "status"),
+        Index("ix_job_applications_company_name", "company_name"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     company_name = Column(String(255), nullable=False)
@@ -30,12 +30,14 @@ class JobApplication(Base):
     applied_at = Column(DateTime(timezone=True), nullable=True)
     last_email_at = Column(DateTime(timezone=True), nullable=True)
     confidence_score = Column(Float, nullable=True)
-
     notes = Column(Text, nullable=True)
     job_url = Column(String(2000), nullable=True)
     next_action_at = Column(DateTime(timezone=True), nullable=True)
 
     emails = relationship("EmailReference", back_populates="application", cascade="all, delete-orphan")
 
-    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<JobApplication id={self.id} company={self.company_name!r} status={self.status}>"
