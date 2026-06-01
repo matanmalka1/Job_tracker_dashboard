@@ -1,80 +1,80 @@
-import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar } from "lucide-react";
-import { toast } from "sonner";
-import { fetchApplications, updateApplication } from '../../../api/client.ts';
-import type { JobApplication } from '../../../shared/types/job-tracker.ts';
-import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx';
-import InterviewCard from "../components/InterviewCard.tsx";
+import { useMemo } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Calendar } from 'lucide-react'
+import { toast } from 'sonner'
+import { fetchApplications, updateApplication } from '../../../api/client.ts'
+import type { JobApplication } from '../../../shared/types/job-tracker.ts'
+import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
+import InterviewCard from '../components/InterviewCard.tsx'
 
 const getWeekKey = (dateStr: string): string => {
-  const d = new Date(dateStr);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d);
-  monday.setDate(diff);
-  monday.setHours(0, 0, 0, 0);
-  return monday.toISOString();
-};
+  const date = new Date(dateStr)
+  const day = date.getDay()
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1)
+  const monday = new Date(date)
+  monday.setDate(diff)
+  monday.setHours(0, 0, 0, 0)
+  return monday.toISOString()
+}
 
 const formatWeekLabel = (isoMonday: string): string => {
-  const monday = new Date(isoMonday);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
+  const monday = new Date(isoMonday)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
   const fmt = (d: Date) =>
-    d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const now = new Date();
-  const thisMonday = new Date(getWeekKey(now.toISOString()));
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const now = new Date()
+  const thisMonday = new Date(getWeekKey(now.toISOString()))
   const diff =
-    (monday.getTime() - thisMonday.getTime()) / (1000 * 60 * 60 * 24 * 7);
-  if (diff === 0) return `This Week  (${fmt(monday)} – ${fmt(sunday)})`;
-  if (diff === -1) return `Last Week  (${fmt(monday)} – ${fmt(sunday)})`;
-  if (diff === 1) return `Next Week  (${fmt(monday)} – ${fmt(sunday)})`;
-  return `${fmt(monday)} – ${fmt(sunday)}`;
-};
+    (monday.getTime() - thisMonday.getTime()) / (1000 * 60 * 60 * 24 * 7)
+  if (diff === 0) return `This Week (${fmt(monday)} - ${fmt(sunday)})`
+  if (diff === -1) return `Last Week (${fmt(monday)} - ${fmt(sunday)})`
+  if (diff === 1) return `Next Week (${fmt(monday)} - ${fmt(sunday)})`
+  return `${fmt(monday)} - ${fmt(sunday)}`
+}
 
 const InterviewsPage = () => {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["applications", "interviewing"],
+    queryKey: ['applications', 'interviewing'],
     queryFn: () =>
       // No dedicated Interview model exists; this fetches all interviewing-status applications.
       // Server-filters by status so this is bounded by actual interviewing count, not total apps.
-      fetchApplications({ status: "interviewing", limit: 200, offset: 0 }),
-  });
+      fetchApplications({ status: 'interviewing', limit: 200, offset: 0 }),
+  })
 
   const { mutate: moveStatus, isPending } = useMutation({
     mutationFn: ({
       id,
       status,
     }: {
-      id: number;
-      status: "offer" | "rejected";
+      id: number
+      status: 'offer' | 'rejected'
     }) => updateApplication(id, { status }),
     onSuccess: (_, { status }) => {
-      queryClient.invalidateQueries({ queryKey: ["applications"] });
-      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
-      queryClient.invalidateQueries({ queryKey: ["companies"] });
-      queryClient.invalidateQueries({ queryKey: ["stats"] });
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] })
+      queryClient.invalidateQueries({ queryKey: ['companies'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
       toast.success(
-        status === "offer" ? "Moved to Offer!" : "Marked as Rejected",
-      );
+        status === 'offer' ? 'Moved to Offer' : 'Marked as Rejected',
+      )
     },
     onError: (err: Error) => toast.error(err.message),
-  });
+  })
 
-  const interviews = useMemo(() => data?.items ?? [], [data]);
+  const interviews = useMemo(() => data?.items ?? [], [data])
 
   const grouped = useMemo(() => {
-    const map = new Map<string, JobApplication[]>();
+    const map = new Map<string, JobApplication[]>()
     for (const app of interviews) {
-      const key = getWeekKey(app.applied_at ?? app.created_at);
-      const existing = map.get(key) ?? [];
-      map.set(key, [...existing, app]);
+      const key = getWeekKey(app.applied_at ?? app.created_at)
+      const existing = map.get(key) ?? []
+      map.set(key, [...existing, app])
     }
-    return Array.from(map.entries()).sort(([a], [b]) => b.localeCompare(a));
-  }, [interviews]);
+    return Array.from(map.entries()).sort(([a], [b]) => b.localeCompare(a))
+  }, [interviews])
 
   return (
     <div className="space-y-6">
@@ -82,12 +82,12 @@ const InterviewsPage = () => {
         <h1 className="text-white text-2xl font-bold">Interviews</h1>
         <p className="text-gray-400 text-sm mt-1">
           {data
-            ? `${data.total} active interview${data.total !== 1 ? "s" : ""}`
-            : "Loading…"}
+            ? `${data.total} active interview${data.total !== 1 ? 's' : ''}`
+            : 'Loading...'}
         </p>
       </div>
 
-      {isLoading && <LoadingSpinner size="lg" message="Loading interviews…" />}
+      {isLoading && <LoadingSpinner size="lg" message="Loading interviews..." />}
 
       {isError && (
         <div className="bg-[#1a1a24] rounded-xl p-8 border border-white/5 text-center">
@@ -102,7 +102,7 @@ const InterviewsPage = () => {
             No active interviews
           </p>
           <p className="text-gray-600 text-xs mt-1">
-            Move applications to the \"Interviewing\" stage to track them here.
+            Move applications to the "Interviewing" stage to track them here.
           </p>
         </div>
       )}
@@ -124,9 +124,9 @@ const InterviewsPage = () => {
                     key={app.id}
                     app={app}
                     loading={isPending}
-                    onMoveOffer={(id) => moveStatus({ id, status: "offer" })}
+                    onMoveOffer={(id) => moveStatus({ id, status: 'offer' })}
                     onMoveRejected={(id) =>
-                      moveStatus({ id, status: "rejected" })
+                      moveStatus({ id, status: 'rejected' })
                     }
                   />
                 ))}
@@ -136,7 +136,7 @@ const InterviewsPage = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default InterviewsPage;
+export default InterviewsPage

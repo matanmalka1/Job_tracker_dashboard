@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { fetchScanStreamUrl } from '../../../api/client.ts'
 import type { EventLogLine } from '../../../shared/types/job-tracker.ts'
 
 export type LiveLoggerStatus = 'idle' | 'connecting' | 'open' | 'error'
@@ -51,7 +52,7 @@ export const useLiveLogger = (initialUrl = '/job-tracker/scan/progress') => {
     setStatus('idle')
   }
 
-  const connect = () => {
+  const connect = async () => {
     if (status === 'connecting' || status === 'open') return
     const nextUrl = url.trim()
     if (!nextUrl) return
@@ -60,7 +61,19 @@ export const useLiveLogger = (initialUrl = '/job-tracker/scan/progress') => {
     intentionalCloseRef.current = false
     setStatus('connecting')
 
-    const es = new EventSource(nextUrl)
+    let streamUrl = nextUrl
+    try {
+      if (nextUrl === '/job-tracker/scan/progress') {
+        streamUrl = await fetchScanStreamUrl()
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not open stream'
+      push({ stage: 'error', detail: message, type: 'error' })
+      setStatus('error')
+      return
+    }
+
+    const es = new EventSource(streamUrl)
     esRef.current = es
 
     es.onopen = () => {

@@ -15,6 +15,12 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+const apiKey = import.meta.env.VITE_JOB_TRACKER_API_KEY as string | undefined
+
+if (apiKey) {
+  apiClient.defaults.headers.common['X-Api-Key'] = apiKey
+}
+
 apiClient.interceptors.response.use(
   (r) => r,
   (err) => {
@@ -66,6 +72,14 @@ export const triggerScan = (): Promise<{ inserted: number; applications_created:
   apiClient
     .post<{ inserted: number; applications_created: number }>('/job-tracker/scan')
     .then((r) => r.data)
+
+export const fetchScanStreamUrl = (): Promise<string> => {
+  if (!apiKey) return Promise.resolve('/job-tracker/scan/progress')
+
+  return apiClient
+    .post<{ stream_token: string }>('/job-tracker/scan/token')
+    .then((r) => `/job-tracker/scan/progress?stream_token=${encodeURIComponent(r.data.stream_token)}`)
+}
 
 export const createApplication = (body: ApplicationWritePayload): Promise<JobApplication> =>
   apiClient.post<JobApplication>('/job-tracker/applications', body).then((r) => r.data)

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { QueryObserverResult } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { fetchScanStreamUrl } from '../../../api/client.ts'
 import { SCAN_STAGES } from '../../../shared/constants/scan.ts'
 import type { Blip, LogLine, ScanResultState } from '../types.ts'
 import type { ScanRun } from '../../../shared/types/job-tracker.ts'
@@ -99,7 +100,7 @@ export const useScanRunner = (
     toast.error(message)
   }
 
-  const runScan = () => {
+  const runScan = async () => {
     if (scanning) return
     esRef.current?.close()
 
@@ -107,7 +108,16 @@ export const useScanRunner = (
     resetScanState()
     addLog('sys', 'Initiating Gmail scan...', 'info')
 
-    const es = new EventSource('/job-tracker/scan/progress')
+    let scanStreamUrl: string
+    try {
+      scanStreamUrl = await fetchScanStreamUrl()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not start scan stream'
+      failScan(message)
+      return
+    }
+
+    const es = new EventSource(scanStreamUrl)
     esRef.current = es
 
     es.onmessage = (e: MessageEvent<string>) => {
