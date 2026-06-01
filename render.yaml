@@ -1,13 +1,16 @@
 services:
   - type: web
     name: job-dashboard
-    env: python
+    runtime: python
     plan: free
+    region: oregon
     rootDir: backend
     pythonVersion: "3.11.9"
+    healthCheckPath: /health
+    autoDeployTrigger: commit
     buildCommand: |
       pip install -r requirements.txt &&
-      cd ../frontend && npm install && npm run build
+      cd ../frontend && npm ci && npm run build
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
@@ -15,7 +18,7 @@ services:
           name: job-dashboard-db
           property: connectionString
       - key: CORS_ORIGINS
-        value: '["https://job-dashboard.onrender.com"]'
+        value: '["https://job-dashboard-3yrw.onrender.com"]'
       # Gmail token: base64-encode secrets/token.json and paste here
       # base64 -i backend/secrets/token.json | tr -d '\n'
       - key: GMAIL_TOKEN_JSON
@@ -26,5 +29,5 @@ services:
 databases:
   - name: job-dashboard-db
     plan: free
-    databaseName: job_dashboard
-    user: job_dashboard
+    region: oregon
+    postgresMajorVersion: "16"

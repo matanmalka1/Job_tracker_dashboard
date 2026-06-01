@@ -24,7 +24,7 @@ Router (api/router.py)
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 Create a `.env` (copy the table below). Then start PostgreSQL and create the database:
@@ -117,6 +117,7 @@ pytest scripts/test_all.py -v
 ```
 
 - Uses **in-memory SQLite** (no Postgres needed for tests)
+- Install `requirements-dev.txt` for test-only dependencies such as `aiosqlite`, `pytest`, and `httpx`
 - 74 tests across ~15 test classes
 - No Gmail credentials needed — scan tests mock the client
 
