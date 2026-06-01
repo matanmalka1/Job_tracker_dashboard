@@ -5,13 +5,12 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Optional
 
-from sqlalchemy import select
-
 from app.job_tracker.email_scanner.gmail_client import GmailClient
 from app.job_tracker.models.email_reference import EmailReference
 from app.job_tracker.models.job_application import ApplicationStatus, JobApplication
 from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
 from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
+from app.job_tracker.repositories.scan_run_repository import ScanRunRepository
 from app.job_tracker.services.application_matcher import match_email_to_application
 
 logger = logging.getLogger(__name__)
@@ -291,10 +290,10 @@ def shutdown_executor() -> None:
 class EmailScanService:
     def __init__(
         self,
-        gmail_client: GmailClient,
+        gmail_client: Optional[GmailClient],
         repo: EmailReferenceRepository,
         app_repo: Optional[JobApplicationRepository] = None,
-        scan_run_repo=None,
+        scan_run_repo: Optional[ScanRunRepository] = None,
     ):
         self.gmail_client = gmail_client
         self.repo = repo
@@ -390,17 +389,11 @@ class EmailScanService:
 
     async def _match_unlinked_emails(self) -> None:
         """Link unlinked EmailReference rows to existing JobApplications via heuristic matcher."""
-        session = self.repo.session
-
-        result = await session.execute(
-            select(EmailReference).where(EmailReference.application_id.is_(None))
-        )
-        unlinked = result.scalars().all()
+        unlinked = await self.repo.list_unlinked()
         if not unlinked:
             return
 
-        apps_result = await session.execute(select(JobApplication))
-        applications = apps_result.scalars().all()
+        applications = await self.app_repo.list_all()
         if not applications:
             return
 
@@ -413,7 +406,7 @@ class EmailScanService:
                 linked_count += 1
 
         if linked_count:
-            await session.commit()
+            await self.repo.session.commit()
             logger.info("Linked %s emails to existing applications", linked_count)
 
     async def _auto_create_applications(self) -> int:
@@ -422,21 +415,12 @@ class EmailScanService:
         from the subject line and create it, then link the email.
         Deduplicates by (company_name, role_title).
         """
-        session = self.repo.session
-
-        result = await session.execute(
-            select(EmailReference).where(EmailReference.application_id.is_(None))
-        )
-        still_unlinked = result.scalars().all()
+        still_unlinked = await self.repo.list_unlinked()
         if not still_unlinked:
             return 0
 
-        apps_result = await session.execute(
-            select(JobApplication.company_name, JobApplication.role_title)
-        )
-        existing_keys: set[tuple[str, str]] = {
-            (row[0].lower(), (row[1] or "").lower()) for row in apps_result.all()
-        }
+        existing_keys = await self.app_repo.list_company_role_keys()
+        all_apps = await self.app_repo.list_all()
 
         created_count = 0
         created_this_run: dict[tuple[str, str], JobApplication] = {}
@@ -449,9 +433,6 @@ class EmailScanService:
                 ckey = parsed_peek["company_name"].lower()
                 company_subjects.setdefault(ckey, []).append(e.subject)
 
-        all_apps_result = await session.execute(select(JobApplication))
-        all_apps = all_apps_result.scalars().all()
-
         for email in still_unlinked:
             parsed = _parse_application_from_email(email)
             if not parsed:
@@ -461,8 +442,6 @@ class EmailScanService:
                 ckey = parsed["company_name"].lower()
                 sibling_subjects = [s for s in company_subjects.get(ckey, []) if s != email.subject]
                 parsed["role_title"] = _extract_role_from_subjects(sibling_subjects)
-                # Allow company-only applications when no role can be inferred.
-                # role_title=None is valid; dedup key uses empty string as sentinel.
 
             key = (parsed["company_name"].lower(), (parsed["role_title"] or "").lower())
 
@@ -488,7 +467,7 @@ class EmailScanService:
             created_count += 1
 
         if created_count or any(e.application_id is not None for e in still_unlinked):
-            await session.commit()
+            await self.repo.session.commit()
             logger.info("Auto-created %s new job applications from emails", created_count)
 
         return created_count

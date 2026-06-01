@@ -59,7 +59,6 @@ uvicorn app.main:app --reload   # tables + indexes auto-created on first start
 | `PAGINATION_LIMIT_DEFAULT` | `50` | Default page size |
 | `PAGINATION_OFFSET_DEFAULT` | `0` | Default offset |
 | `BULK_DELETE_MAX_IDS` | `100` | Max IDs for bulk-delete |
-| `SEARCH_MAX_LENGTH` | `200` | Max chars for `?search=` |
 | `ERROR_TRUNCATE_LENGTH` | `2000` | Max chars stored in `scan_run.error` |
 | `CORS_ORIGINS` | localhost:5173/3000 | JSON list of allowed origins |
 

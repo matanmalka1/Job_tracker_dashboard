@@ -17,11 +17,13 @@ def main() -> None:
     settings = get_settings()
 
     client = GmailClient(
-        token_file=settings.GMAIL_TOKEN_FILE,        
+        token_file=settings.GMAIL_TOKEN_FILE,
         delegated_user=settings.GMAIL_DELEGATED_USER,
         query_window_days=settings.GMAIL_QUERY_WINDOW_DAYS,
         max_messages=settings.GMAIL_MAX_MESSAGES,
         page_size=settings.GMAIL_LIST_PAGE_SIZE,
+        batch_size=settings.GMAIL_BATCH_SIZE,
+        retry_backoff_seconds=settings.GMAIL_RETRY_BACKOFF_SECONDS,
     )
 
     messages = client.fetch_recent_messages()

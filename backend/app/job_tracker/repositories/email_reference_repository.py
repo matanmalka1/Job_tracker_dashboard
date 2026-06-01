@@ -66,6 +66,12 @@ class EmailReferenceRepository:
         await self.session.flush()
         return len(records), len(existing_ids)
 
+    async def list_unlinked(self) -> list[EmailReference]:
+        result = await self.session.execute(
+            select(EmailReference).where(EmailReference.application_id.is_(None))
+        )
+        return list(result.scalars().all())
+
     async def list_paginated(self, limit: int, offset: int) -> tuple[list[EmailReference], int]:
         total = await self.session.scalar(select(func.count()).select_from(EmailReference))
         result = await self.session.execute(

@@ -137,8 +137,7 @@ class GmailClient:
 
         def _callback(request_id: str, response, exception) -> None:
             if exception:
-                from googleapiclient.errors import HttpError as _HttpError
-                if isinstance(exception, _HttpError) and exception.resp.status == 429:
+                if isinstance(exception, HttpError) and exception.resp.status == 429:
                     failed_ids.append(request_id)
                 else:
                     logger.warning("Batch get failed for message %s: %s", request_id, exception)

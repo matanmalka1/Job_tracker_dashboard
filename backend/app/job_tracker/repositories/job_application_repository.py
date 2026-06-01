@@ -87,17 +87,13 @@ class JobApplicationRepository:
             query = query.where(search_filter)
             count_query = count_query.where(search_filter)
 
-        # BUG FIX: "updated_at" was a valid sort param per the router pattern,
-        # but was missing from the sort_col dict — it fell through to the default
-        # (which happened to also be updated_at.desc(), so it worked accidentally).
-        # The dict is now exhaustive and explicit so future changes don't silently
-        # break or apply the wrong sort column.
-        sort_col = {
+        _sort_map = {
             "updated_at": JobApplication.updated_at.desc(),
             "applied_at": JobApplication.applied_at.desc().nulls_last(),
             "last_email_at": JobApplication.last_email_at.desc().nulls_last(),
             "company_name": JobApplication.company_name.asc(),
-        }.get(sort or "last_email_at", JobApplication.last_email_at.desc().nulls_last())
+        }
+        sort_col = _sort_map.get(sort or "", JobApplication.last_email_at.desc().nulls_last())
 
         total = await self.session.scalar(count_query)
         result = await self.session.execute(
@@ -133,6 +129,17 @@ class JobApplicationRepository:
         reply_rate = (apps_with_response / total * 100) if total > 0 else 0.0
 
         return {"total": total, "by_status": by_status, "reply_rate": round(reply_rate, 1)}
+
+    async def list_all(self) -> list[JobApplication]:
+        result = await self.session.execute(select(JobApplication))
+        return list(result.scalars().all())
+
+    async def list_company_role_keys(self) -> set[tuple[str, str]]:
+        """Return (company_name.lower(), role_title.lower()) for all existing applications."""
+        result = await self.session.execute(
+            select(JobApplication.company_name, JobApplication.role_title)
+        )
+        return {(row[0].lower(), (row[1] or "").lower()) for row in result.all()}
 
     async def list_recent(self, limit: int = 10) -> list[JobApplication]:
         result = await self.session.execute(
