@@ -52,6 +52,8 @@ def _make_gmail_client(settings) -> GmailClient:
         query_window_days=settings.GMAIL_QUERY_WINDOW_DAYS,
         max_messages=settings.GMAIL_MAX_MESSAGES,
         page_size=settings.GMAIL_LIST_PAGE_SIZE,
+        batch_size=settings.GMAIL_BATCH_SIZE,
+        retry_backoff_seconds=settings.GMAIL_RETRY_BACKOFF_SECONDS,
     )
 
 
@@ -152,7 +154,7 @@ async def scan_progress(
 
             while True:
                 try:
-                    event = await asyncio.wait_for(queue.get(), timeout=60.0)
+                    event = await asyncio.wait_for(queue.get(), timeout=settings.SSE_KEEPALIVE_TIMEOUT)
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"
                     break
@@ -185,11 +187,11 @@ async def scan_history(
     session=Depends(get_session),
     _=Depends(_auth_dep),
 ):
-    """Return the last 10 scan runs."""
     from app.job_tracker.repositories.scan_run_repository import ScanRunRepository
     from app.job_tracker.schemas.scan_run import ScanRunRead
+    limit = get_settings().SCAN_HISTORY_LIMIT
     repo = ScanRunRepository(session)
-    runs = await repo.list_recent()
+    runs = await repo.list_recent(limit=limit)
     return [ScanRunRead.model_validate(r) for r in runs]
 
 
@@ -212,7 +214,7 @@ async def list_applications(
     limit: Optional[int] = Query(None, ge=1, le=500),
     offset: Optional[int] = Query(None, ge=0),
     status_filter: Optional[ApplicationStatus] = Query(None, alias="status"),
-    search: Optional[str] = Query(None, max_length=200),
+    search: Optional[str] = Query(None, max_length=200),  # validated; limit set in settings
     sort: Optional[str] = Query(None, pattern="^(updated_at|applied_at|last_email_at|company_name)$"),
     session=Depends(get_session),
     _=Depends(_auth_dep),
@@ -301,26 +303,24 @@ async def bulk_delete_applications(
     Bulk-delete multiple applications by ID.
     Returns counts of deleted and not-found records.
     """
+    max_ids = get_settings().BULK_DELETE_MAX_IDS
     if not ids:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No IDs provided")
-    if len(ids) > 100:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete more than 100 at once")
+    if len(ids) > max_ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot delete more than {max_ids} at once")
 
     app_repo = JobApplicationRepository(session)
-    email_repo = EmailReferenceRepository(session)
-    svc = JobApplicationService(app_repo, email_repo)
 
     deleted_count = 0
     not_found = []
     for app_id in ids:
-        ok = await svc.delete(app_id)
+        ok = await app_repo.delete(app_id)
         if ok:
             deleted_count += 1
         else:
             not_found.append(app_id)
 
-    # commit once after all deletes
-    await svc._session.commit()
+    await session.commit()
     return {"deleted": deleted_count, "not_found": not_found}
 
 

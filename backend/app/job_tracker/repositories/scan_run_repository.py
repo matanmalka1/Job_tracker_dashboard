@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.job_tracker.models.scan_run import ScanRun
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ class ScanRunRepository:
         if run:
             run.status = "failed"
             run.completed_at = datetime.now(timezone.utc)
-            run.error = error[:2000]  # BUG FIX: truncate to avoid DB column overflow
+            run.error = error[:get_settings().ERROR_TRUNCATE_LENGTH]
         else:
             logger.warning("ScanRun id=%s not found when trying to fail", run_id)
 

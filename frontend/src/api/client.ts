@@ -6,7 +6,7 @@ import type {
   EmailReferencePage,
   DashboardStatsResponse,
   ScanRun,
-} from '../types/index.ts'
+} from '../shared/types/job-tracker.ts'
 
 const apiClient = axios.create({
   baseURL: '',

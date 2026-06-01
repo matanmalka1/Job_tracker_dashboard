@@ -6,7 +6,7 @@ A personal job application tracker that scans Gmail for application emails, auto
 ## Architecture
 ```
 job_dashboard/
-  backend/   FastAPI + SQLAlchemy 2.0 async + aiosqlite (SQLite)
+  backend/   FastAPI + SQLAlchemy 2.0 async + asyncpg (PostgreSQL)
   frontend/  React 19 + Vite 7 + TypeScript (strict) + Tailwind CSS 3
 ```
 
@@ -18,7 +18,7 @@ job_dashboard/
 ```bash
 cd backend
 uvicorn app.main:app --reload        # dev server on :8000
-pytest scripts/test_all.py -v        # run all 72 tests
+pytest scripts/test_all.py -v        # run all tests
 ```
 
 ### Frontend
@@ -34,7 +34,7 @@ npm run build
 
 ### Stack
 - **FastAPI** — async routes, Pydantic v2 schemas
-- **SQLAlchemy 2.0** async ORM, **aiosqlite** driver
+- **SQLAlchemy 2.0** async ORM, **asyncpg** driver (PostgreSQL)
 - **Gmail API** via `google-auth` / `google-api-python-client`
 - **SSE** (Server-Sent Events) for live scan progress streaming
 
@@ -58,7 +58,7 @@ Dependency injection via `FastAPI.Depends`. Session provided by `get_session()`.
 | `app/job_tracker/repositories/` | DB access layer (raw SQLAlchemy) |
 | `app/job_tracker/services/email_scan_service.py` | Gmail scan + email parsing |
 | `app/job_tracker/services/job_application_service.py` | Application CRUD + email linking |
-| `scripts/test_all.py` | Full test suite (72 tests, in-memory SQLite) |
+| `scripts/test_all.py` | Full test suite (in-memory SQLite) |
 
 ### Models
 - `JobApplication` — `id, company_name, role_title, status, applied_at, last_email_at, notes, job_url, next_action_at`
@@ -75,13 +75,15 @@ GET    /job-tracker/applications                    → paginated list (limit, o
 POST   /job-tracker/applications                    → create
 GET    /job-tracker/applications/:id                → single
 PATCH  /job-tracker/applications/:id                → update
-DELETE /job-tracker/applications/:id                → delete
+DELETE /job-tracker/applications/:id                → delete (single)
+DELETE /job-tracker/applications                    → bulk delete (?ids=1&ids=2…)
 POST   /job-tracker/applications/:id/emails/:eid    → link email to application
 DELETE /job-tracker/applications/:id/emails/:eid    → unlink email
 GET    /job-tracker/emails                          → paginated list
 GET    /job-tracker/stats                           → {total, by_status, reply_rate}
 GET    /job-tracker/scan/progress                   → SSE stream (scan progress events)
-GET    /job-tracker/scan/history                    → last 10 ScanRun records
+POST   /job-tracker/scan                            → trigger scan (202)
+GET    /job-tracker/scan/history                    → last N ScanRun records
 ```
 
 ### SSE Scan Progress Events
@@ -144,6 +146,8 @@ Keepalive comments (`: keepalive\n\n`) are sent to prevent connection timeouts �
 | `src/pages/InterviewsPage.tsx` | Week-grouped interviewing cards |
 | `src/pages/CompaniesPage.tsx` | Expandable company cards |
 | `src/pages/SettingsPage.tsx` | Gmail scan trigger, SSE progress, persistent scan history |
+| `src/pages/ManageDataUiPage.tsx` | Raw CRUD table with inline edit/delete |
+| `src/pages/LiveLoggerPage.tsx` | SSE stream viewer for scan progress |
 
 ### Routes
 ```
@@ -154,20 +158,22 @@ Keepalive comments (`: keepalive\n\n`) are sent to prevent connection timeouts �
 /interviews         InterviewsPage
 /companies          CompaniesPage
 /settings           SettingsPage
+/manage-data        ManageDataUiPage
+/live-logger        LiveLoggerPage
 ```
 
 ### Query Key Conventions
 ```
-['stats']                        DashboardPage stats
-['applications', 'dashboard-recent']  Recent 5 for dashboard
-['applications', 'list']         ApplicationsPage table
-['applications', 'pipeline']     PipelinePage
-['applications', 'interviewing'] InterviewsPage
-['applications', 'companies']    CompaniesPage
-['applications', 'search-pool']  GlobalSearch
-['applications', id]             ApplicationDetailPage (single)
-['emails', 'recent']             ActivityTimeline
-['scan-history']                 SettingsPage history
+['stats']                         DashboardPage stats
+['applications', 'list']          ApplicationsPage table
+['applications', 'pipeline']      PipelinePage
+['applications', 'interviewing']  InterviewsPage
+['applications', 'companies']     CompaniesPage
+['applications', 'search-pool']   GlobalSearch
+['applications', 'manage-data']   ManageDataUiPage
+['applications', id]              ApplicationDetailPage (single)
+['emails', 'recent']              ActivityTimeline
+['scan-history']                  SettingsPage history
 ```
 
 Invalidate all application queries: `queryClient.invalidateQueries({ queryKey: ['applications'] })`
@@ -197,10 +203,9 @@ All tests are in `backend/scripts/test_all.py`. Run from the `backend/` director
 pytest scripts/test_all.py -v
 ```
 
-- Uses **in-memory SQLite** (`sqlite+aiosqlite:///:memory:`)
+- Uses **in-memory SQLite** (`sqlite+aiosqlite:///:memory:`) — no Postgres needed for tests
 - Uses **httpx `AsyncClient`** with `ASGITransport`
-- 72 tests total across ~15 test classes
-- No real Gmail credentials needed — scan tests mock or accept 202/503
+- No real Gmail credentials needed — scan tests mock the client
 
 ### Test Classes
 - `TestHealth` — `/health` endpoint with DB check
@@ -218,4 +223,4 @@ pytest scripts/test_all.py -v
 ---
 
 ## Gmail Setup
-Gmail OAuth credentials are stored outside the repo. The scan service reads them from the path configured in `settings.py` (env var `GMAIL_CREDENTIALS_FILE`). On first run, it opens a browser for OAuth consent and caches the token.
+Gmail OAuth credentials are stored outside the repo. The scan service reads the token from the path set in `GMAIL_TOKEN_FILE` (`.env` or environment). Run `backend/scripts/generate_token.py` once to perform OAuth consent and cache the token. On Render, base64-encode `token.json` and set it as the `GMAIL_TOKEN_JSON` secret — the app writes it to disk at startup.

@@ -1,31 +1,21 @@
-"""
-Simple in-process rate limiter for the Gmail scan endpoint.
-
-Using a token-bucket approach — one scan per WINDOW_SECONDS globally.
-For a single-user app this is sufficient without Redis.
-"""
 import asyncio
 import time
 
-WINDOW_SECONDS = 10  # minimum seconds between scans
+from app.config import get_settings
 
 _last_scan_at: float = 0.0
 _lock = asyncio.Lock()
 
 
 async def acquire_scan_slot() -> tuple[bool, float]:
-    """
-    Try to acquire the scan slot.
-
-    Returns (allowed, retry_after_seconds).
-    retry_after_seconds is 0 when allowed is True.
-    """
+    """Try to acquire the scan slot. Returns (allowed, retry_after_seconds)."""
     global _last_scan_at
+    window = get_settings().SCAN_RATE_LIMIT_SECONDS
     async with _lock:
         now = time.monotonic()
         elapsed = now - _last_scan_at
-        if elapsed < WINDOW_SECONDS:
-            return False, WINDOW_SECONDS - elapsed
+        if elapsed < window:
+            return False, window - elapsed
         _last_scan_at = now
         return True, 0.0
 

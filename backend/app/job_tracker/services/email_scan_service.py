@@ -273,8 +273,9 @@ def _get_executor() -> ThreadPoolExecutor:
     if _executor is None or _executor._shutdown:
         with _executor_lock:
             if _executor is None or _executor._shutdown:
+                from app.config import get_settings
                 _executor = ThreadPoolExecutor(
-                    max_workers=4,
+                    max_workers=get_settings().SCAN_EXECUTOR_MAX_WORKERS,
                     thread_name_prefix="gmail-scan",
                 )
     return _executor

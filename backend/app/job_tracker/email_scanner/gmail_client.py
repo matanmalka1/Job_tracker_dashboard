@@ -5,6 +5,7 @@ import re
 import time
 from typing import Dict, List, Optional
 
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -24,12 +25,16 @@ class GmailClient:
         query_window_days: int,
         max_messages: int,
         page_size: int,
+        batch_size: int = 100,
+        retry_backoff_seconds: int = 2,
     ):
         self._token_file = token_file or service_account_file
         self.delegated_user = delegated_user
         self.query_window_days = max(1, query_window_days)
         self.max_messages = max(1, max_messages)
         self.page_size = max(1, min(page_size, self.max_messages))
+        self.batch_size = max(1, batch_size)
+        self.retry_backoff_seconds = max(0, retry_backoff_seconds)
         self._credentials: Optional[Credentials] = None
         self._service = None
         self._user_id = delegated_user or "me"
@@ -51,6 +56,16 @@ class GmailClient:
                 with open(self._token_file, "w") as fh:
                     fh.write(creds.to_json())
                 logger.info("Gmail OAuth token refreshed and saved to %s", self._token_file)
+            except RefreshError as exc:
+                logger.exception(
+                    "Gmail token refresh failed due to revoked/expired authorization: %s",
+                    self._token_file,
+                )
+                raise RuntimeError(
+                    "Gmail authorization expired or was revoked. "
+                    "Re-run backend/scripts/generate_token.py and replace GMAIL_TOKEN_JSON "
+                    "(or GMAIL_TOKEN_FILE) with the new token."
+                ) from exc
             except Exception:
                 logger.exception(
                     "Failed to refresh Gmail token from %s. "
@@ -117,7 +132,7 @@ class GmailClient:
         Any messages that fail due to transient 429 rate-limit errors are
         retried once with a short backoff before being silently skipped.
         """
-        BATCH_SIZE = 100
+        batch_size = self.batch_size
         fetched: Dict[str, Dict] = {}
         failed_ids: List[str] = []
 
@@ -131,8 +146,8 @@ class GmailClient:
                 return
             fetched[request_id] = self._parse_message(response)
 
-        for i in range(0, len(message_ids), BATCH_SIZE):
-            chunk = message_ids[i : i + BATCH_SIZE]
+        for i in range(0, len(message_ids), batch_size):
+            chunk = message_ids[i : i + batch_size]
             batch = service.new_batch_http_request(callback=_callback)
             for msg_id in chunk:
                 batch.add(
@@ -149,12 +164,11 @@ class GmailClient:
                 )
             batch.execute()
 
-        # Retry 429-throttled messages once after a short backoff, still in ≤100 chunks
         if failed_ids:
             logger.info("Retrying %s rate-limited messages after backoff", len(failed_ids))
-            time.sleep(2)
-            for i in range(0, len(failed_ids), BATCH_SIZE):
-                retry_chunk = failed_ids[i : i + BATCH_SIZE]
+            time.sleep(self.retry_backoff_seconds)
+            for i in range(0, len(failed_ids), batch_size):
+                retry_chunk = failed_ids[i : i + batch_size]
                 retry_batch = service.new_batch_http_request(callback=_callback)
                 for msg_id in retry_chunk:
                     retry_batch.add(
