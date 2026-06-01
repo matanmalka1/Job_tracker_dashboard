@@ -39,7 +39,9 @@ const InterviewsPage = () => {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["applications", "interviewing"],
     queryFn: () =>
-      fetchApplications({ status: "interviewing", limit: 500, offset: 0 }),
+      // No dedicated Interview model exists; this fetches all interviewing-status applications.
+      // Server-filters by status so this is bounded by actual interviewing count, not total apps.
+      fetchApplications({ status: "interviewing", limit: 200, offset: 0 }),
   });
 
   const { mutate: moveStatus, isPending } = useMutation({

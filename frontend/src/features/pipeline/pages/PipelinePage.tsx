@@ -1,16 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchApplications } from '../../../api/client.ts'
+import { fetchPipeline } from '../../../api/client.ts'
 import KanbanBoard from '../components/KanbanBoard.tsx'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
 import PipelineHeader from '../components/PipelineHeader.tsx'
 
 const PipelinePage = () => {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['applications', 'pipeline'],
-    queryFn: () => fetchApplications({ limit: 500, offset: 0 }),
+    queryKey: ['pipeline'],
+    queryFn: fetchPipeline,
+    staleTime: 30_000,
   })
-
-  const applications = data?.items ?? []
 
   return (
     <div className="space-y-6">
@@ -24,7 +23,7 @@ const PipelinePage = () => {
         </div>
       )}
 
-      {!isLoading && !isError && <KanbanBoard applications={applications} />}
+      {!isLoading && !isError && data && <KanbanBoard pipeline={data} />}
     </div>
   )
 }

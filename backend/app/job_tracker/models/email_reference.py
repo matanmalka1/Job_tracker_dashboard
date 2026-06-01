@@ -14,6 +14,7 @@ class EmailReference(Base):
     sender = Column(String(255), nullable=True)
     received_at = Column(DateTime(timezone=True), nullable=False)
     snippet = Column(Text, nullable=True)
+    body_text = Column(Text, nullable=True)
     application_id = Column(Integer, ForeignKey("job_applications.id"), nullable=True)
 
     application = relationship("JobApplication", back_populates="emails")

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -11,26 +11,68 @@ import DataManagementHeader from '../components/DataManagementHeader.tsx'
 import FiltersBar from '../components/FiltersBar.tsx'
 import DataManagementTable from '../components/DataManagementTable.tsx'
 import ApplicationForm from '../components/ApplicationForm.tsx'
+import PaginationBar from '../../applications/components/PaginationBar.tsx'
 import { EMPTY_FORM } from '../types.ts'
-import { applicationToFormState, filterApplications, formStateToPayload } from '../utils.ts'
+import { applicationToFormState, formStateToPayload } from '../utils.ts'
+
+const PAGE_SIZE = 25
+const SEARCH_DEBOUNCE_MS = 300
 
 const DataManagementPage = () => {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'all'>('all')
+  const [page, setPage] = useState(0)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<JobApplication | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [deleteTarget, setDeleteTarget] = useState<JobApplication | null>(null)
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['applications', 'manage-data'],
-    queryFn: () => fetchApplications({ limit: 500, offset: 0 }),
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(timeout)
+  }, [search])
+
+  const queryParams = useMemo(
+    () => ({
+      limit: PAGE_SIZE,
+      offset: page * PAGE_SIZE,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      search: debouncedSearch.trim() || undefined,
+    }),
+    [debouncedSearch, page, statusFilter],
+  )
+
+  const { data, isLoading, isError, refetch: reloadApplications, isFetching } = useQuery({
+    queryKey: ['applications', 'manage-data', queryParams],
+    queryFn: () => fetchApplications(queryParams),
+    placeholderData: (prev) => prev,
   })
+
+  const applications = data?.items ?? []
+  const total = data?.total ?? 0
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  const setSearchAndReset = (value: string) => {
+    setSearch(value)
+    setPage(0)
+  }
+
+  const setStatusAndReset = (value: ApplicationStatus | 'all') => {
+    setStatusFilter(value)
+    setPage(0)
+  }
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['applications'] })
     queryClient.invalidateQueries({ queryKey: ['stats'] })
+  }
+
+  const handlePageAfterDelete = (deletedCount = 1) => {
+    if (page > 0 && applications.length - deletedCount <= 0) {
+      setPage((p) => p - 1)
+    }
   }
 
   const { mutate: createMutate, isPending: createLoading } = useMutation({
@@ -60,18 +102,12 @@ const DataManagementPage = () => {
     mutationFn: (id: number) => deleteApplication(id),
     onSuccess: () => {
       toast.success('Record deleted')
+      handlePageAfterDelete(1)
       invalidateAll()
       setDeleteTarget(null)
     },
     onError: (err: Error) => toast.error(err.message),
   })
-
-  const applications = useMemo(() => data?.items ?? [], [data])
-
-  const filtered = useMemo(
-    () => filterApplications(applications, search, statusFilter),
-    [applications, search, statusFilter],
-  )
 
   const openCreate = () => {
     setEditing(null)
@@ -100,14 +136,14 @@ const DataManagementPage = () => {
 
   return (
     <div className="space-y-6">
-      <DataManagementHeader onRefresh={() => void refetch()} onCreate={openCreate} isFetching={isFetching} />
+      <DataManagementHeader onRefresh={() => void reloadApplications()} onCreate={openCreate} isFetching={isFetching} />
 
       <FiltersBar
         search={search}
         statusFilter={statusFilter}
-        onSearch={setSearch}
-        onStatusChange={setStatusFilter}
-        count={filtered.length}
+        onSearch={setSearchAndReset}
+        onStatusChange={setStatusAndReset}
+        count={total}
       />
 
       <div className="bg-[#1a1a24] border border-white/5 rounded-xl overflow-hidden">
@@ -121,9 +157,17 @@ const DataManagementPage = () => {
             <p className="text-sm">Could not load records.</p>
           </div>
         ) : (
-          <DataManagementTable applications={filtered} onEdit={openEdit} onDelete={setDeleteTarget} />
+          <DataManagementTable applications={applications} onEdit={openEdit} onDelete={setDeleteTarget} />
         )}
       </div>
+
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
 
       <SlideOver open={drawerOpen} title={editing ? 'Edit record' : 'Create record'} onClose={closeDrawer}>
         <ApplicationForm

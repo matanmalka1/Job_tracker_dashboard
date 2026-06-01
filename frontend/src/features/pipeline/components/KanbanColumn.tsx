@@ -1,16 +1,17 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import type { ApplicationStatus, JobApplication } from '../../../shared/types/job-tracker.ts'
+import type { ApplicationStatus, PipelineCard } from '../../../shared/types/job-tracker.ts'
 import KanbanCard from './KanbanCard.tsx'
 
 interface Props {
   status: ApplicationStatus
   label: string
-  applications: JobApplication[]
+  applications: PipelineCard[]
   color: string
+  total: number
 }
 
-const KanbanColumn = ({ status, label, applications, color }: Props) => {
+const KanbanColumn = ({ status, label, applications, color, total }: Props) => {
   const { setNodeRef, isOver } = useDroppable({ id: status })
 
   return (
@@ -18,7 +19,7 @@ const KanbanColumn = ({ status, label, applications, color }: Props) => {
       <div className="flex items-center gap-2 mb-3 px-1">
         <div className={['w-2 h-2 rounded-full', color].join(' ')} />
         <h3 className="text-white text-sm font-semibold">{label}</h3>
-        <span className="text-gray-500 text-xs ml-auto">{applications.length}</span>
+        <span className="text-gray-500 text-xs ml-auto">{total}</span>
       </div>
 
       <div

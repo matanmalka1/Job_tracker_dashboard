@@ -7,6 +7,7 @@ import {
   fetchApplications,
   updateApplication,
 } from '../../../api/client.ts'
+import type { ApplicationSortField } from '../../../api/client.ts'
 import type { ApplicationStatus, ApplicationWritePayload, JobApplication } from '../../../shared/types/job-tracker.ts'
 
 export const PAGE_SIZE = 25
@@ -36,7 +37,7 @@ export const useApplicationsPage = () => {
       offset: page * PAGE_SIZE,
       status: statusFilter !== 'all' ? statusFilter : undefined,
       search: debouncedSearch || undefined,
-      sort: 'last_email_at' as const,
+      sort: 'last_email_at' as ApplicationSortField,
     }),
     [debouncedSearch, page, statusFilter],
   )
@@ -78,6 +79,7 @@ export const useApplicationsPage = () => {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteApplication(id),
     onSuccess: () => {
+      if (page > 0 && applications.length === 1) setPage((p) => p - 1)
       invalidateApplicationData()
       toast.success('Application deleted')
       setDeleteTarget(null)
@@ -88,6 +90,7 @@ export const useApplicationsPage = () => {
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: number[]) => Promise.all(ids.map((id) => deleteApplication(id))),
     onSuccess: (_, ids) => {
+      if (page > 0 && ids.length >= applications.length) setPage((p) => p - 1)
       invalidateApplicationData()
       toast.success(`${ids.length} applications deleted`)
       setSelectedIds(new Set())
@@ -104,11 +107,17 @@ export const useApplicationsPage = () => {
   const setSearchAndResetPage = (value: string) => {
     setSearch(value)
     setPage(0)
+    setSelectedIds(new Set())
   }
 
   const changeFilter = (filter: ApplicationStatus | 'all') => {
     setStatusFilter(filter)
     setPage(0)
+    setSelectedIds(new Set())
+  }
+
+  const changePage = (nextPage: number) => {
+    setPage(nextPage)
     setSelectedIds(new Set())
   }
 
@@ -148,11 +157,11 @@ export const useApplicationsPage = () => {
     page,
     search,
     selectedIds,
+    changePage,
     setAddOpen,
     setBulkDeleteOpen,
     setDeleteTarget,
     setEditApp,
-    setPage,
     setSearchAndResetPage,
     statusFilter,
     toggleSelect,

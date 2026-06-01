@@ -88,3 +88,41 @@ export interface ApplicationWritePayload {
   job_url?: string
   next_action_at?: string
 }
+
+// Pipeline types
+export interface PipelineCard {
+  id: number
+  company_name: string
+  role_title: string | null
+  status: ApplicationStatus
+  source?: string
+  confidence_score?: number
+  applied_at?: string
+  last_email_at?: string
+  updated_at: string
+  email_count: number
+}
+
+export interface PipelineColumn {
+  status: ApplicationStatus
+  total: number
+  items: PipelineCard[]
+}
+
+export interface PipelineResponse {
+  columns: PipelineColumn[]
+  total: number
+}
+
+// Companies summary types
+export interface CompanySummary {
+  company_name: string
+  application_count: number
+  latest_activity: string
+  status_counts: Record<ApplicationStatus, number>
+}
+
+export interface CompanySummaryPage {
+  total: number
+  items: CompanySummary[]
+}

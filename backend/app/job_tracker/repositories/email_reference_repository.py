@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Optional
 
@@ -5,6 +6,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.job_tracker.models.email_reference import EmailReference
+
+logger = logging.getLogger(__name__)
 
 
 class EmailReferenceRepository:
@@ -52,7 +55,17 @@ class EmailReferenceRepository:
         if not items:
             return 0, 0
 
-        ids = [item.get("gmail_message_id") for item in items if item.get("gmail_message_id")]
+        # Deduplicate incoming batch by gmail_message_id before hitting the DB.
+        seen: set[str] = set()
+        deduped: list[dict] = []
+        for item in items:
+            mid = item.get("gmail_message_id")
+            if not mid or mid in seen:
+                continue
+            seen.add(mid)
+            deduped.append(item)
+
+        ids = list(seen)
         existing_ids: set[str] = set()
         if ids:
             result = await self.session.execute(
@@ -60,10 +73,24 @@ class EmailReferenceRepository:
             )
             existing_ids = set(result.scalars().all())
 
-        to_insert = [item for item in items if item.get("gmail_message_id") not in existing_ids]
+        to_insert = [item for item in deduped if item.get("gmail_message_id") not in existing_ids]
         records = [EmailReference(**item) for item in to_insert]
-        self.session.add_all(records)
-        await self.session.flush()
+
+        if records:
+            self.session.add_all(records)
+            try:
+                await self.session.flush()
+            except Exception:
+                # Narrow catch: handle concurrent duplicate inserts that slip past
+                # the pre-check (e.g. two simultaneous scans). Roll back the flush
+                # only and return zero inserts — the rows already exist.
+                await self.session.rollback()
+                logger.warning(
+                    "bulk_create flush failed (likely concurrent duplicate); returning 0 inserted",
+                    exc_info=True,
+                )
+                return 0, len(existing_ids)
+
         return len(records), len(existing_ids)
 
     async def list_unlinked(self) -> list[EmailReference]:

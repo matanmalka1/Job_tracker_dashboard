@@ -2,10 +2,10 @@ import { useSortable } from '@dnd-kit/sortable'
 import { useNavigate } from 'react-router-dom'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Mail } from 'lucide-react'
-import type { JobApplication } from '../../../shared/types/job-tracker.ts'
+import type { PipelineCard } from '../../../shared/types/job-tracker.ts'
 
 interface Props {
-  application: JobApplication
+  application: PipelineCard
 }
 
 const KanbanCard = ({ application }: Props) => {

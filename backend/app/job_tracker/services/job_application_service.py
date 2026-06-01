@@ -82,3 +82,89 @@ class JobApplicationService:
         await self.app_repo.set_last_email_at(application_id, remaining_max)
         await self._session.commit()
         return True
+
+    async def get_stats(self) -> dict:
+        """Return dashboard KPIs assembled from repository counts."""
+        status_rows = await self.app_repo.count_by_status()
+        by_status: dict[str, int] = {s.value: 0 for s in ApplicationStatus}
+        total = 0
+        for status, count in status_rows:
+            key = status.value if isinstance(status, ApplicationStatus) else str(status)
+            if key in by_status:
+                by_status[key] = count
+                total += count
+
+        responded_statuses = [
+            ApplicationStatus.INTERVIEWING,
+            ApplicationStatus.OFFER,
+            ApplicationStatus.HIRED,
+            ApplicationStatus.REJECTED,
+        ]
+        apps_with_response = await self.app_repo.count_by_statuses(responded_statuses)
+        reply_rate = (apps_with_response / total * 100) if total > 0 else 0.0
+
+        return {"total": total, "by_status": by_status, "reply_rate": round(reply_rate, 1)}
+
+    async def get_pipeline(self) -> dict:
+        """Return all applications grouped by status for the Kanban board."""
+        apps = await self.app_repo.list_pipeline()
+        total = len(apps)
+
+        by_status: dict[ApplicationStatus, list[JobApplication]] = {s: [] for s in ApplicationStatus}
+        for app in apps:
+            by_status[app.status].append(app)
+
+        columns = [
+            {
+                "status": status,
+                "total": len(group),
+                "items": [
+                    {
+                        "id": app.id,
+                        "company_name": app.company_name,
+                        "role_title": app.role_title,
+                        "status": app.status,
+                        "source": app.source,
+                        "confidence_score": app.confidence_score,
+                        "applied_at": app.applied_at,
+                        "last_email_at": app.last_email_at,
+                        "updated_at": app.updated_at,
+                        "email_count": len(app.emails),
+                    }
+                    for app in group
+                ],
+            }
+            for status, group in by_status.items()
+        ]
+
+        return {"columns": columns, "total": total}
+
+    async def get_companies_summary(
+        self,
+        search: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        """Return paginated companies summary assembled from aggregate rows."""
+        company_rows, status_rows, total = await self.app_repo.list_company_summary_page(
+            search=search, limit=limit, offset=offset
+        )
+        status_counts_by_company = {
+            row["company_name"]: {s.value: 0 for s in ApplicationStatus}
+            for row in company_rows
+        }
+        for row in status_rows:
+            status = row["status"]
+            status_key = status.value if isinstance(status, ApplicationStatus) else str(status)
+            status_counts_by_company[row["company_name"]][status_key] = row["count"]
+
+        items = [
+            {
+                "company_name": row["company_name"],
+                "application_count": row["application_count"],
+                "latest_activity": row["latest_activity"],
+                "status_counts": status_counts_by_company[row["company_name"]],
+            }
+            for row in company_rows
+        ]
+        return {"total": total, "items": items}

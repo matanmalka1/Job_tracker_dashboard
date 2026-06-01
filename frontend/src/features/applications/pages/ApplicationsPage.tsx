@@ -60,7 +60,7 @@ const ApplicationsPage = () => {
           totalPages={page.totalPages}
           total={page.total}
           pageSize={PAGE_SIZE}
-          onPageChange={page.setPage}
+          onPageChange={page.changePage}
         />
       )}
 

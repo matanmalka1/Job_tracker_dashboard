@@ -32,6 +32,15 @@ export const APPLICATION_STATUS_BADGE_STYLES: Record<ApplicationStatus, string> 
   hired: 'bg-teal-500/20 text-teal-300',
 }
 
+export const APPLICATION_STATUS_DOT_COLORS: Record<ApplicationStatus, string> = {
+  new: 'bg-gray-400',
+  applied: 'bg-blue-400',
+  interviewing: 'bg-purple-400',
+  offer: 'bg-green-400',
+  rejected: 'bg-red-400',
+  hired: 'bg-teal-400',
+}
+
 export const APPLICATION_STATUS_BORDERED_STYLES: Record<ApplicationStatus, string> = {
   new: 'bg-blue-500/10 text-blue-200 border-blue-500/30',
   applied: 'bg-purple-500/10 text-purple-200 border-purple-500/30',

@@ -2,23 +2,6 @@ import type { ApplicationWritePayload, JobApplication } from '../../shared/types
 import { dateInputToApiDate, toDateInputValue } from '../../shared/utils/date.ts'
 import type { FormState } from './types.ts'
 
-export const filterApplications = (
-  applications: JobApplication[],
-  search: string,
-  statusFilter: FormState['status'] | 'all',
-): JobApplication[] => {
-  const query = search.trim().toLowerCase()
-  return applications.filter((application) => {
-    const matchesStatus = statusFilter === 'all' || application.status === statusFilter
-    const matchesSearch =
-      !query ||
-      application.company_name.toLowerCase().includes(query) ||
-      (application.role_title?.toLowerCase().includes(query) ?? false) ||
-      (application.source ?? '').toLowerCase().includes(query)
-    return matchesStatus && matchesSearch
-  })
-}
-
 export const applicationToFormState = (application: JobApplication): FormState => ({
   company_name: application.company_name,
   role_title: application.role_title ?? '',

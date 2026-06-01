@@ -88,10 +88,13 @@ class GmailClient:
             self._service = build("gmail", "v1", credentials=creds, cache_discovery=False)
         return self._service
 
+    # Maximum body text extracted per message (characters) to keep memory bounded.
+    BODY_SNIPPET_MAX_CHARS = 1000
+
     def fetch_recent_messages(self) -> list[dict]:
         try:
             service = self._get_service()
-            query = self._date_query()
+            query = self._build_query()
             messages: list[dict] = []
             page_token: Optional[str] = None
 
@@ -123,13 +126,10 @@ class GmailClient:
             raise
 
     def _fetch_message_details(self, service, message_ids: list[str]) -> list[dict]:
-        """Batch-fetch message metadata in chunks of 100 (Gmail batch API limit).
+        """Batch-fetch messages with full payload so body text can be extracted.
 
-        Each batch costs 1 HTTP round-trip instead of 1 per message,
-        reducing 1000 sequential calls to ~10 batch calls.
-
-        Any messages that fail due to transient 429 rate-limit errors are
-        retried once with a short backoff before being silently skipped.
+        Each batch costs 1 HTTP round-trip instead of 1 per message.
+        Any messages that fail due to 429 rate-limit errors are retried once.
         """
         batch_size = self.batch_size
         fetched: dict[str, dict] = {}
@@ -144,22 +144,24 @@ class GmailClient:
                 return
             fetched[request_id] = self._parse_message(response)
 
+        def _add_to_batch(batch, msg_id: str) -> None:
+            batch.add(
+                service.users()
+                .messages()
+                .get(
+                    userId=self._user_id,
+                    id=msg_id,
+                    format="full",
+                    fields="id,snippet,payload(headers,body,parts)",
+                ),
+                request_id=msg_id,
+            )
+
         for i in range(0, len(message_ids), batch_size):
             chunk = message_ids[i : i + batch_size]
             batch = service.new_batch_http_request(callback=_callback)
             for msg_id in chunk:
-                batch.add(
-                    service.users()
-                    .messages()
-                    .get(
-                        userId=self._user_id,
-                        id=msg_id,
-                        format="metadata",
-                        metadataHeaders=["Subject", "From", "Date"],
-                        fields="id,payload/headers,snippet",
-                    ),
-                    request_id=msg_id,
-                )
+                _add_to_batch(batch, msg_id)
             batch.execute()
 
         if failed_ids:
@@ -169,27 +171,38 @@ class GmailClient:
                 retry_chunk = failed_ids[i : i + batch_size]
                 retry_batch = service.new_batch_http_request(callback=_callback)
                 for msg_id in retry_chunk:
-                    retry_batch.add(
-                        service.users()
-                        .messages()
-                        .get(
-                            userId=self._user_id,
-                            id=msg_id,
-                            format="metadata",
-                            metadataHeaders=["Subject", "From", "Date"],
-                            fields="id,payload/headers,snippet",
-                        ),
-                        request_id=msg_id,
-                    )
+                    _add_to_batch(retry_batch, msg_id)
                 retry_batch.execute()
 
         # Return in original order, skipping any that permanently errored
         return [fetched[mid] for mid in message_ids if mid in fetched]
 
-    def _date_query(self) -> str:
+    def _build_query(self) -> str:
+        """Build a Gmail search query that targets job/application emails.
+
+        Searching at the Gmail API level means we only fetch messages that are
+        likely job-related, so max_messages budget is spent effectively even in
+        a busy inbox rather than pulling generic mail and filtering locally.
+        """
         after_date = dt.date.today() - dt.timedelta(days=self.query_window_days)
-        return (
-            f"after:{after_date.isoformat()}"
+        job_terms = " OR ".join([
+            "application",
+            "applied",
+            "interview",
+            "recruiter",
+            "hiring",
+            "candidate",
+            "role",
+            "position",
+            "rejection",
+            "offer",
+            "assessment",
+            '"thank you for applying"',
+            '"we received your application"',
+            '"not moving forward"',
+            '"next steps"',
+        ])
+        exclusions = (
             ' -subject:"wants to connect"'
             ' -subject:"accepted your invitation"'
             ' -subject:"joined your network"'
@@ -198,24 +211,69 @@ class GmailClient:
             ' -from:connected@linkedin.com'
             ' -from:invitations@linkedin.com'
         )
+        return f"after:{after_date.isoformat()} ({job_terms}){exclusions}"
 
     def _parse_message(self, msg: dict) -> dict:
+        payload = msg.get("payload", {})
         headers = {
             h["name"].lower(): h.get("value")
-            for h in msg.get("payload", {}).get("headers", [])
+            for h in payload.get("headers", [])
         }
         subject = headers.get("subject")
         sender = headers.get("from")
         date_raw = headers.get("date")
         received_at = self._parse_date(date_raw)
         snippet = msg.get("snippet")
+        body_text = self._extract_body_text(payload)
         return {
             "gmail_message_id": msg.get("id"),
             "subject": subject,
             "sender": sender,
             "received_at": received_at,
             "snippet": snippet,
+            "body_text": body_text,
         }
+
+    def _extract_body_text(self, payload: dict) -> Optional[str]:
+        """Extract a plain-text body snippet from a Gmail message payload.
+
+        Walks the MIME tree preferring text/plain. Falls back to text/html
+        with tags stripped. Returns at most BODY_SNIPPET_MAX_CHARS characters.
+        """
+        import base64
+
+        def _decode(data: str) -> str:
+            try:
+                return base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace")
+            except Exception:
+                return ""
+
+        def _collect(part: dict) -> Optional[str]:
+            mime = part.get("mimeType", "")
+            body = part.get("body", {})
+            data = body.get("data")
+
+            if mime == "text/plain" and data:
+                return _decode(data)
+
+            if mime == "text/html" and data:
+                text = _decode(data)
+                # Strip HTML tags minimally — no extra deps needed.
+                text = re.sub(r"<[^>]+>", " ", text)
+                text = re.sub(r"\s+", " ", text).strip()
+                return text
+
+            for sub in part.get("parts", []):
+                result = _collect(sub)
+                if result:
+                    return result
+
+            return None
+
+        text = _collect(payload)
+        if not text:
+            return None
+        return text[: self.BODY_SNIPPET_MAX_CHARS]
 
     @staticmethod
     def _parse_date(date_str: str | None) -> dt.datetime:

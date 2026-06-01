@@ -1,10 +1,12 @@
 import axios from 'axios'
 import type {
   ApplicationWritePayload,
+  CompanySummaryPage,
   JobApplication,
   JobApplicationPage,
   EmailReferencePage,
   DashboardStatsResponse,
+  PipelineResponse,
   ScanRun,
 } from '../shared/types/job-tracker.ts'
 
@@ -27,6 +29,15 @@ apiClient.interceptors.response.use(
   },
 )
 
+export type ApplicationSortField =
+  | 'last_email_at'
+  | 'created_at'
+  | 'updated_at'
+  | 'applied_at'
+  | 'company_name'
+  | 'role_title'
+  | 'status'
+
 export const fetchApplication = (id: number): Promise<JobApplication> =>
   apiClient.get<JobApplication>(`/job-tracker/applications/${id}`).then((r) => r.data)
 
@@ -35,7 +46,7 @@ export const fetchApplications = (params?: {
   offset?: number
   status?: string
   search?: string
-  sort?: string
+  sort?: ApplicationSortField
 }): Promise<JobApplicationPage> =>
   apiClient.get<JobApplicationPage>('/job-tracker/applications', { params }).then((r) => r.data)
 
@@ -77,3 +88,13 @@ export const unassignEmail = (applicationId: number, emailId: number): Promise<v
   apiClient
     .delete(`/job-tracker/applications/${applicationId}/emails/${emailId}`)
     .then(() => undefined)
+
+export const fetchPipeline = (): Promise<PipelineResponse> =>
+  apiClient.get<PipelineResponse>('/job-tracker/applications/pipeline').then((r) => r.data)
+
+export const fetchCompaniesSummary = (params?: {
+  search?: string
+  limit?: number
+  offset?: number
+}): Promise<CompanySummaryPage> =>
+  apiClient.get<CompanySummaryPage>('/job-tracker/companies/summary', { params }).then((r) => r.data)

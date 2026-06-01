@@ -95,3 +95,4 @@ class JobApplicationRead(BaseModel):
 class JobApplicationPage(BaseModel):
     total: int
     items: list[JobApplicationRead]
+

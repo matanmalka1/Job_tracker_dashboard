@@ -83,15 +83,20 @@ class JobApplicationRepository:
             search_filter = or_(
                 JobApplication.company_name.ilike(pattern),
                 JobApplication.role_title.ilike(pattern),
+                JobApplication.source.ilike(pattern),
+                JobApplication.job_url.ilike(pattern),
             )
             query = query.where(search_filter)
             count_query = count_query.where(search_filter)
 
         _sort_map = {
             "updated_at": JobApplication.updated_at.desc(),
+            "created_at": JobApplication.created_at.desc(),
             "applied_at": JobApplication.applied_at.desc().nulls_last(),
             "last_email_at": JobApplication.last_email_at.desc().nulls_last(),
             "company_name": JobApplication.company_name.asc(),
+            "role_title": JobApplication.role_title.asc().nulls_last(),
+            "status": JobApplication.status.asc(),
         }
         sort_col = _sort_map.get(sort or "", JobApplication.last_email_at.desc().nulls_last())
 
@@ -101,34 +106,20 @@ class JobApplicationRepository:
         )
         return list(result.scalars().all()), total or 0
 
-    async def get_stats(self) -> dict:
-        """Return aggregated stats: total, counts by status, reply_rate."""
+    async def count_by_status(self) -> list[tuple[ApplicationStatus, int]]:
+        """Return application counts grouped by status."""
         status_result = await self.session.execute(
             select(JobApplication.status, func.count().label("cnt"))
             .group_by(JobApplication.status)
         )
-        by_status: dict[str, int] = {s.value: 0 for s in ApplicationStatus}
-        total = 0
-        for row in status_result.all():
-            key = row[0].value if isinstance(row[0], ApplicationStatus) else str(row[0])
-            if key in by_status:
-                by_status[key] = row[1]
-                total += row[1]
+        return [(row[0], row[1]) for row in status_result.all()]
 
-        responded_statuses = [
-            ApplicationStatus.INTERVIEWING,
-            ApplicationStatus.OFFER,
-            ApplicationStatus.HIRED,
-            ApplicationStatus.REJECTED,
-        ]
-        apps_with_response = await self.session.scalar(
+    async def count_by_statuses(self, statuses: list[ApplicationStatus]) -> int:
+        return await self.session.scalar(
             select(func.count())
             .select_from(JobApplication)
-            .where(JobApplication.status.in_(responded_statuses))
-        )
-        reply_rate = (apps_with_response / total * 100) if total > 0 else 0.0
-
-        return {"total": total, "by_status": by_status, "reply_rate": round(reply_rate, 1)}
+            .where(JobApplication.status.in_(statuses))
+        ) or 0
 
     async def list_all(self) -> list[JobApplication]:
         result = await self.session.execute(select(JobApplication))
@@ -169,3 +160,60 @@ class JobApplicationRepository:
             .where(JobApplication.id == application_id)
             .values(last_email_at=value)
         )
+
+    async def list_pipeline(self) -> list[JobApplication]:
+        """Return all applications with minimal fields, ordered by last_email_at desc.
+        Groups are assembled by the service/route layer."""
+        result = await self.session.execute(
+            select(JobApplication)
+            .options(selectinload(JobApplication.emails))
+            .order_by(JobApplication.last_email_at.desc().nulls_last(), JobApplication.id.desc())
+        )
+        return list(result.scalars().all())
+
+    async def list_company_summary_page(
+        self,
+        search: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[dict], list[dict], int]:
+        """Return company aggregate rows and per-status count rows for one page."""
+        base_q = select(JobApplication.company_name)
+        if search:
+            base_q = base_q.where(JobApplication.company_name.ilike(f"%{search}%"))
+
+        count_q = select(func.count()).select_from(
+            base_q.distinct().subquery()
+        )
+        total = await self.session.scalar(count_q) or 0
+
+        page_q = (
+            select(
+                JobApplication.company_name.label("company_name"),
+                func.count(JobApplication.id).label("application_count"),
+                func.max(JobApplication.updated_at).label("latest_activity"),
+            )
+            .group_by(JobApplication.company_name)
+        )
+        if search:
+            page_q = page_q.where(JobApplication.company_name.ilike(f"%{search}%"))
+        page_q = page_q.order_by(func.max(JobApplication.updated_at).desc()).limit(limit).offset(offset)
+
+        company_result = await self.session.execute(page_q)
+        company_rows = [dict(row._mapping) for row in company_result.all()]
+        company_names = [row["company_name"] for row in company_rows]
+        if not company_names:
+            return [], [], total
+
+        status_q = (
+            select(
+                JobApplication.company_name.label("company_name"),
+                JobApplication.status.label("status"),
+                func.count(JobApplication.id).label("count"),
+            )
+            .where(JobApplication.company_name.in_(company_names))
+            .group_by(JobApplication.company_name, JobApplication.status)
+        )
+        status_result = await self.session.execute(status_q)
+        status_rows = [dict(row._mapping) for row in status_result.all()]
+        return company_rows, status_rows, total

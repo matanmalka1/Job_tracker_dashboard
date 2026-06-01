@@ -33,11 +33,14 @@ interface SidebarProps {
 
 const Sidebar = ({ onNavClick }: SidebarProps) => (
   <aside className="w-60 min-h-screen bg-[#1a1a24] flex flex-col py-6 px-3 shrink-0">
-    <div className="px-3 mb-8">
-      <h1 className="text-white text-lg font-bold tracking-tight">
-        Job<span className="text-purple-500">Tracker</span>
-      </h1>
-      <p className="text-gray-500 text-xs mt-0.5">Application Dashboard</p>
+    <div className="px-3 mb-8 flex items-center gap-3">
+      <img src="/logo.svg" alt="" className="h-10 w-10 shrink-0" />
+      <div>
+        <h1 className="text-white text-lg font-bold tracking-tight">
+          Job<span className="text-purple-500">Tracker</span>
+        </h1>
+        <p className="text-gray-500 text-xs mt-0.5">Application Dashboard</p>
+      </div>
     </div>
 
     <nav className="flex flex-col gap-1">
