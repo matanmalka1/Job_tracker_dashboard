@@ -69,6 +69,14 @@ export interface ScanRun {
   error?: string
 }
 
+export interface EventLogLine {
+  id: number
+  stage: string
+  detail: string
+  ts: number
+  type: 'info' | 'success' | 'error' | 'warn'
+}
+
 export interface ApplicationWritePayload {
   company_name: string
   role_title?: string | null

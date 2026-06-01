@@ -1,12 +1,34 @@
 import { useEffect, useRef } from 'react'
-import { LOG_TYPE_COLOR, SCAN_STAGE_COLOR } from '../../../shared/constants/scan.ts'
-import type { LogLine } from '../types.ts'
+import type { ReactNode } from 'react'
+import { LOG_TYPE_COLOR, SCAN_STAGE_COLOR } from '../../constants/scan.ts'
+import type { EventLogLine } from '../../types/job-tracker.ts'
 
-const Terminal = ({ lines, scanning }: { lines: LogLine[]; scanning: boolean }) => {
+interface EventTerminalProps {
+  lines: EventLogLine[]
+  live: boolean
+  autoScroll?: boolean
+  title?: string
+  emptyText?: string
+  maxHeight?: number
+  minHeight?: number
+  headerRight?: ReactNode
+}
+
+const EventTerminal = ({
+  lines,
+  live,
+  autoScroll = true,
+  title = 'scan_output',
+  emptyText = '_',
+  maxHeight = 220,
+  minHeight = 140,
+  headerRight,
+}: EventTerminalProps) => {
   const bottomRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [lines])
+    if (autoScroll) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [autoScroll, lines])
 
   return (
     <div
@@ -22,26 +44,27 @@ const Terminal = ({ lines, scanning }: { lines: LogLine[]; scanning: boolean }) 
           <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
           <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
         </div>
-        <span className="ml-2 font-mono text-[10px] text-gray-700 tracking-wider">scan_output</span>
-        {scanning && (
+        <span className="ml-2 font-mono text-[10px] text-gray-700 tracking-wider">{title}</span>
+        {live && (
           <div className="ml-auto flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             <span className="font-mono text-[10px] text-green-500 tracking-widest">LIVE</span>
           </div>
         )}
+        {headerRight && <div className={live ? 'ml-2' : 'ml-auto'}>{headerRight}</div>}
       </div>
 
       <div
         className="p-4 overflow-y-auto space-y-1.5"
         style={{
-          minHeight: 140,
-          maxHeight: 220,
+          minHeight,
+          maxHeight,
           fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", monospace',
         }}
       >
         {lines.length === 0 ? (
           <div className="text-[11px] text-gray-700">
-            {'> '}<span className="animate-pulse">_</span>
+            {'> '}<span className="animate-pulse">{emptyText}</span>
           </div>
         ) : (
           lines.map((line) => (
@@ -65,7 +88,7 @@ const Terminal = ({ lines, scanning }: { lines: LogLine[]; scanning: boolean }) 
             </div>
           ))
         )}
-        {scanning && (
+        {live && (
           <div className="text-[11px] text-gray-700 font-mono">
             {'> '}<span className="animate-pulse">▋</span>
           </div>
@@ -76,4 +99,4 @@ const Terminal = ({ lines, scanning }: { lines: LogLine[]; scanning: boolean }) 
   )
 }
 
-export default Terminal
+export default EventTerminal

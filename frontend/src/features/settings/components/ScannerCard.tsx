@@ -1,7 +1,7 @@
 import { CheckCircle2, Clock, Mail, XCircle } from 'lucide-react'
+import EventTerminal from '../../../shared/components/feedback/EventTerminal.tsx'
 import RadarCanvas from './RadarCanvas.tsx'
 import StageNodes from './StageNodes.tsx'
-import Terminal from './Terminal.tsx'
 import { HistoryPlaceholder } from './HistoryRow.tsx'
 import type { Blip, LogLine, ScanResultState } from '../types.ts'
 import { formatRelativeTime } from '../../../shared/utils/date.ts'
@@ -198,7 +198,7 @@ const ScannerCard = ({
             <StageNodes currentStage={currentStage} completedStages={completedStages} scanning={scanning} />
           </div>
 
-          {hasScanState && <Terminal lines={logLines} scanning={scanning} />}
+          {hasScanState && <EventTerminal lines={logLines} live={scanning} />}
 
           {done && result && !scanError && (
             <div

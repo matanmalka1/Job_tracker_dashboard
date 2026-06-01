@@ -1,170 +1,38 @@
-import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import {
-  fetchApplications,
-  createApplication,
-  updateApplication,
-  deleteApplication,
-} from '../../../api/client.ts'
-import type { ApplicationStatus, ApplicationWritePayload, JobApplication } from '../../../shared/types/job-tracker.ts'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
-import ApplicationModal from '../components/ApplicationModal.tsx'
 import ConfirmDialog from '../../../shared/components/feedback/ConfirmDialog.tsx'
+import ApplicationModal from '../components/ApplicationModal.tsx'
 import ApplicationsHeader from '../components/ApplicationsHeader.tsx'
-import SearchAndFilters from '../components/SearchAndFilters.tsx'
 import ApplicationsTable from '../components/ApplicationsTable.tsx'
 import PaginationBar from '../components/PaginationBar.tsx'
+import SearchAndFilters from '../components/SearchAndFilters.tsx'
+import { PAGE_SIZE, useApplicationsPage } from '../hooks/useApplicationsPage.ts'
 import { exportCsv } from '../utils.ts'
-
-const PAGE_SIZE = 25
-const SEARCH_DEBOUNCE_MS = 300
 
 const ApplicationsPage = () => {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'all'>('all')
-  const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [page, setPage] = useState(0)
-  const [addOpen, setAddOpen] = useState(false)
-  const [editApp, setEditApp] = useState<JobApplication | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<JobApplication | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
-
-  useEffect(() => {
-    const timeout = window.setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS)
-    return () => window.clearTimeout(timeout)
-  }, [search])
-
-  const onSearchChange = (value: string) => {
-    setSearch(value)
-    setPage(0)
-  }
-
-  const queryParams = useMemo(
-    () => ({
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
-      status: statusFilter !== 'all' ? statusFilter : undefined,
-      search: debouncedSearch || undefined,
-      sort: 'last_email_at' as const,
-    }),
-    [debouncedSearch, page, statusFilter],
-  )
-
-  const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ['applications', 'list', queryParams],
-    queryFn: () => fetchApplications(queryParams),
-    placeholderData: (prev) => prev,
-  })
-
-  const { mutate: addApp, isPending: addPending } = useMutation({
-    mutationFn: createApplication,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['applications'] })
-      queryClient.invalidateQueries({ queryKey: ['stats'] })
-      toast.success('Application added')
-      setAddOpen(false)
-    },
-    onError: (err: Error) => toast.error(err.message),
-  })
-
-  const { mutate: editMutate, isPending: editPending } = useMutation({
-    mutationFn: (body: Partial<ApplicationWritePayload>) => {
-      if (!editApp) return Promise.reject(new Error('No application selected'))
-      return updateApplication(editApp.id, body)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['applications'] })
-      queryClient.invalidateQueries({ queryKey: ['stats'] })
-      toast.success('Application updated')
-      setEditApp(null)
-    },
-    onError: (err: Error) => toast.error(err.message),
-  })
-
-  const { mutate: deleteMutate, isPending: deletePending } = useMutation({
-    mutationFn: (id: number) => deleteApplication(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['applications'] })
-      queryClient.invalidateQueries({ queryKey: ['stats'] })
-      toast.success('Application deleted')
-      setDeleteTarget(null)
-    },
-    onError: (err: Error) => toast.error(err.message),
-  })
-
-  const { mutate: bulkDelete, isPending: bulkPending } = useMutation({
-    mutationFn: async (ids: number[]) => Promise.all(ids.map((id) => deleteApplication(id))),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['applications'] })
-      queryClient.invalidateQueries({ queryKey: ['stats'] })
-      toast.success(`${selectedIds.size} applications deleted`)
-      setSelectedIds(new Set())
-      setBulkDeleteOpen(false)
-    },
-    onError: (err: Error) => toast.error(err.message),
-  })
-
-  const applications = data?.items ?? []
-  const total = data?.total ?? 0
-  const totalPages = Math.ceil(total / PAGE_SIZE)
-
-  const allOnPageSelected = applications.length > 0 && applications.every((a) => selectedIds.has(a.id))
-
-  const toggleSelectAll = () => {
-    if (allOnPageSelected) {
-      setSelectedIds((prev) => {
-        const next = new Set(prev)
-        applications.forEach((a) => next.delete(a.id))
-        return next
-      })
-    } else {
-      setSelectedIds((prev) => {
-        const next = new Set(prev)
-        applications.forEach((a) => next.add(a.id))
-        return next
-      })
-    }
-  }
-
-  const toggleSelect = (id: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  const changeFilter = (f: ApplicationStatus | 'all') => {
-    setStatusFilter(f)
-    setPage(0)
-    setSelectedIds(new Set())
-  }
+  const page = useApplicationsPage()
+  const { isLoading, isError, isFetching } = page.applicationsQuery
 
   return (
     <div className="space-y-6">
       <ApplicationsHeader
-        total={total}
-        selectedCount={selectedIds.size}
-        onBulkDelete={() => setBulkDeleteOpen(true)}
-        onExport={() => exportCsv(applications)}
-        onAdd={() => setAddOpen(true)}
-        disableExport={applications.length === 0}
+        total={page.total}
+        selectedCount={page.selectedIds.size}
+        onBulkDelete={() => page.setBulkDeleteOpen(true)}
+        onExport={() => exportCsv(page.applications)}
+        onAdd={() => page.setAddOpen(true)}
+        disableExport={page.applications.length === 0}
       />
 
       <SearchAndFilters
-        search={search}
-        onSearchChange={onSearchChange}
-        statusFilter={statusFilter}
-        onStatusChange={changeFilter}
+        search={page.search}
+        onSearchChange={page.setSearchAndResetPage}
+        statusFilter={page.statusFilter}
+        onStatusChange={page.changeFilter}
       />
 
-      {isLoading && <LoadingSpinner size="lg" message="Loading applications…" />}
+      {isLoading && <LoadingSpinner size="lg" message="Loading applications..." />}
 
       {isError && (
         <div className="bg-[#1a1a24] rounded-xl p-8 border border-white/5 text-center">
@@ -174,45 +42,64 @@ const ApplicationsPage = () => {
 
       {!isLoading && !isError && (
         <ApplicationsTable
-          applications={applications}
-          selectedIds={selectedIds}
-          allOnPageSelected={allOnPageSelected}
-          onToggleSelectAll={toggleSelectAll}
-          onToggleSelect={toggleSelect}
-          onEdit={setEditApp}
-          onDelete={setDeleteTarget}
+          applications={page.applications}
+          selectedIds={page.selectedIds}
+          allOnPageSelected={page.allOnPageSelected}
+          onToggleSelectAll={page.toggleSelectAll}
+          onToggleSelect={page.toggleSelect}
+          onEdit={page.setEditApp}
+          onDelete={page.setDeleteTarget}
           onRowClick={(id) => navigate(`/applications/${id}`)}
           dimmed={isFetching}
         />
       )}
 
       {!isLoading && !isError && (
-        <PaginationBar page={page} totalPages={totalPages} total={total} pageSize={PAGE_SIZE} onPageChange={setPage} />
+        <PaginationBar
+          page={page.page}
+          totalPages={page.totalPages}
+          total={page.total}
+          pageSize={PAGE_SIZE}
+          onPageChange={page.setPage}
+        />
       )}
 
-      <ApplicationModal open={addOpen} onClose={() => setAddOpen(false)} onSubmit={(data) => addApp(data)} loading={addPending} />
+      <ApplicationModal
+        open={page.addOpen}
+        onClose={() => page.setAddOpen(false)}
+        onSubmit={(data) => page.addMutation.mutate(data)}
+        loading={page.addMutation.isPending}
+      />
 
-      <ApplicationModal open={!!editApp} initial={editApp} onClose={() => setEditApp(null)} onSubmit={(data) => editMutate(data)} loading={editPending} />
-
-      <ConfirmDialog
-        open={!!deleteTarget}
-        title="Delete Application"
-        description={
-          deleteTarget ? `Delete ${deleteTarget.company_name} — ${deleteTarget.role_title ?? 'Unknown Role'}? This cannot be undone.` : ''
-        }
-        onConfirm={() => deleteTarget && deleteMutate(deleteTarget.id)}
-        onCancel={() => setDeleteTarget(null)}
-        loading={deletePending}
+      <ApplicationModal
+        open={!!page.editApp}
+        initial={page.editApp}
+        onClose={() => page.setEditApp(null)}
+        onSubmit={(data) => page.editMutation.mutate(data)}
+        loading={page.editMutation.isPending}
       />
 
       <ConfirmDialog
-        open={bulkDeleteOpen}
-        title={`Delete ${selectedIds.size} Applications`}
-        description={`This will permanently delete ${selectedIds.size} application${selectedIds.size !== 1 ? 's' : ''}. This cannot be undone.`}
-        confirmLabel={`Delete ${selectedIds.size}`}
-        onConfirm={() => bulkDelete(Array.from(selectedIds))}
-        onCancel={() => setBulkDeleteOpen(false)}
-        loading={bulkPending}
+        open={!!page.deleteTarget}
+        title="Delete Application"
+        description={
+          page.deleteTarget
+            ? `Delete ${page.deleteTarget.company_name} - ${page.deleteTarget.role_title ?? 'Unknown Role'}? This cannot be undone.`
+            : ''
+        }
+        onConfirm={() => page.deleteTarget && page.deleteMutation.mutate(page.deleteTarget.id)}
+        onCancel={() => page.setDeleteTarget(null)}
+        loading={page.deleteMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={page.bulkDeleteOpen}
+        title={`Delete ${page.selectedIds.size} Applications`}
+        description={`This will permanently delete ${page.selectedIds.size} application${page.selectedIds.size !== 1 ? 's' : ''}. This cannot be undone.`}
+        confirmLabel={`Delete ${page.selectedIds.size}`}
+        onConfirm={() => page.bulkDeleteMutation.mutate(Array.from(page.selectedIds))}
+        onCancel={() => page.setBulkDeleteOpen(false)}
+        loading={page.bulkDeleteMutation.isPending}
       />
     </div>
   )

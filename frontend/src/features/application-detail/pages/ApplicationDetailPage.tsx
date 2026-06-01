@@ -1,10 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Mail } from 'lucide-react'
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { fetchApplication, updateApplication, deleteApplication } from '../../../api/client.ts'
-import type { ApplicationStatus, ApplicationWritePayload } from '../../../shared/types/job-tracker.ts'
+import { fetchApplication } from '../../../api/client.ts'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
 import SlideOver from '../../../shared/components/ui/SlideOver.tsx'
 import ConfirmDialog from '../../../shared/components/feedback/ConfirmDialog.tsx'
@@ -14,20 +11,11 @@ import ApplicationMetaSection from '../components/ApplicationMetaSection.tsx'
 import EmailThread from '../components/EmailThread.tsx'
 import ActivityTimeline from '../components/ActivityTimeline.tsx'
 import EditApplicationForm from '../components/EditApplicationForm.tsx'
-import {
-  applicationToFormState,
-  formStateToApplicationPayload,
-  type ApplicationFormState,
-} from '../../../shared/utils/jobApplicationForm.ts'
+import { useApplicationDetailActions } from '../hooks/useApplicationDetailActions.ts'
 
 const ApplicationDetailPage = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [editOpen, setEditOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [editForm, setEditForm] = useState<ApplicationFormState | null>(null)
-
   const appId = Number(id)
 
   const { data: app, isLoading, isError } = useQuery({
@@ -36,54 +24,7 @@ const ApplicationDetailPage = () => {
     enabled: !isNaN(appId) && appId > 0,
   })
 
-  const { mutate: editMutate, isPending: editPending } = useMutation({
-    mutationFn: (body: Partial<ApplicationWritePayload>) => updateApplication(appId, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['applications'] })
-      queryClient.invalidateQueries({ queryKey: ['stats'] })
-      toast.success('Application updated')
-      setEditOpen(false)
-    },
-    onError: (err: Error) => toast.error(err.message),
-  })
-
-  const { mutate: deleteMutate, isPending: deletePending } = useMutation({
-    mutationFn: () => deleteApplication(appId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['applications'] })
-      queryClient.invalidateQueries({ queryKey: ['stats'] })
-      toast.success('Application deleted')
-      navigate('/applications')
-    },
-    onError: (err: Error) => toast.error(err.message),
-  })
-
-  const { mutate: changeStatus } = useMutation({
-    mutationFn: (status: ApplicationStatus) => updateApplication(appId, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['applications'] })
-      queryClient.invalidateQueries({ queryKey: ['stats'] })
-      toast.success('Status updated')
-    },
-    onError: (err: Error) => toast.error(err.message),
-  })
-
-  const openEdit = () => {
-    if (!app) return
-    setEditForm(applicationToFormState(app))
-    setEditOpen(true)
-  }
-
-  const handleEditSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editForm) return
-    editMutate(formStateToApplicationPayload(editForm))
-  }
-
-  const setEditField =
-    (key: keyof ApplicationFormState) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-      setEditForm((prev) => (prev ? { ...prev, [key]: e.target.value } : prev))
+  const actions = useApplicationDetailActions(appId, app)
 
   if (isLoading) {
     return (
@@ -120,7 +61,12 @@ const ApplicationDetailPage = () => {
         Back to Applications
       </button>
 
-      <DetailHeader app={app} onEdit={openEdit} onDelete={() => setDeleteOpen(true)} onChangeStatus={changeStatus} />
+      <DetailHeader
+        app={app}
+        onEdit={actions.openEdit}
+        onDelete={() => actions.setDeleteOpen(true)}
+        onChangeStatus={actions.changeStatus}
+      />
       <ApplicationStatsGrid app={app} />
       <ApplicationMetaSection app={app} />
 
@@ -137,25 +83,25 @@ const ApplicationDetailPage = () => {
 
       <ActivityTimeline app={app} />
 
-      <SlideOver open={editOpen} title="Edit Application" onClose={() => setEditOpen(false)}>
-        {editForm && (
+      <SlideOver open={actions.editOpen} title="Edit Application" onClose={() => actions.setEditOpen(false)}>
+        {actions.editForm && (
           <EditApplicationForm
-            form={editForm}
-            onChange={setEditField}
-            onSubmit={handleEditSubmit}
-            onCancel={() => setEditOpen(false)}
-            loading={editPending}
+            form={actions.editForm}
+            onChange={actions.setEditField}
+            onSubmit={actions.submitEdit}
+            onCancel={() => actions.setEditOpen(false)}
+            loading={actions.editPending}
           />
         )}
       </SlideOver>
 
       <ConfirmDialog
-        open={deleteOpen}
+        open={actions.deleteOpen}
         title="Delete Application"
         description={`Are you sure you want to delete ${app.company_name} — ${app.role_title ?? 'this application'}? This cannot be undone.`}
-        onConfirm={() => deleteMutate()}
-        onCancel={() => setDeleteOpen(false)}
-        loading={deletePending}
+        onConfirm={() => actions.submitDelete()}
+        onCancel={() => actions.setDeleteOpen(false)}
+        loading={actions.deletePending}
       />
     </div>
   )
