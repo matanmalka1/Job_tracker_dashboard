@@ -1,12 +1,16 @@
 from functools import lru_cache
+import os
 from typing import Any
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file_encoding="utf-8", extra="ignore")
+
+    # ── Runtime ───────────────────────────────────────────────────────────────
+    APP_ENV: str = "development"
 
     # ── Database ──────────────────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/job_dashboard"
@@ -58,7 +62,21 @@ class Settings(BaseSettings):
             return value.replace("postgresql://", "postgresql+asyncpg://", 1)
         return value
 
+    @model_validator(mode="after")
+    def validate_production_database(self) -> "Settings":
+        if self.APP_ENV.lower() == "production" and self.DATABASE_URL.startswith("sqlite"):
+            raise ValueError("Production DATABASE_URL must point to PostgreSQL, not SQLite.")
+        return self
+
+
+def _settings_env_file() -> str | None:
+    if env_file := os.environ.get("ENV_FILE"):
+        return env_file
+    if os.environ.get("APP_ENV", "development").lower() == "production":
+        return None
+    return ".env"
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    return Settings(_env_file=_settings_env_file())
