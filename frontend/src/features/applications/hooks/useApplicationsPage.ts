@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
+  bulkDeleteApplications,
   createApplication,
   deleteApplication,
   fetchApplications,
@@ -90,7 +91,7 @@ export const useApplicationsPage = () => {
   })
 
   const bulkDeleteMutation = useMutation({
-    mutationFn: async (ids: number[]) => Promise.all(ids.map((id) => deleteApplication(id))),
+    mutationFn: (ids: number[]) => bulkDeleteApplications(ids),
     onSuccess: (_, ids) => {
       if (page > 0 && ids.length >= applications.length) setPage((p) => p - 1)
       invalidateApplicationData()

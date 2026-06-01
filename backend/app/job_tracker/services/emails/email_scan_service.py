@@ -72,6 +72,9 @@ class EmailScanService:
         if self.scan_run_repo is not None:
             try:
                 run = await self.scan_run_repo.create()
+                # Commit immediately so ScanRun survives any later session.rollback()
+                # (e.g. concurrent duplicate email insert in bulk_create).
+                await self.scan_run_repo.session.commit()
                 scan_run_id = run.id
             except Exception:
                 logger.warning("Could not record scan run start", exc_info=True)

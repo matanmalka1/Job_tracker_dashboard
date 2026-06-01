@@ -93,6 +93,13 @@ export const updateApplication = (
 export const deleteApplication = (id: number): Promise<void> =>
   apiClient.delete(`/job-tracker/applications/${id}`).then(() => undefined)
 
+export const bulkDeleteApplications = (
+  ids: number[],
+): Promise<{ deleted: number; not_found: number[] }> =>
+  apiClient
+    .delete<{ deleted: number; not_found: number[] }>('/job-tracker/applications', { params: { ids } })
+    .then((r) => r.data)
+
 export const assignEmail = (applicationId: number, emailId: number): Promise<void> =>
   apiClient
     .post(`/job-tracker/applications/${applicationId}/emails/${emailId}`)

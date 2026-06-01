@@ -461,7 +461,8 @@ class TestExtendedSearchAndSort:
         response = await client.get("/job-tracker/applications?sort=status")
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] if "status" in data else True
+        statuses = [item["status"] for item in data["items"]]
+        assert statuses == sorted(statuses)
 
     async def test_invalid_sort_rejected(self, client):
         response = await client.get("/job-tracker/applications?sort=hacker_field")

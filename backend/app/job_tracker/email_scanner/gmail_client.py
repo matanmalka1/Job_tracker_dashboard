@@ -51,8 +51,9 @@ class GmailClient:
         if creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
-                # Persist refreshed token so the next startup doesn't need to re-auth
-                with open(self._token_file, "w") as fh:
+                # Persist refreshed token so the next startup doesn't need to re-auth.
+                # Use mode 600 (owner read/write only) to match the initial write in main.py.
+                with open(self._token_file, "w", opener=lambda p, f: os.open(p, f, 0o600)) as fh:
                     fh.write(creds.to_json())
                 logger.info("Gmail OAuth token refreshed and saved to %s", self._token_file)
             except RefreshError as exc:
