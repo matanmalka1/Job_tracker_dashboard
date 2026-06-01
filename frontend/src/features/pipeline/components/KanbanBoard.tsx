@@ -38,6 +38,8 @@ const KanbanBoard = ({ pipeline }: Props) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pipeline'] })
       queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['companies'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
       toast.success('Application moved')
     },
     onError: (err: Error) => {

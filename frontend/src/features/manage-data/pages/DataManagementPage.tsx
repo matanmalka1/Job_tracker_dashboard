@@ -66,6 +66,8 @@ const DataManagementPage = () => {
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['applications'] })
+    queryClient.invalidateQueries({ queryKey: ['pipeline'] })
+    queryClient.invalidateQueries({ queryKey: ['companies'] })
     queryClient.invalidateQueries({ queryKey: ['stats'] })
   }
 

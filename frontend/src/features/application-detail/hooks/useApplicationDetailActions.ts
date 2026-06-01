@@ -20,6 +20,8 @@ export const useApplicationDetailActions = (appId: number, app?: JobApplication)
 
   const invalidateApplicationData = () => {
     queryClient.invalidateQueries({ queryKey: ['applications'] })
+    queryClient.invalidateQueries({ queryKey: ['pipeline'] })
+    queryClient.invalidateQueries({ queryKey: ['companies'] })
     queryClient.invalidateQueries({ queryKey: ['stats'] })
   }
 

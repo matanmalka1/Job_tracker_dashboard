@@ -37,13 +37,6 @@ async def create_scan_stream_token(
     Tokens are single-use and expire after 30 seconds.
     """
     purge_expired_tokens()
-    allowed, retry_after = await acquire_scan_slot()
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"A scan was run recently. Retry in {int(retry_after)}s.",
-            headers={"Retry-After": str(int(retry_after))},
-        )
     return {"stream_token": issue_stream_token()}
 
 
@@ -97,6 +90,14 @@ async def scan_progress(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Valid stream_token required. Call POST /scan/token first.",
             )
+
+    allowed, retry_after = await acquire_scan_slot()
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"A scan was run recently. Retry in {int(retry_after)}s.",
+            headers={"Retry-After": str(int(retry_after))},
+        )
 
     client = make_gmail_client(settings)
     queue: asyncio.Queue = asyncio.Queue()

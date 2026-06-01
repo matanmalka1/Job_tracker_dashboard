@@ -54,6 +54,9 @@ const InterviewsPage = () => {
     }) => updateApplication(id, { status }),
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
       toast.success(
         status === "offer" ? "Moved to Offer!" : "Marked as Rejected",
       );

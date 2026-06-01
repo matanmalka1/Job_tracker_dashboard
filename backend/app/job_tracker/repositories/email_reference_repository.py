@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.job_tracker.models.email_reference import EmailReference
@@ -80,10 +81,9 @@ class EmailReferenceRepository:
             self.session.add_all(records)
             try:
                 await self.session.flush()
-            except Exception:
-                # Narrow catch: handle concurrent duplicate inserts that slip past
-                # the pre-check (e.g. two simultaneous scans). Roll back the flush
-                # only and return zero inserts — the rows already exist.
+            except IntegrityError:
+                # Handle concurrent duplicate inserts that slip past the
+                # pre-check (e.g. two simultaneous scans).
                 await self.session.rollback()
                 logger.warning(
                     "bulk_create flush failed (likely concurrent duplicate); returning 0 inserted",
