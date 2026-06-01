@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import select, func
@@ -21,6 +22,14 @@ class EmailReferenceRepository:
             select(EmailReference).where(
                 EmailReference.id == email_id,
                 EmailReference.application_id == application_id,
+            )
+        )
+
+    async def get_latest_received_at(self, application_id: int) -> Optional[datetime]:
+        """Return the max received_at of emails still linked to the application."""
+        return await self.session.scalar(
+            select(func.max(EmailReference.received_at)).where(
+                EmailReference.application_id == application_id
             )
         )
 

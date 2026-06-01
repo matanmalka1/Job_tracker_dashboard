@@ -9,9 +9,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/job_dashboard"
 
     # ── Gmail OAuth ───────────────────────────────────────────────────────────
-    GMAIL_SERVICE_ACCOUNT_FILE: str | None = None
-    GMAIL_DELEGATED_USER: str | None = None
     GMAIL_TOKEN_FILE: str | None = None
+    GMAIL_DELEGATED_USER: str | None = None  # mailbox to scan; None → "me"
 
     # ── Gmail fetch tuning ────────────────────────────────────────────────────
     GMAIL_QUERY_WINDOW_DAYS: int = 30

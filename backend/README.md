@@ -31,8 +31,14 @@ Create a `.env` (copy the table below). Then start PostgreSQL and create the dat
 
 ```bash
 psql -U postgres -c "CREATE DATABASE job_dashboard;"
-uvicorn app.main:app --reload   # tables auto-created on first start
+uvicorn app.main:app --reload   # tables + indexes auto-created on first start
 ```
+
+> **Existing local DB:** indexes on `job_applications.status` and `company_name` were added after initial setup. They are created automatically on a fresh DB via `Base.metadata.create_all`. If you have an existing DB, recreate it or add the indexes manually:
+> ```sql
+> CREATE INDEX IF NOT EXISTS ix_job_applications_status      ON job_applications (status);
+> CREATE INDEX IF NOT EXISTS ix_job_applications_company_name ON job_applications (company_name);
+> ```
 
 ## Configuration (`.env`)
 
@@ -40,7 +46,7 @@ uvicorn app.main:app --reload   # tables auto-created on first start
 |---|---|---|
 | `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@localhost:5432/job_dashboard` | SQLAlchemy async URL |
 | `GMAIL_TOKEN_FILE` | — | Path to `token.json` (OAuth user token) |
-| `GMAIL_DELEGATED_USER` | `None` | Mailbox to scan; defaults to `"me"` |
+| `GMAIL_DELEGATED_USER` | — | Mailbox to scan; omit to use `"me"` (your own inbox) |
 | `GMAIL_QUERY_WINDOW_DAYS` | `30` | Days back to search Gmail |
 | `GMAIL_MAX_MESSAGES` | `200` | Max messages fetched per scan |
 | `GMAIL_LIST_PAGE_SIZE` | `50` | Gmail API page size |
@@ -112,7 +118,7 @@ pytest scripts/test_all.py -v
 ```
 
 - Uses **in-memory SQLite** (no Postgres needed for tests)
-- 72 tests across ~15 test classes
+- 74 tests across ~15 test classes
 - No Gmail credentials needed — scan tests mock the client
 
 ## Troubleshooting

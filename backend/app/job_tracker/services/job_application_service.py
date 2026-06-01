@@ -1,9 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import select, func, update
-
 from app.job_tracker.models.job_application import ApplicationStatus, JobApplication
-from app.job_tracker.models.email_reference import EmailReference
 from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
 from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
 
@@ -20,7 +17,6 @@ class JobApplicationService:
     @property
     def _session(self):
         return self.app_repo.session
-
 
     async def create(self, data: dict) -> JobApplication:
         app = await self.app_repo.create(data)
@@ -82,16 +78,7 @@ class JobApplicationService:
             return False
 
         email.application_id = None
-
-        remaining_max = await self._session.scalar(
-            select(func.max(EmailReference.received_at)).where(
-                EmailReference.application_id == application_id
-            )
-        )
-        await self._session.execute(
-            update(JobApplication)
-            .where(JobApplication.id == application_id)
-            .values(last_email_at=remaining_max)
-        )
+        remaining_max = await self.email_repo.get_latest_received_at(application_id)
+        await self.app_repo.set_last_email_at(application_id, remaining_max)
         await self._session.commit()
         return True

@@ -144,6 +144,7 @@ class JobApplicationRepository:
         return list(result.scalars().all())
 
     async def update_last_email_at(self, application_id: int, received_at: datetime) -> None:
+        """Advance last_email_at only if received_at is more recent."""
         await self.session.execute(
             update(JobApplication)
             .where(JobApplication.id == application_id)
@@ -152,4 +153,12 @@ class JobApplicationRepository:
                 | (JobApplication.last_email_at < received_at)
             )
             .values(last_email_at=received_at)
+        )
+
+    async def set_last_email_at(self, application_id: int, value: datetime | None) -> None:
+        """Unconditionally set last_email_at (used after unlinking an email)."""
+        await self.session.execute(
+            update(JobApplication)
+            .where(JobApplication.id == application_id)
+            .values(last_email_at=value)
         )
