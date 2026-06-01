@@ -1,27 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Radio, Play, StopCircle, Trash2 } from 'lucide-react'
-
-// Same color maps as the Settings Terminal for consistency
-const STAGE_COLOR: Record<string, string> = {
-  fetching:  '#38bdf8',
-  filtering: '#818cf8',
-  saving:    '#34d399',
-  matching:  '#fb923c',
-  creating:  '#f472b6',
-  done:      '#34d399',
-  error:     '#f87171',
-  sys:       '#64748b',
-  system:    '#64748b',
-  result:    '#34d399',
-  event:     '#94a3b8',
-}
-
-const LEVEL_COLOR: Record<string, string> = {
-  info:    '#94a3b8',
-  success: '#34d399',
-  error:   '#f87171',
-  warn:    '#fb923c',
-}
+import { LOG_TYPE_COLOR, SCAN_STAGE_COLOR } from '../../../shared/constants/scan.ts'
 
 const PRESETS = [
   { label: 'Scan progress', url: '/job-tracker/scan/progress' },
@@ -277,11 +256,11 @@ const LiveLoggerPage = () => {
                       </span>
                       <span
                         className="shrink-0 w-[5.5ch] text-right font-bold uppercase tracking-wider select-none"
-                        style={{ color: STAGE_COLOR[line.stage] ?? '#475569' }}
+                        style={{ color: SCAN_STAGE_COLOR[line.stage] ?? '#475569' }}
                       >
                         {line.stage.slice(0, 5)}
                       </span>
-                      <span style={{ color: LEVEL_COLOR[line.level] ?? '#94a3b8' }}>
+                      <span style={{ color: LOG_TYPE_COLOR[line.level] ?? '#94a3b8' }}>
                         {line.text}
                       </span>
                     </div>

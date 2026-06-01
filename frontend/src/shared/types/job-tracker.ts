@@ -19,7 +19,6 @@ export interface EmailReference {
 export interface JobApplication {
   id: number
   company_name: string
-  // FIX: nullable in backend model — was incorrectly required in TS type
   role_title: string | null
   status: ApplicationStatus
   source?: string
@@ -32,7 +31,6 @@ export interface JobApplication {
   created_at: string
   updated_at: string
   emails: EmailReference[]
-  /** Computed by the API — avoids `app.emails.length` everywhere in the UI. */
   email_count: number
 }
 
@@ -70,8 +68,6 @@ export interface ScanRun {
   apps_created?: number
   error?: string
 }
-
-// ─── API write payloads ───────────────────────────────────────────────────────
 
 export interface ApplicationWritePayload {
   company_name: string

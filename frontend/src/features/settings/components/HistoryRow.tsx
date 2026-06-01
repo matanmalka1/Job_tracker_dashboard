@@ -1,6 +1,6 @@
 import { Clock, Inbox } from 'lucide-react'
 import type { ScanRun } from '../../../shared/types/job-tracker.ts'
-import { relativeTime } from '../utils.ts'
+import { formatRelativeTime } from '../../../shared/utils/date.ts'
 
 const HistoryRow = ({ run }: { run: ScanRun }) => {
   const ok = run.status === 'completed'
@@ -23,7 +23,7 @@ const HistoryRow = ({ run }: { run: ScanRun }) => {
         <span className="font-mono text-xs text-red-400 truncate max-w-[260px]">{run.error}</span>
       )}
       <span className="ml-auto font-mono text-xs text-gray-600 shrink-0">
-        {relativeTime(run.completed_at ?? run.started_at)}
+        {formatRelativeTime(run.completed_at ?? run.started_at)}
       </span>
     </div>
   )

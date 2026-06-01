@@ -1,59 +1,24 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
-import type { ApplicationStatus, JobApplication } from '../../../shared/types/job-tracker.ts'
-
-const STATUS_OPTIONS: { value: ApplicationStatus; label: string }[] = [
-  { value: 'new', label: 'New' },
-  { value: 'applied', label: 'Applied' },
-  { value: 'interviewing', label: 'Interviewing' },
-  { value: 'offer', label: 'Offer' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: 'hired', label: 'Hired' },
-]
-
-interface FormState {
-  company_name: string
-  role_title: string
-  status: ApplicationStatus
-  source: string
-  applied_at: string
-  notes: string
-  job_url: string
-  next_action_at: string
-}
-
-const EMPTY: FormState = {
-  company_name: '',
-  role_title: '',
-  status: 'applied',
-  source: '',
-  applied_at: '',
-  notes: '',
-  job_url: '',
-  next_action_at: '',
-}
-
-type SubmitPayload = {
-  company_name: string
-  role_title?: string
-  status: ApplicationStatus
-  source?: string
-  applied_at?: string
-  notes?: string
-  job_url?: string
-  next_action_at?: string
-}
+import type { ApplicationWritePayload, JobApplication } from '../../../shared/types/job-tracker.ts'
+import { APPLICATION_STATUS_OPTIONS } from '../../../shared/constants/applicationStatus.ts'
+import {
+  EMPTY_APPLICATION_FORM,
+  applicationToFormState,
+  formStateToApplicationPayload,
+  type ApplicationFormState,
+} from '../../../shared/utils/jobApplicationForm.ts'
 
 interface Props {
   open: boolean
   initial?: JobApplication | null
   onClose: () => void
-  onSubmit: (data: SubmitPayload) => void
+  onSubmit: (data: ApplicationWritePayload) => void
   loading?: boolean
 }
 
 const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) => {
-  const [form, setForm] = useState<FormState>(EMPTY)
+  const [form, setForm] = useState<ApplicationFormState>(EMPTY_APPLICATION_FORM)
 
   useEffect(() => {
     if (open) {
@@ -61,18 +26,8 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(
         initial
-          ? {
-              company_name: initial.company_name,
-              // FIX: coerce null → '' so the controlled input stays a string
-              role_title: initial.role_title ?? '',
-              status: initial.status,
-              source: initial.source ?? '',
-              applied_at: initial.applied_at ? initial.applied_at.slice(0, 10) : '',
-              notes: initial.notes ?? '',
-              job_url: initial.job_url ?? '',
-              next_action_at: initial.next_action_at ? initial.next_action_at.slice(0, 10) : '',
-            }
-          : EMPTY,
+          ? applicationToFormState(initial)
+          : EMPTY_APPLICATION_FORM,
       )
     }
   }, [open, initial])
@@ -81,20 +36,11 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit({
-      company_name: form.company_name.trim(),
-      role_title: form.role_title.trim() || undefined,
-      status: form.status,
-      source: form.source.trim() || undefined,
-      applied_at: form.applied_at ? `${form.applied_at}T00:00:00Z` : undefined,
-      notes: form.notes.trim() || undefined,
-      job_url: form.job_url.trim() || undefined,
-      next_action_at: form.next_action_at ? `${form.next_action_at}T00:00:00Z` : undefined,
-    })
+    onSubmit(formStateToApplicationPayload(form))
   }
 
   const set =
-    (key: keyof FormState) =>
+    (key: keyof ApplicationFormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }))
 
@@ -135,7 +81,7 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
           <div>
             <label className="block text-xs text-gray-400 font-medium mb-1.5">Status</label>
             <select value={form.status} onChange={set('status')} className={inputCls}>
-              {STATUS_OPTIONS.map((opt) => (
+              {APPLICATION_STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>

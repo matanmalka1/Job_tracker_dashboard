@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { STAGE_COLOR } from '../constants'
+import { SCAN_STAGE_COLOR } from '../../../shared/constants/scan.ts'
 import type { Blip } from '../types.ts'
 
 interface Props {
@@ -38,7 +38,7 @@ const RadarCanvas = ({ scanning, stageKey, done, failed, blipsRef, sweepRef }: P
       : done
         ? '#34d399'
         : stageKey
-          ? STAGE_COLOR[stageKey] ?? '#38bdf8'
+          ? SCAN_STAGE_COLOR[stageKey] ?? '#38bdf8'
           : '#38bdf8'
 
     const hexRgb = (h: string) =>

@@ -1,7 +1,7 @@
 import { Pencil, Trash2 } from 'lucide-react'
 import type { JobApplication } from '../../../shared/types/job-tracker.ts'
 import ApplicationStatusBadge from '../../../shared/components/data-display/ApplicationStatusBadge.tsx'
-import { formatDate } from '../utils.ts'
+import { formatShortDate } from '../../../shared/utils/date.ts'
 
 interface Props {
   applications: JobApplication[]
@@ -85,7 +85,7 @@ const ApplicationsTable = ({
               <span className="text-gray-400 text-xs">{app.source ?? '—'}</span>
             </td>
             <td className="px-4 py-3">
-              <span className="text-gray-400 text-xs">{formatDate(app.applied_at ?? app.created_at)}</span>
+              <span className="text-gray-400 text-xs">{formatShortDate(app.applied_at ?? app.created_at)}</span>
             </td>
             <td className="px-4 py-3">
               <span className="text-gray-500 text-xs">

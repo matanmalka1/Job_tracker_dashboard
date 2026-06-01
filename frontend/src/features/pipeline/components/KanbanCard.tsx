@@ -53,7 +53,6 @@ const KanbanCard = ({ application }: Props) => {
       >
         <div className="min-w-0">
           <p className="text-white text-sm font-semibold truncate">{application.company_name}</p>
-          {/* FIX: role_title is now string | null */}
           <p className="text-gray-400 text-xs mt-0.5 truncate">{application.role_title ?? '—'}</p>
         </div>
 

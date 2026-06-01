@@ -4,7 +4,8 @@ import { Building2 } from 'lucide-react'
 import { fetchApplications } from '../../../api/client.ts'
 import type { ApplicationStatus, JobApplication } from '../../../shared/types/job-tracker.ts'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
-import CompanyCard, { type CompanyGroup } from '../components/CompanyCard.tsx'
+import CompanyCard from '../components/CompanyCard.tsx'
+import type { CompanyGroup } from '../types.ts'
 
 const groupApplications = (items: JobApplication[]): CompanyGroup[] => {
   const map = new Map<string, JobApplication[]>()

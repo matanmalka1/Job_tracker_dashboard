@@ -12,6 +12,7 @@ import FiltersBar from '../components/FiltersBar.tsx'
 import DataManagementTable from '../components/DataManagementTable.tsx'
 import ApplicationForm from '../components/ApplicationForm.tsx'
 import { EMPTY_FORM } from '../types.ts'
+import { applicationToFormState, filterApplications, formStateToPayload } from '../utils.ts'
 
 const DataManagementPage = () => {
   const queryClient = useQueryClient()
@@ -67,19 +68,10 @@ const DataManagementPage = () => {
 
   const applications = useMemo(() => data?.items ?? [], [data])
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-    return applications
-      .filter((app) => {
-        const matchesStatus = statusFilter === 'all' || app.status === statusFilter
-        const matchesSearch =
-          !q ||
-          app.company_name.toLowerCase().includes(q) ||
-          (app.role_title?.toLowerCase().includes(q) ?? false) ||
-          (app.source ?? '').toLowerCase().includes(q)
-        return matchesStatus && matchesSearch
-      })
-  }, [applications, search, statusFilter])
+  const filtered = useMemo(
+    () => filterApplications(applications, search, statusFilter),
+    [applications, search, statusFilter],
+  )
 
   const openCreate = () => {
     setEditing(null)
@@ -89,17 +81,7 @@ const DataManagementPage = () => {
 
   const openEdit = (app: JobApplication) => {
     setEditing(app)
-    setForm({
-      company_name: app.company_name,
-      role_title: app.role_title ?? '',
-      status: app.status,
-      source: app.source ?? '',
-      applied_at: app.applied_at ? app.applied_at.slice(0, 10) : '',
-      confidence_score:
-        app.confidence_score != null && !Number.isNaN(app.confidence_score)
-          ? String(Math.round(app.confidence_score * 100))
-          : '',
-    })
+    setForm(applicationToFormState(app))
     setDrawerOpen(true)
   }
 
@@ -111,14 +93,7 @@ const DataManagementPage = () => {
 
   const onSubmit = () => {
     if (!form.company_name.trim()) return
-    const payload: ApplicationWritePayload = {
-      company_name: form.company_name.trim(),
-      role_title: form.role_title.trim() || undefined,
-      status: form.status,
-      source: form.source.trim() || undefined,
-      applied_at: form.applied_at ? `${form.applied_at}T00:00:00Z` : undefined,
-      confidence_score: form.confidence_score.trim() === '' ? undefined : Number(form.confidence_score) / 100,
-    }
+    const payload = formStateToPayload(form)
     if (editing) updateMutate(payload)
     else createMutate(payload)
   }

@@ -5,7 +5,7 @@ import { fetchScanHistory } from '../../../api/client.ts'
 import AboutPanel from '../components/AboutPanel.tsx'
 import HistoryRow, { HistoryHeader } from '../components/HistoryRow.tsx'
 import ScannerCard from '../components/ScannerCard.tsx'
-import { STAGES } from '../constants.ts'
+import { SCAN_STAGES } from '../../../shared/constants/scan.ts'
 import type { LogLine, Blip, ScanResultState } from '../types.ts'
 
 let _blipId = 0
@@ -94,7 +94,7 @@ const SettingsPage = () => {
           applications_created: ev.applications_created ?? 0,
         }
         setResult(r)
-        setCompletedStages(STAGES.map((s) => s.key))
+        setCompletedStages(SCAN_STAGES.map((s) => s.key))
         setCurrentStage('done')
         setDone(true)
         setScanning(false)
@@ -118,8 +118,8 @@ const SettingsPage = () => {
         es.close()
       } else {
         setCurrentStage(stage)
-        const idx = STAGES.findIndex((s) => s.key === stage)
-        if (idx > 0) setCompletedStages(STAGES.slice(0, idx).map((s) => s.key))
+        const idx = SCAN_STAGES.findIndex((s) => s.key === stage)
+        if (idx > 0) setCompletedStages(SCAN_STAGES.slice(0, idx).map((s) => s.key))
         addLog(stage, detail)
         if (stage === 'fetching' || stage === 'filtering') {
           for (let i = 0; i < 2; i++) spawnBlip()
@@ -142,7 +142,7 @@ const SettingsPage = () => {
     }
   }
 
-  const activeStage = STAGES.find((s) => s.key === currentStage)
+  const activeStage = SCAN_STAGES.find((s) => s.key === currentStage)
   const hasScanState = scanning || done || !!scanError
   const lastDone = history?.find((r) => r.status === 'completed')
   const accent = scanError ? '#f87171' : done ? '#34d399' : activeStage?.color ?? '#38bdf8'

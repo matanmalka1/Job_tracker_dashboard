@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react'
 import type { ApplicationStatus } from '../../../shared/types/job-tracker.ts'
-import { ALL_STATUSES, STATUS_LABELS } from '../constants.ts'
+import { APPLICATION_STATUSES, APPLICATION_STATUS_LABELS } from '../../../shared/constants/applicationStatus.ts'
 
 interface Props {
   search: string
@@ -32,7 +32,7 @@ const SearchAndFilters = ({ search, onSearchChange, statusFilter, onStatusChange
       >
         All
       </button>
-      {ALL_STATUSES.map((s) => (
+      {APPLICATION_STATUSES.map((s) => (
         <button
           key={s}
           onClick={() => onStatusChange(s)}
@@ -41,7 +41,7 @@ const SearchAndFilters = ({ search, onSearchChange, statusFilter, onStatusChange
             statusFilter === s ? 'bg-purple-600/20 text-purple-400' : 'text-gray-400 hover:text-white',
           ].join(' ')}
         >
-          {STATUS_LABELS[s]}
+          {APPLICATION_STATUS_LABELS[s]}
         </button>
       ))}
     </div>

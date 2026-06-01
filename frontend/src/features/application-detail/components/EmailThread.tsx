@@ -1,6 +1,6 @@
 import { ExternalLink, Mail, Calendar } from 'lucide-react'
 import type { EmailReference } from '../../../shared/types/job-tracker.ts'
-import { formatDateTime, relativeTime } from '../utils.ts'
+import { formatDateTime, formatRelativeTime } from '../../../shared/utils/date.ts'
 
 const EmailThread = ({ emails }: { emails: EmailReference[] }) => {
   if (emails.length === 0) {
@@ -29,7 +29,7 @@ const EmailThread = ({ emails }: { emails: EmailReference[] }) => {
                     <Calendar size={11} />
                     {formatDateTime(email.received_at)}
                   </span>
-                  <span className="text-gray-600 text-xs shrink-0">{relativeTime(email.received_at)}</span>
+                  <span className="text-gray-600 text-xs shrink-0">{formatRelativeTime(email.received_at)}</span>
                 </div>
               </div>
               <a

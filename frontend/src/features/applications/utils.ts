@@ -1,8 +1,5 @@
 import type { JobApplication } from '../../shared/types/job-tracker.ts'
 
-export const formatDate = (iso?: string) =>
-  iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
-
 export const exportCsv = (apps: JobApplication[]) => {
   const headers = ['Company', 'Role', 'Status', 'Source', 'Applied Date', 'Confidence', 'Emails']
   const rows = apps.map((a) => [

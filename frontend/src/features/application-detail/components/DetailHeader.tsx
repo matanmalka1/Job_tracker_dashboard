@@ -1,6 +1,6 @@
 import { Pencil, Trash2 } from 'lucide-react'
 import type { ApplicationStatus, JobApplication } from '../../../shared/types/job-tracker.ts'
-import { ALL_STATUSES, STATUS_LABELS } from '../constants.ts'
+import { APPLICATION_STATUSES, APPLICATION_STATUS_LABELS } from '../../../shared/constants/applicationStatus.ts'
 
 interface Props {
   app: JobApplication
@@ -25,9 +25,9 @@ const DetailHeader = ({ app, onEdit, onDelete, onChangeStatus }: Props) => (
               onChange={(e) => onChangeStatus(e.target.value as ApplicationStatus)}
               className="bg-transparent border border-white/10 rounded-lg px-2 py-1 text-xs font-medium text-white focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors cursor-pointer [color-scheme:dark]"
             >
-              {ALL_STATUSES.map((s) => (
+              {APPLICATION_STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {STATUS_LABELS[s]}
+                  {APPLICATION_STATUS_LABELS[s]}
                 </option>
               ))}
             </select>

@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react'
 import type { ApplicationStatus } from '../../../shared/types/job-tracker.ts'
-import { STATUS_OPTIONS } from '../constants'
+import { APPLICATION_STATUS_OPTIONS } from '../../../shared/constants/applicationStatus.ts'
 
 interface Props {
   search: string
@@ -29,7 +29,7 @@ const FiltersBar = ({ search, statusFilter, onSearch, onStatusChange, count }: P
         className="bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500/50"
       >
         <option value="all">Any status</option>
-        {STATUS_OPTIONS.map((opt) => (
+        {APPLICATION_STATUS_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>

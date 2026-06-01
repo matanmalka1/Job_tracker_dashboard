@@ -1,4 +1,4 @@
-import { STAGES } from '../constants'
+import { SCAN_STAGES } from '../../../shared/constants/scan.ts'
 
 interface Props {
   currentStage: string | null
@@ -8,18 +8,18 @@ interface Props {
 
 const StageNodes = ({ currentStage, completedStages, scanning }: Props) => (
   <div className="flex items-start gap-0 w-full">
-    {STAGES.map((stage, i) => {
+    {SCAN_STAGES.map((stage, i) => {
       const isDone = completedStages.includes(stage.key)
       const isActive = currentStage === stage.key
       return (
         <div key={stage.key} className="flex-1 flex flex-col items-center gap-2 relative">
-          {i < STAGES.length - 1 && (
+          {i < SCAN_STAGES.length - 1 && (
             <div className="absolute top-[13px] left-1/2 w-full h-px" style={{ zIndex: 0 }}>
               <div
                 className="h-full transition-all duration-700"
                 style={{
                   background: isDone
-                    ? `linear-gradient(90deg, ${stage.color}, ${STAGES[i + 1].color})`
+                    ? `linear-gradient(90deg, ${stage.color}, ${SCAN_STAGES[i + 1].color})`
                     : '#1e2433',
                 }}
               />

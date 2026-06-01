@@ -1,6 +1,7 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import type { ApplicationStatus, DashboardStats } from '../../../shared/types/job-tracker.ts'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
+import { APPLICATION_STATUS_LABELS } from '../../../shared/constants/applicationStatus.ts'
 
 interface Props {
   stats: DashboardStats
@@ -16,15 +17,6 @@ const STATUS_COLORS: Record<ApplicationStatus, string> = {
   hired: '#14b8a6',
 }
 
-const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  new: 'New',
-  applied: 'Applied',
-  interviewing: 'Interviewing',
-  offer: 'Offer',
-  rejected: 'Rejected',
-  hired: 'Hired',
-}
-
 const StageDistribution = ({ stats, isLoading }: Props) => {
   if (isLoading) {
     return (
@@ -38,7 +30,7 @@ const StageDistribution = ({ stats, isLoading }: Props) => {
   const chartData = (Object.entries(stats.statusCounts) as [ApplicationStatus, number][])
     .filter(([, count]) => count > 0)
     .map(([status, count]) => ({
-      name: STATUS_LABELS[status],
+      name: APPLICATION_STATUS_LABELS[status],
       value: count,
       color: STATUS_COLORS[status],
     }))

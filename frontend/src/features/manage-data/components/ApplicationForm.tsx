@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { ApplicationStatus } from '../../../shared/types/job-tracker.ts'
 import type { FormState } from '../types.ts'
-import { STATUS_OPTIONS } from '../constants'
+import { APPLICATION_STATUS_OPTIONS } from '../../../shared/constants/applicationStatus.ts'
 
 interface Props {
   form: FormState
@@ -42,7 +42,7 @@ const ApplicationForm = ({ form, setForm, onSubmit, onCancel, loading, editing }
           onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as ApplicationStatus }))}
           className="mt-1 w-full bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50"
         >
-          {STATUS_OPTIONS.map((opt) => (
+          {APPLICATION_STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>

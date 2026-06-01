@@ -1,6 +1,10 @@
 import { Pencil, Trash2 } from 'lucide-react'
-import { STATUS_COLORS, STATUS_OPTIONS, formatDate } from '../constants'
 import type { JobApplication } from '../../../shared/types/job-tracker.ts'
+import {
+  APPLICATION_STATUS_BORDERED_STYLES,
+  APPLICATION_STATUS_LABELS,
+} from '../../../shared/constants/applicationStatus.ts'
+import { formatShortDate } from '../../../shared/utils/date.ts'
 
 interface Props {
   app: JobApplication
@@ -14,19 +18,19 @@ const ApplicationRow = ({ app, onEdit, onDelete }: Props) => (
     <td className="px-4 py-3 text-gray-200">{app.role_title ?? '—'}</td>
     <td className="px-4 py-3">
       <span
-        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${STATUS_COLORS[app.status]}`}
+        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${APPLICATION_STATUS_BORDERED_STYLES[app.status]}`}
       >
         <span className="w-2 h-2 rounded-full bg-current" />
-        {STATUS_OPTIONS.find((o) => o.value === app.status)?.label ?? app.status}
+        {APPLICATION_STATUS_LABELS[app.status]}
       </span>
     </td>
     <td className="px-4 py-3 text-gray-300">{app.source ?? '—'}</td>
-    <td className="px-4 py-3 text-gray-300">{formatDate(app.applied_at)}</td>
+    <td className="px-4 py-3 text-gray-300">{formatShortDate(app.applied_at)}</td>
     <td className="px-4 py-3 text-gray-300">
       {app.confidence_score != null ? `${Math.round(app.confidence_score * 100)}%` : '—'}
     </td>
     <td className="px-4 py-3 text-gray-300">{app.email_count}</td>
-    <td className="px-4 py-3 text-gray-400">{formatDate(app.updated_at)}</td>
+    <td className="px-4 py-3 text-gray-400">{formatShortDate(app.updated_at)}</td>
     <td className="px-4 py-3 text-right">
       <div className="flex items-center justify-end gap-2">
         <button

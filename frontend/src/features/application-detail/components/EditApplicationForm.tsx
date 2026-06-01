@@ -1,10 +1,10 @@
 import type { ChangeEvent, FormEvent } from 'react'
-import type { EditFormState } from '../types.ts'
-import { ALL_STATUSES, STATUS_LABELS } from '../constants.ts'
+import type { ApplicationFormState } from '../../../shared/utils/jobApplicationForm.ts'
+import { APPLICATION_STATUSES, APPLICATION_STATUS_LABELS } from '../../../shared/constants/applicationStatus.ts'
 
 interface Props {
-  form: EditFormState
-  onChange: (key: keyof EditFormState) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void
+  form: ApplicationFormState
+  onChange: (key: keyof ApplicationFormState) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void
   onSubmit: (e: FormEvent) => void
   onCancel: () => void
   loading: boolean
@@ -26,9 +26,9 @@ const EditApplicationForm = ({ form, onChange, onSubmit, onCancel, loading }: Pr
     <div>
       <label className="block text-xs text-gray-400 font-medium mb-1.5">Status</label>
       <select value={form.status} onChange={onChange('status')} className={inputCls}>
-        {ALL_STATUSES.map((s) => (
+        {APPLICATION_STATUSES.map((s) => (
           <option key={s} value={s}>
-            {STATUS_LABELS[s]}
+            {APPLICATION_STATUS_LABELS[s]}
           </option>
         ))}
       </select>

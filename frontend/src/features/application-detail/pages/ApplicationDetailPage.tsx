@@ -4,7 +4,7 @@ import { ArrowLeft, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { fetchApplication, updateApplication, deleteApplication } from '../../../api/client.ts'
-import type { ApplicationStatus } from '../../../shared/types/job-tracker.ts'
+import type { ApplicationStatus, ApplicationWritePayload } from '../../../shared/types/job-tracker.ts'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
 import SlideOver from '../../../shared/components/ui/SlideOver.tsx'
 import ConfirmDialog from '../../../shared/components/feedback/ConfirmDialog.tsx'
@@ -14,7 +14,11 @@ import ApplicationMetaSection from '../components/ApplicationMetaSection.tsx'
 import EmailThread from '../components/EmailThread.tsx'
 import ActivityTimeline from '../components/ActivityTimeline.tsx'
 import EditApplicationForm from '../components/EditApplicationForm.tsx'
-import type { EditFormState } from '../types.ts'
+import {
+  applicationToFormState,
+  formStateToApplicationPayload,
+  type ApplicationFormState,
+} from '../../../shared/utils/jobApplicationForm.ts'
 
 const ApplicationDetailPage = () => {
   const { id } = useParams<{ id: string }>()
@@ -22,7 +26,7 @@ const ApplicationDetailPage = () => {
   const queryClient = useQueryClient()
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [editForm, setEditForm] = useState<EditFormState | null>(null)
+  const [editForm, setEditForm] = useState<ApplicationFormState | null>(null)
 
   const appId = Number(id)
 
@@ -33,7 +37,7 @@ const ApplicationDetailPage = () => {
   })
 
   const { mutate: editMutate, isPending: editPending } = useMutation({
-    mutationFn: (body: Partial<EditFormState>) => updateApplication(appId, body),
+    mutationFn: (body: Partial<ApplicationWritePayload>) => updateApplication(appId, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] })
       queryClient.invalidateQueries({ queryKey: ['stats'] })
@@ -66,36 +70,18 @@ const ApplicationDetailPage = () => {
 
   const openEdit = () => {
     if (!app) return
-    setEditForm({
-      company_name: app.company_name,
-      role_title: app.role_title ?? '',
-      status: app.status,
-      source: app.source ?? '',
-      applied_at: app.applied_at ? app.applied_at.slice(0, 10) : '',
-      notes: app.notes ?? '',
-      job_url: app.job_url ?? '',
-      next_action_at: app.next_action_at ? app.next_action_at.slice(0, 10) : '',
-    })
+    setEditForm(applicationToFormState(app))
     setEditOpen(true)
   }
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!editForm) return
-    editMutate({
-      company_name: editForm.company_name,
-      role_title: editForm.role_title,
-      status: editForm.status,
-      source: editForm.source || undefined,
-      applied_at: editForm.applied_at ? `${editForm.applied_at}T00:00:00Z` : undefined,
-      notes: editForm.notes || undefined,
-      job_url: editForm.job_url || undefined,
-      next_action_at: editForm.next_action_at ? `${editForm.next_action_at}T00:00:00Z` : undefined,
-    })
+    editMutate(formStateToApplicationPayload(editForm))
   }
 
   const setEditField =
-    (key: keyof EditFormState) =>
+    (key: keyof ApplicationFormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setEditForm((prev) => (prev ? { ...prev, [key]: e.target.value } : prev))
 

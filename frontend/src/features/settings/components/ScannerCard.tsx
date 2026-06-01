@@ -3,8 +3,8 @@ import RadarCanvas from './RadarCanvas.tsx'
 import StageNodes from './StageNodes.tsx'
 import Terminal from './Terminal.tsx'
 import { HistoryPlaceholder } from './HistoryRow.tsx'
-import { formatRelative } from '../utils.ts'
 import type { Blip, LogLine, ScanResultState } from '../types.ts'
+import { formatRelativeTime } from '../../../shared/utils/date.ts'
 
 type Stage = {
   key: string
@@ -187,7 +187,7 @@ const ScannerCard = ({
           {lastCompletedAt && !scanning && (
             <span className="font-mono text-[10px] text-gray-600 flex items-center gap-1.5">
               <Clock size={9} />
-              last {formatRelative(lastCompletedAt)}
+              last {formatRelativeTime(lastCompletedAt)}
             </span>
           )}
         </div>

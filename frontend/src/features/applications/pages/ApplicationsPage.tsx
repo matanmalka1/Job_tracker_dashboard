@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -16,8 +16,10 @@ import ApplicationsHeader from '../components/ApplicationsHeader.tsx'
 import SearchAndFilters from '../components/SearchAndFilters.tsx'
 import ApplicationsTable from '../components/ApplicationsTable.tsx'
 import PaginationBar from '../components/PaginationBar.tsx'
-import { PAGE_SIZE } from '../constants.ts'
 import { exportCsv } from '../utils.ts'
+
+const PAGE_SIZE = 25
+const SEARCH_DEBOUNCE_MS = 300
 
 const ApplicationsPage = () => {
   const navigate = useNavigate()
@@ -32,23 +34,26 @@ const ApplicationsPage = () => {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
 
-  const onSearchChange = (val: string) => {
-    setSearch(val)
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(timeout)
+  }, [search])
+
+  const onSearchChange = (value: string) => {
+    setSearch(value)
     setPage(0)
-    clearTimeout((onSearchChange as unknown as { _t?: ReturnType<typeof setTimeout> })._t)
-    ;(onSearchChange as unknown as { _t?: ReturnType<typeof setTimeout> })._t = setTimeout(
-      () => setDebouncedSearch(val),
-      300,
-    )
   }
 
-  const queryParams = {
-    limit: PAGE_SIZE,
-    offset: page * PAGE_SIZE,
-    status: statusFilter !== 'all' ? statusFilter : undefined,
-    search: debouncedSearch || undefined,
-    sort: 'last_email_at' as const,
-  }
+  const queryParams = useMemo(
+    () => ({
+      limit: PAGE_SIZE,
+      offset: page * PAGE_SIZE,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      search: debouncedSearch || undefined,
+      sort: 'last_email_at' as const,
+    }),
+    [debouncedSearch, page, statusFilter],
+  )
 
   const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: ['applications', 'list', queryParams],

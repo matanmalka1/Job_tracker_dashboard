@@ -9,7 +9,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { JobApplication } from '../../../shared/types/job-tracker.ts';
-import { formatDateTime } from "../utils.ts";
+import { formatDateTime } from "../../../shared/utils/date.ts";
 
 interface TimelineEvent {
   id: string;

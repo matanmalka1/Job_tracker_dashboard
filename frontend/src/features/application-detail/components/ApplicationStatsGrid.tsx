@@ -1,19 +1,19 @@
 import type { JobApplication } from '../../../shared/types/job-tracker.ts'
-import { formatDate, relativeTime } from '../utils.ts'
+import { formatLongDate, formatRelativeTime } from '../../../shared/utils/date.ts'
 
 const ApplicationStatsGrid = ({ app }: { app: JobApplication }) => (
   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/5">
     <div>
       <p className="text-gray-500 text-xs mb-1">Applied</p>
-      <p className="text-white text-sm">{formatDate(app.applied_at)}</p>
+      <p className="text-white text-sm">{formatLongDate(app.applied_at)}</p>
     </div>
     <div>
       <p className="text-gray-500 text-xs mb-1">Created</p>
-      <p className="text-white text-sm">{formatDate(app.created_at)}</p>
+      <p className="text-white text-sm">{formatLongDate(app.created_at)}</p>
     </div>
     <div>
       <p className="text-gray-500 text-xs mb-1">Last Updated</p>
-      <p className="text-white text-sm">{relativeTime(app.updated_at)}</p>
+      <p className="text-white text-sm">{formatRelativeTime(app.updated_at)}</p>
     </div>
     {app.confidence_score != null && (
       <div>
@@ -32,7 +32,7 @@ const ApplicationStatsGrid = ({ app }: { app: JobApplication }) => (
     {app.next_action_at && (
       <div>
         <p className="text-gray-500 text-xs mb-1">Follow-up</p>
-        <p className="text-yellow-400 text-sm">{formatDate(app.next_action_at)}</p>
+        <p className="text-yellow-400 text-sm">{formatLongDate(app.next_action_at)}</p>
       </div>
     )}
   </div>

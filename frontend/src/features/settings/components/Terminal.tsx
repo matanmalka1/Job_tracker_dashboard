@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { LOG_TYPE_COLOR, STAGE_COLOR } from '../constants'
+import { LOG_TYPE_COLOR, SCAN_STAGE_COLOR } from '../../../shared/constants/scan.ts'
 import type { LogLine } from '../types.ts'
 
 const Terminal = ({ lines, scanning }: { lines: LogLine[]; scanning: boolean }) => {
@@ -55,7 +55,7 @@ const Terminal = ({ lines, scanning }: { lines: LogLine[]; scanning: boolean }) 
               </span>
               <span
                 className="shrink-0 w-[5.5ch] text-right font-bold uppercase tracking-wider select-none"
-                style={{ color: STAGE_COLOR[line.stage] ?? '#475569' }}
+                style={{ color: SCAN_STAGE_COLOR[line.stage] ?? '#475569' }}
               >
                 {line.stage.slice(0, 5)}
               </span>

@@ -25,7 +25,6 @@ const GlobalSearch = () => {
         const q = query.toLowerCase()
         return (
           app.company_name.toLowerCase().includes(q) ||
-          // FIX: role_title is now string | null — guard before calling .toLowerCase()
           (app.role_title?.toLowerCase().includes(q) ?? false) ||
           (app.source ?? '').toLowerCase().includes(q)
         )
@@ -124,7 +123,6 @@ const GlobalSearch = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-medium truncate">{app.company_name}</p>
-                      {/* FIX: role_title is now string | null */}
                       <p className="text-gray-400 text-xs truncate">{app.role_title ?? '—'}</p>
                     </div>
                     <ApplicationStatusBadge status={app.status} />

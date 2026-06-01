@@ -1,16 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronUp, Mail } from 'lucide-react'
-import type { ApplicationStatus, JobApplication } from '../../../shared/types/job-tracker.ts'
+import type { ApplicationStatus } from '../../../shared/types/job-tracker.ts'
 import ApplicationStatusBadge from '../../../shared/components/data-display/ApplicationStatusBadge.tsx'
-
-export interface CompanyGroup {
-  name: string
-  applications: JobApplication[]
-  latestActivity: string
-  statusCounts: Partial<Record<ApplicationStatus, number>>
-  totalEmails: number
-}
+import type { CompanyGroup } from '../types.ts'
+import { formatShortDate } from '../../../shared/utils/date.ts'
 
 const STATUS_ORDER: ApplicationStatus[] = ['hired', 'offer', 'interviewing', 'applied', 'new', 'rejected']
 
@@ -27,9 +21,6 @@ const CompanyCard = ({ group }: { group: CompanyGroup }) => {
   const [expanded, setExpanded] = useState(false)
   const navigate = useNavigate()
   const count = group.applications.length
-
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
   return (
     <div className="bg-[#1a1a24] border border-white/5 rounded-xl overflow-hidden">
@@ -52,7 +43,7 @@ const CompanyCard = ({ group }: { group: CompanyGroup }) => {
                 {group.totalEmails}
               </span>
             )}
-            <span className="text-gray-600 text-xs">Last: {formatDate(group.latestActivity)}</span>
+            <span className="text-gray-600 text-xs">Last: {formatShortDate(group.latestActivity)}</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -83,7 +74,7 @@ const CompanyCard = ({ group }: { group: CompanyGroup }) => {
               </div>
               <ApplicationStatusBadge status={app.status} />
               <span className="text-gray-600 text-xs shrink-0">
-                {formatDate(app.applied_at ?? app.created_at)}
+                {formatShortDate(app.applied_at ?? app.created_at)}
               </span>
               {app.email_count > 0 && (
                 <span className="flex items-center gap-1 text-gray-600 text-xs shrink-0">
