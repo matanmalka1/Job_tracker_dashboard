@@ -9,21 +9,12 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import ENUM as PgEnum
 
 revision: str = "001"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
-
-applicationstatus = sa.Enum(
-    "applied",
-    "interviewing",
-    "offer",
-    "rejected",
-    name="applicationstatus",
-    create_type=False,
-)
-
 
 def upgrade() -> None:
     op.execute("CREATE TYPE applicationstatus AS ENUM ('applied', 'interviewing', 'offer', 'rejected')")
@@ -33,7 +24,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("company_name", sa.String(length=255), nullable=False),
         sa.Column("role_title", sa.String(length=255), nullable=True),
-        sa.Column("status", applicationstatus, nullable=False),
+        sa.Column("status", PgEnum("applied", "interviewing", "offer", "rejected", name="applicationstatus", create_type=False), nullable=False),
         sa.Column("source", sa.String(length=255), nullable=True),
         sa.Column("applied_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_email_at", sa.DateTime(timezone=True), nullable=True),
