@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, Clock, ExternalLink } from 'lucide-react'
+import { ChevronDown, ExternalLink } from 'lucide-react'
 import type { EmailReference } from '../../../shared/types/job-tracker.ts'
 import {
   CATEGORY_CONFIG,
@@ -18,90 +18,92 @@ interface Props {
 const ActivityTimelineItem = ({ email, isLast, delay }: Props) => {
   const [expanded, setExpanded] = useState(false)
   const category = categorize(email)
-  const config = CATEGORY_CONFIG[category]
+  const cfg = CATEGORY_CONFIG[category]
   const gmailUrl = `https://mail.google.com/mail/u/0/#search/rfc822msgid:${encodeURIComponent(email.gmail_message_id)}`
 
   return (
-    <div className="flex gap-3" style={{ animation: 'tlIn 0.28s ease-out both', animationDelay: `${delay}ms` }}>
-      <div className="flex flex-col items-center shrink-0 pt-0.5">
-        <button
-          onClick={() => setExpanded((value) => !value)}
-          className="w-7 h-7 rounded-full flex items-center justify-center border transition-all duration-150 hover:scale-110 focus:outline-none"
-          style={{
-            background: `${config.color}15`,
-            borderColor: `${config.color}35`,
-            color: config.color,
-            boxShadow: expanded ? `0 0 0 3px ${config.color}20` : 'none',
-          }}
-          title={`${config.label} — click to ${expanded ? 'collapse' : 'expand'}`}
-        >
-          {config.icon}
-        </button>
-        {!isLast && (
-          <div
-            className="w-px mt-1 flex-1 min-h-[16px]"
-            style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.07) 0%, transparent 100%)' }}
-          />
-        )}
+    <div className="flex gap-3 animate-tl-in" style={{ animationDelay: `${delay}ms` }}>
+      {/* track */}
+      <div className="flex flex-col items-center shrink-0">
+        <div
+          className="tl-dot"
+          style={{ background: cfg.color }}
+        />
+        {!isLast && <div className="w-px flex-1 min-h-4 mt-1.5" style={{ background: 'var(--border)' }} />}
       </div>
 
+      {/* card */}
       <div className={`flex-1 min-w-0 ${isLast ? 'pb-0' : 'pb-3'}`}>
         <div
-          className={`rounded-lg border overflow-hidden transition-all duration-200 cursor-pointer hover:border-white/12 ${config.twBg} ${config.twBorder}`}
-          onClick={() => setExpanded((value) => !value)}
+          className="tl-card"
+          style={expanded ? { background: 'var(--bg-hover)', borderColor: `${cfg.color}28` } : undefined}
+          onClick={() => setExpanded((v) => !v)}
         >
-          <div className="flex items-start gap-2 px-3 py-2.5">
+          <div className="flex items-start gap-2.5 px-3 py-2.5">
+            {/* category tag */}
+            <span
+              className="cat-tag mt-0.5"
+              style={{
+                color: cfg.color,
+                background: `${cfg.color}15`,
+                borderColor: `${cfg.color}25`,
+              }}
+            >
+              {cfg.label}
+            </span>
+
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-white text-sm font-medium leading-snug truncate">
-                  {email.subject ?? '(No subject)'}
-                </p>
-                <span className={`shrink-0 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full ${config.pill}`}>
-                  {config.label}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="text-xs font-medium truncate" style={{ color: config.color }}>
+              <p className="font-medium text-[13px] truncate m-0" style={{ color: 'var(--text-1)' }}>
+                {email.subject ?? '(No subject)'}
+              </p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span className="text-[12px]" style={{ color: cfg.color }}>
                   {extractName(email.sender)}
                 </span>
-                <span className="text-gray-700 text-xs">·</span>
-                <span className="text-gray-500 text-xs flex items-center gap-1 shrink-0">
-                  <Clock size={10} />
+                <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>
                   {formatRelative(email.received_at)}
                 </span>
                 {email.application_id != null && (
-                  <>
-                    <span className="text-gray-700 text-xs">·</span>
-                    <span className="text-[10px] text-gray-600 bg-white/5 px-1.5 py-0.5 rounded">linked</span>
-                  </>
+                  <span
+                    className="text-[11px] px-1.5 py-0.5 rounded"
+                    style={{ background: 'var(--bg-hover)', color: 'var(--text-3)' }}
+                  >
+                    Linked
+                  </span>
                 )}
               </div>
             </div>
 
-            <div className="shrink-0 flex items-center gap-1.5 pt-0.5">
-              <span
-                className="text-gray-600 transition-transform duration-150"
-                style={{ transform: expanded ? 'rotate(180deg)' : 'none', display: 'inline-block' }}
-              >
-                <ChevronDown size={13} />
-              </span>
-            </div>
+            <ChevronDown
+              size={13}
+              className="shrink-0 mt-0.5 transition-transform duration-150"
+              style={{ color: 'var(--text-3)', transform: expanded ? 'rotate(180deg)' : 'none' }}
+            />
           </div>
 
           {expanded && (
-            <div className="px-3 pb-3 pt-0 border-t space-y-2" style={{ borderColor: `${config.color}18` }}>
-              {email.snippet && <p className="text-gray-400 text-xs leading-relaxed pt-2">{email.snippet}</p>}
-              <div className="flex items-center justify-between pt-1">
-                <div className="text-gray-600 text-[10px] font-mono">{formatFull(email.received_at)}</div>
+            <div
+              className="px-3 pb-3 pt-0"
+              style={{ borderTop: `1px solid ${cfg.color}18` }}
+            >
+              {email.snippet && (
+                <p className="text-[12px] leading-relaxed pt-2.5 m-0" style={{ color: 'var(--text-2)' }}>
+                  {email.snippet}
+                </p>
+              )}
+              <div className="flex items-center justify-between pt-2.5">
+                <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>
+                  {formatFull(email.received_at)}
+                </span>
                 <a
                   href={gmailUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={(event) => event.stopPropagation()}
-                  className="flex items-center gap-1 text-[10px] font-medium transition-colors hover:text-purple-300 text-gray-500"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-[12px] font-medium no-underline transition-colors"
+                  style={{ color: 'var(--accent)' }}
                 >
-                  Open in Gmail
-                  <ExternalLink size={10} />
+                  Open in Gmail <ExternalLink size={11} />
                 </a>
               </div>
             </div>

@@ -18,7 +18,7 @@ const PipelinePage = () => {
       {isLoading && <LoadingSpinner size="lg" message="Loading pipeline..." />}
 
       {isError && (
-        <div className="bg-[#1a1a24] rounded-xl p-8 border border-white/5 text-center">
+        <div className="bg-surface rounded-xl p-8 border border-DEFAULT text-center">
           <p className="text-red-400 text-sm">Failed to load applications.</p>
         </div>
       )}

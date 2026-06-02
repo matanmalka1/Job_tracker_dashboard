@@ -123,7 +123,7 @@ export const CATEGORY_CONFIG: Record<Category, CategoryConfig> = {
     twBg: 'bg-white/4',
     twBorder: 'border-white/8',
     label: 'Email',
-    pill: 'bg-white/8 text-gray-400',
+    pill: 'bg-white/8 text-t2',
   },
 }
 

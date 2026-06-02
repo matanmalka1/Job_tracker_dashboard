@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ChevronDown, Filter, Mail } from 'lucide-react'
+import { ChevronDown, Mail } from 'lucide-react'
 import type { EmailReference } from '../../../shared/types/job-tracker.ts'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
 import ActivitySummaryBar from './ActivitySummaryBar.tsx'
@@ -26,14 +26,10 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
   const jobEmails = useMemo(() => emails.filter(isJobEmail), [emails])
 
   const filtered = useMemo(
-    () =>
-      activeFilter === 'all'
-        ? jobEmails
-        : jobEmails.filter((e) => categorize(e) === activeFilter),
+    () => activeFilter === 'all' ? jobEmails : jobEmails.filter((e) => categorize(e) === activeFilter),
     [jobEmails, activeFilter],
   )
 
-  // Group by date, newest first
   const groups = useMemo(() => {
     const sorted = [...filtered].sort(
       (a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime(),
@@ -48,155 +44,151 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
 
   const filterOptions: Array<{ value: Category | 'all'; label: string }> = [
     { value: 'all', label: 'All' },
-    ...ALL_CATEGORIES.map((category) => ({
-      value: category as Category | 'all',
-      label: CATEGORY_CONFIG[category].label,
-    })),
+    ...ALL_CATEGORIES.map((c) => ({ value: c as Category | 'all', label: CATEGORY_CONFIG[c].label })),
   ]
 
   let itemIndex = 0
 
+  const activeFilterLabel = activeFilter === 'all'
+    ? 'Filter'
+    : CATEGORY_CONFIG[activeFilter as Category].label
+
   return (
-    <>
-      <style>{`
-        @keyframes tlIn {
-          from { opacity: 0; transform: translateX(-5px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-      `}</style>
-
-      <div className="bg-[#1a1a24] rounded-xl p-5 border border-white/5 h-full flex flex-col">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4 gap-2">
-          <div className="flex items-center gap-2">
-            <h3 className="text-white font-semibold text-sm">Activity Timeline</h3>
-            {jobEmails.length > 0 && (
-              <span className="text-gray-600 text-[10px] font-mono bg-white/5 px-1.5 py-0.5 rounded-full">
-                {jobEmails.length}
-              </span>
-            )}
-          </div>
-
-          {/* Filter button */}
+    <div className="panel flex flex-col h-full">
+      {/* header */}
+      <div className="flex items-center justify-between px-5 py-4 gap-2"
+        style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2.5">
+          <span className="text-[14px] font-semibold" style={{ color: 'var(--text-1)' }}>
+            Activity Timeline
+          </span>
           {jobEmails.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => setShowFilterMenu((v) => !v)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                  activeFilter !== 'all'
-                    ? 'border-purple-500/40 bg-purple-500/10 text-purple-400'
-                    : 'border-white/10 text-gray-400 hover:text-white hover:border-white/20'
-                }`}
-              >
-                <Filter size={11} />
-                {activeFilter === 'all' ? 'Filter' : CATEGORY_CONFIG[activeFilter as Category].label}
-                <ChevronDown
-                  size={10}
-                  style={{
-                    transform: showFilterMenu ? 'rotate(180deg)' : 'none',
-                    transition: 'transform 0.15s',
-                    display: 'inline-block',
-                  }}
-                />
-              </button>
-
-              {showFilterMenu && (
-                <div className="absolute right-0 top-full mt-1.5 z-20 bg-[#13131f] border border-white/10 rounded-lg shadow-xl overflow-hidden min-w-[120px]">
-                  {filterOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => { setActiveFilter(opt.value); setShowFilterMenu(false) }}
-                      className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
-                        activeFilter === opt.value
-                          ? 'bg-purple-600/20 text-purple-300'
-                          : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      {opt.value !== 'all' && (
-                        <span style={{ color: CATEGORY_CONFIG[opt.value as Category].color }}>
-                          {CATEGORY_CONFIG[opt.value as Category].icon}
-                        </span>
-                      )}
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <span
+              className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+              style={{ background: 'var(--bg-hover)', color: 'var(--text-3)' }}
+            >
+              {jobEmails.length}
+            </span>
           )}
         </div>
 
-        {/* Loading */}
-        {isLoading && <LoadingSpinner size="sm" message="Loading emails..." />}
+        {jobEmails.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowFilterMenu((v) => !v)}
+              className={[
+                'flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-lg border transition-colors',
+                activeFilter !== 'all'
+                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-glow)]'
+                  : 'border-[var(--border-mid)] text-[var(--text-2)] hover:text-[var(--text-1)] hover:bg-[var(--bg-hover)]',
+              ].join(' ')}
+            >
+              {activeFilterLabel}
+              <ChevronDown
+                size={12}
+                className="transition-transform duration-150"
+                style={{ transform: showFilterMenu ? 'rotate(180deg)' : 'none' }}
+              />
+            </button>
 
-        {/* Error */}
+            {showFilterMenu && (
+              <div
+                className="absolute right-0 top-full mt-1 z-20 min-w-[140px] rounded-xl overflow-hidden"
+                style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-mid)' }}
+              >
+                {filterOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => { setActiveFilter(opt.value); setShowFilterMenu(false) }}
+                    className={[
+                      'w-full text-left flex items-center gap-2 px-3 py-2 text-[12px] transition-colors border-none cursor-pointer',
+                      activeFilter === opt.value
+                        ? 'text-[var(--accent)] bg-[var(--accent-glow)]'
+                        : 'text-[var(--text-2)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]',
+                    ].join(' ')}
+                  >
+                    {opt.value !== 'all' && (
+                      <span style={{ color: CATEGORY_CONFIG[opt.value as Category].color }}>
+                        {CATEGORY_CONFIG[opt.value as Category].icon}
+                      </span>
+                    )}
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* body */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        {isLoading && <div className="p-5"><LoadingSpinner size="sm" message="Loading emails..." /></div>}
+
         {isError && (
-          <p className="text-red-400 text-sm text-center py-4">Failed to load email activity.</p>
+          <p className="text-[13px] text-red-400 text-center p-5">
+            Failed to load email activity
+          </p>
         )}
 
-        {/* Empty — no emails at all */}
         {!isLoading && !isError && jobEmails.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 py-6">
-            <div className="w-10 h-10 rounded-full bg-white/5 border border-white/8 flex items-center justify-center">
-              <Mail size={16} className="text-gray-600" />
-            </div>
-            <p className="text-gray-500 text-sm">No email activity yet.</p>
-            <p className="text-gray-700 text-xs">Run a Gmail scan to populate the timeline.</p>
+          <div className="flex-1 flex flex-col items-center justify-center gap-2.5 p-8">
+            <Mail size={22} style={{ color: 'var(--text-3)' }} />
+            <p className="text-[13px] m-0" style={{ color: 'var(--text-3)' }}>No email activity yet</p>
+            <p className="text-[12px] m-0" style={{ color: 'var(--text-3)', opacity: 0.6 }}>
+              Run a Gmail scan to populate
+            </p>
           </div>
         )}
 
-        {/* Empty — filter has no results */}
         {!isLoading && !isError && jobEmails.length > 0 && filtered.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-2 py-6">
-            <p className="text-gray-500 text-sm">
-              No {CATEGORY_CONFIG[activeFilter as Category]?.label ?? ''} emails found.
-            </p>
+          <div className="flex-1 flex flex-col items-center justify-center gap-2.5 p-8">
+            <p className="text-[13px] m-0" style={{ color: 'var(--text-3)' }}>No results for this filter</p>
             <button
               onClick={() => setActiveFilter('all')}
-              className="text-purple-400 text-xs hover:text-purple-300 transition-colors"
+              className="text-[12px] font-medium bg-transparent border-none cursor-pointer transition-colors"
+              style={{ color: 'var(--accent)' }}
             >
               Clear filter
             </button>
           </div>
         )}
 
-        {/* Content */}
         {!isLoading && !isError && filtered.length > 0 && (
-          <>
+          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-3">
             <ActivitySummaryBar emails={activeFilter === 'all' ? jobEmails : filtered} />
 
-            <div className="flex-1 overflow-y-auto space-y-0 pr-1 -mr-1">
-              {groups.map(([date, groupEmails], gi) => (
-                <div key={date} className={gi > 0 ? 'mt-2' : ''}>
-                  {/* Date separator */}
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <div className="h-px flex-1 bg-white/5" />
-                    <span className="text-gray-600 text-[9px] font-mono uppercase tracking-[0.12em] shrink-0 px-1">
-                      {date}
-                    </span>
-                    <div className="h-px flex-1 bg-white/5" />
-                  </div>
-
-                  {groupEmails.map((email, i) => {
-                    const delay = Math.min((itemIndex++ % 8) * 35, 280)
-                    const isLastInGroup = i === groupEmails.length - 1
-                    return (
-                      <ActivityTimelineItem
-                        key={email.id}
-                        email={email}
-                        isLast={isLastInGroup}
-                        delay={delay}
-                      />
-                    )
-                  })}
+            {groups.map(([date, groupEmails], gi) => (
+              <div key={date} className={gi > 0 ? 'mt-5' : ''}>
+                {/* date separator */}
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="divider" />
+                  <span
+                    className="text-[11px] font-medium shrink-0"
+                    style={{ color: 'var(--text-3)' }}
+                  >
+                    {date}
+                  </span>
+                  <div className="divider" />
                 </div>
-              ))}
-            </div>
-          </>
+
+                {groupEmails.map((email, i) => {
+                  const delay = Math.min((itemIndex++ % 8) * 30, 240)
+                  return (
+                    <ActivityTimelineItem
+                      key={email.id}
+                      email={email}
+                      isLast={i === groupEmails.length - 1}
+                      delay={delay}
+                    />
+                  )
+                })}
+              </div>
+            ))}
+          </div>
         )}
       </div>
-    </>
+    </div>
   )
 }
 

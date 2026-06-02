@@ -19,11 +19,11 @@ const LiveLoggerPage = () => {
 
       <div className="space-y-5 max-w-4xl">
         <div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">Live Logger</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Stream SSE events in real time</p>
+          <h1 className="text-t1 text-2xl font-bold tracking-tight">Live Logger</h1>
+          <p className="text-t2 text-sm mt-0.5">Stream SSE events in real time</p>
         </div>
 
-        <div className="rounded-2xl overflow-hidden" style={{ background: '#0e0e1a', border: '1px solid #ffffff0a' }}>
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid #ffffff0a' }}>
           <LiveLoggerHeader
             url={logger.url}
             status={logger.status}
@@ -44,7 +44,7 @@ const LiveLoggerPage = () => {
               minHeight={200}
               maxHeight={420}
               headerRight={
-                <label className="flex items-center gap-1.5 text-[11px] text-gray-500 font-mono cursor-pointer select-none">
+                <label className="flex items-center gap-1.5 text-[11px] text-t2 font-mono cursor-pointer select-none">
                   <input
                     type="checkbox"
                     className="accent-purple-500"
@@ -56,19 +56,19 @@ const LiveLoggerPage = () => {
               }
             />
 
-            <div className="flex items-center gap-4 text-[11px] font-mono text-gray-600">
+            <div className="flex items-center gap-4 text-[11px] font-mono text-t3">
               <span>{logger.logs.length} / {logger.maxLines} lines</span>
               {logger.lastParsed && (
                 <span>
-                  last stage: <span className="text-gray-400">{String(logger.lastParsed.stage ?? '-')}</span>
+                  last stage: <span className="text-t2">{String(logger.lastParsed.stage ?? '-')}</span>
                 </span>
               )}
             </div>
 
             {logger.lastParsed && (
-              <div className="rounded-xl p-4" style={{ background: '#0a0a16', border: '1px solid #ffffff07' }}>
-                <p className="font-mono text-[10px] text-gray-700 uppercase tracking-widest mb-2">Last event payload</p>
-                <pre className="text-[11px] text-gray-300 font-mono whitespace-pre-wrap break-all leading-5">
+              <div className="rounded-xl p-4" style={{ background: 'var(--bg-raised)', border: '1px solid #ffffff07' }}>
+                <p className="font-mono text-[10px] text-t3 uppercase tracking-widest mb-2">Last event payload</p>
+                <pre className="text-[11px] text-t1 font-mono whitespace-pre-wrap break-all leading-5">
                   {JSON.stringify(logger.lastParsed, null, 2)}
                 </pre>
               </div>

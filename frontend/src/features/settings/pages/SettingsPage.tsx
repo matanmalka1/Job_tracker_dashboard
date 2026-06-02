@@ -39,8 +39,8 @@ const SettingsPage = () => {
 
       <div className="space-y-5 max-w-4xl">
         <div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">Settings</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Gmail scanner & configuration</p>
+          <h1 className="text-t1 text-2xl font-bold tracking-tight">Settings</h1>
+          <p className="text-t2 text-sm mt-0.5">Gmail scanner & configuration</p>
         </div>
 
         <ScannerCard
@@ -61,7 +61,7 @@ const SettingsPage = () => {
         />
 
         {history && history.length > 0 && (
-          <div className="rounded-2xl p-6" style={{ background: '#0e0e1a', border: '1px solid #ffffff08' }}>
+          <div className="panel rounded-2xl p-6">
             <HistoryHeader count={history.length} />
             {history.map((run) => (
               <HistoryRow key={run.id} run={run} />

@@ -26,10 +26,10 @@ const ApplicationsTable = ({
   onRowClick,
   dimmed,
 }: Props) => (
-  <div className={['bg-[#1a1a24] rounded-xl border border-white/5 overflow-x-auto transition-opacity', dimmed ? 'opacity-70' : ''].join(' ')}>
+  <div className={['bg-surface rounded-xl border border-DEFAULT overflow-x-auto transition-opacity', dimmed ? 'opacity-70' : ''].join(' ')}>
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b border-white/5">
+        <tr className="border-b border-DEFAULT">
           <th className="px-4 py-3 w-8">
             <input
               type="checkbox"
@@ -40,7 +40,7 @@ const ApplicationsTable = ({
             />
           </th>
           {['Company', 'Role', 'Status', 'Source', 'Date', 'Emails', ''].map((col) => (
-            <th key={col} className="text-left text-gray-400 font-medium text-xs uppercase tracking-wider px-4 py-3">
+            <th key={col} className="text-left text-t2 font-medium text-xs uppercase tracking-wider px-4 py-3">
               {col}
             </th>
           ))}
@@ -49,7 +49,7 @@ const ApplicationsTable = ({
       <tbody>
         {applications.length === 0 && (
           <tr>
-            <td colSpan={8} className="px-4 py-10 text-center text-gray-500 text-sm">
+            <td colSpan={8} className="px-4 py-10 text-center text-t2 text-sm">
               No applications match your filter.
             </td>
           </tr>
@@ -59,7 +59,7 @@ const ApplicationsTable = ({
             key={app.id}
             onClick={() => onRowClick(app.id)}
             className={[
-              'border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer',
+              'border-b border-DEFAULT hover:bg-white/[0.04] transition-colors cursor-pointer',
               selectedIds.has(app.id) ? 'bg-purple-600/5' : '',
             ].join(' ')}
           >
@@ -73,22 +73,22 @@ const ApplicationsTable = ({
               />
             </td>
             <td className="px-4 py-3">
-              <span className="text-white font-medium">{app.company_name}</span>
+              <span className="text-t1 font-medium">{app.company_name}</span>
             </td>
             <td className="px-4 py-3">
-              <span className="text-gray-300">{app.role_title ?? '—'}</span>
+              <span className="text-t1">{app.role_title ?? '—'}</span>
             </td>
             <td className="px-4 py-3">
               <ApplicationStatusBadge status={app.status} />
             </td>
             <td className="px-4 py-3">
-              <span className="text-gray-400 text-xs">{app.source ?? '—'}</span>
+              <span className="text-t2 text-xs">{app.source ?? '—'}</span>
             </td>
             <td className="px-4 py-3">
-              <span className="text-gray-400 text-xs">{formatShortDate(app.applied_at ?? app.created_at)}</span>
+              <span className="text-t2 text-xs">{formatShortDate(app.applied_at ?? app.created_at)}</span>
             </td>
             <td className="px-4 py-3">
-              <span className="text-gray-500 text-xs">
+              <span className="text-t2 text-xs">
                 {app.email_count > 0 ? `${app.email_count} email${app.email_count !== 1 ? 's' : ''}` : '—'}
               </span>
             </td>
@@ -96,7 +96,7 @@ const ApplicationsTable = ({
               <div className="flex items-center gap-2 justify-end">
                 <button
                   onClick={() => onEdit(app)}
-                  className="text-gray-500 hover:text-purple-400 transition-colors"
+                  className="text-t2 hover:text-purple-400 transition-colors"
                   title="Edit"
                   aria-label={`Edit ${app.company_name}`}
                 >
@@ -104,7 +104,7 @@ const ApplicationsTable = ({
                 </button>
                 <button
                   onClick={() => onDelete(app)}
-                  className="text-gray-500 hover:text-red-400 transition-colors"
+                  className="text-t2 hover:text-red-400 transition-colors"
                   title="Delete"
                   aria-label={`Delete ${app.company_name}`}
                 >

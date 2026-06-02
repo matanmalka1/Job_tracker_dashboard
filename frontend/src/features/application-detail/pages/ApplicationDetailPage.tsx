@@ -39,12 +39,12 @@ const ApplicationDetailPage = () => {
       <div className="space-y-4">
         <button
           onClick={() => navigate('/applications')}
-          className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
+          className="flex items-center gap-2 text-t2 hover:text-t1 text-sm transition-colors"
         >
           <ArrowLeft size={16} />
           Back to Applications
         </button>
-        <div className="bg-[#1a1a24] rounded-xl p-12 border border-white/5 text-center">
+        <div className="bg-surface rounded-xl p-12 border border-DEFAULT text-center">
           <p className="text-red-400 text-sm">Application not found.</p>
         </div>
       </div>
@@ -55,7 +55,7 @@ const ApplicationDetailPage = () => {
     <div className="space-y-6 max-w-4xl">
       <button
         onClick={() => navigate('/applications')}
-        className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
+        className="flex items-center gap-2 text-t2 hover:text-t1 text-sm transition-colors"
       >
         <ArrowLeft size={16} />
         Back to Applications
@@ -70,12 +70,12 @@ const ApplicationDetailPage = () => {
       <ApplicationStatsGrid app={app} />
       <ApplicationMetaSection app={app} />
 
-      <div className="bg-[#1a1a24] border border-white/5 rounded-xl p-6">
+      <div className="bg-surface border border-DEFAULT rounded-xl p-6">
         <div className="flex items-center gap-2 mb-5">
-          <Mail size={16} className="text-gray-400" />
-          <h2 className="text-white font-semibold text-sm">
+          <Mail size={16} className="text-t2" />
+          <h2 className="text-t1 font-semibold text-sm">
             Email Thread
-            {app.emails.length > 0 && <span className="ml-2 text-gray-500 font-normal">({app.emails.length})</span>}
+            {app.emails.length > 0 && <span className="ml-2 text-t2 font-normal">({app.emails.length})</span>}
           </h2>
         </div>
         <EmailThread emails={app.emails} />

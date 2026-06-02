@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 import type { JobApplication } from '../../../shared/types/job-tracker.ts'
 import ApplicationStatusBadge from '../../../shared/components/data-display/ApplicationStatusBadge.tsx'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
@@ -9,87 +10,86 @@ interface Props {
   isError: boolean
 }
 
-const formatDate = (iso?: string): string => {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
+const fmt = (iso?: string) =>
+  iso
+    ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : '—'
 
 const RecentApplications = ({ applications, isLoading, isError }: Props) => {
   const navigate = useNavigate()
 
   return (
-    <div className="bg-[#1a1a24] rounded-xl border border-white/5">
-      <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
-        <h3 className="text-white font-semibold text-sm">Recent Applications</h3>
+    <div className="panel">
+      {/* header */}
+      <div className="flex items-center justify-between px-5 py-4"
+        style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2.5">
+          <span className="text-[14px] font-semibold" style={{ color: 'var(--text-1)' }}>
+            Recent Applications
+          </span>
+          {applications.length > 0 && (
+            <span
+              className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+              style={{ background: 'var(--bg-hover)', color: 'var(--text-3)' }}
+            >
+              {applications.length}
+            </span>
+          )}
+        </div>
         <button
           onClick={() => navigate('/applications')}
-          className="text-purple-400 text-xs hover:text-purple-300 transition-colors"
+          className="flex items-center gap-1.5 text-[13px] font-medium bg-transparent border-none cursor-pointer transition-colors"
+          style={{ color: 'var(--accent)' }}
         >
-          View all →
+          View all <ArrowRight size={13} />
         </button>
       </div>
 
-      {isLoading && <LoadingSpinner size="sm" message="Loading applications..." />}
+      {isLoading && <div className="p-6"><LoadingSpinner size="sm" message="Loading..." /></div>}
 
       {isError && (
-        <p className="text-red-400 text-sm text-center py-6 px-5">
-          Failed to load applications.
+        <p className="text-[13px] text-red-400 text-center py-5">
+          Failed to load applications
         </p>
       )}
 
       {!isLoading && !isError && applications.length === 0 && (
-        <p className="text-gray-500 text-sm text-center py-6 px-5">
-          No applications yet. Add your first one!
+        <p className="text-[13px] text-center py-8" style={{ color: 'var(--text-3)' }}>
+          No applications yet
         </p>
       )}
 
       {!isLoading && !isError && applications.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/5">
-                {['Company', 'Role', 'Status', 'Date'].map((col) => (
-                  <th
-                    key={col}
-                    className="text-left text-gray-400 font-medium text-xs uppercase tracking-wider px-5 py-3"
-                  >
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {applications.map((app, idx) => (
-                <tr
-                  key={app.id}
-                  onClick={() => navigate(`/applications/${app.id}`)}
-                  className={[
-                    'hover:bg-white/[0.04] transition-colors cursor-pointer',
-                    idx < applications.length - 1 ? 'border-b border-white/5' : '',
-                  ].join(' ')}
-                >
-                  <td className="px-5 py-3.5">
-                    <span className="text-white font-medium">{app.company_name}</span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className="text-gray-300">{app.role_title ?? '—'}</span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <ApplicationStatusBadge status={app.status} />
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className="text-gray-400 text-xs">
-                      {formatDate(app.applied_at ?? app.created_at)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* column heads */}
+          <div
+            className="grid px-5 py-2.5 gap-4"
+            style={{ gridTemplateColumns: '1fr 1fr 140px 90px', borderBottom: '1px solid var(--border)' }}
+          >
+            {['Company', 'Role', 'Status', 'Date'].map((col) => (
+              <span key={col} className="section-label">{col}</span>
+            ))}
+          </div>
+
+          {applications.map((app) => (
+            <div
+              key={app.id}
+              onClick={() => navigate(`/applications/${app.id}`)}
+              className="hover-row grid px-5 py-3.5 gap-4 items-center cursor-pointer"
+              style={{ gridTemplateColumns: '1fr 1fr 140px 90px' }}
+            >
+              <span className="font-medium text-[13px] truncate" style={{ color: 'var(--text-1)' }}>
+                {app.company_name}
+              </span>
+              <span className="text-[13px] truncate" style={{ color: 'var(--text-2)' }}>
+                {app.role_title ?? '—'}
+              </span>
+              <ApplicationStatusBadge status={app.status} size="sm" />
+              <span className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+                {fmt(app.applied_at ?? app.created_at)}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>

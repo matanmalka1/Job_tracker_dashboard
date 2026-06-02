@@ -78,36 +78,36 @@ const GlobalSearch = () => {
     <div ref={containerRef} className="relative">
       <button
         onClick={openSearch}
-        className="flex items-center gap-2 bg-[#0f0f13] border border-white/10 rounded-lg px-3 py-1.5 text-gray-500 text-sm hover:border-white/20 hover:text-gray-400 transition-colors w-48"
+        className="flex items-center gap-2 bg-raised border border-DEFAULT rounded-lg px-3 py-1.5 text-t2 text-sm hover:border-mid transition-colors w-48"
         aria-label="Open search (⌘K)"
       >
         <Search size={14} />
         <span className="flex-1 text-left text-xs">Search…</span>
-        <kbd className="text-xs bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">⌘K</kbd>
+        <kbd className="text-xs bg-raised border border-DEFAULT rounded px-1 py-0.5 font-mono">⌘K</kbd>
       </button>
 
       {open && (
         <div
-          className="absolute top-full mt-2 left-0 w-96 bg-[#1a1a24] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
+          className="absolute top-full mt-2 left-0 w-96 bg-surface border border-DEFAULT rounded-xl shadow-2xl z-50 overflow-hidden"
           role="dialog"
           aria-label="Search applications"
         >
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
-            <Search size={15} className="text-gray-500 shrink-0" />
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-DEFAULT">
+            <Search size={15} className="text-t2 shrink-0" />
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search company, role, or source…"
-              className="flex-1 bg-transparent text-white text-sm placeholder-gray-500 focus:outline-none"
+              className="flex-1 bg-transparent text-t1 text-sm placeholder-t3 focus:outline-none"
               autoComplete="off"
               aria-label="Search query"
             />
             {query && (
               <button
                 onClick={() => { setQuery(''); setDebouncedQuery('') }}
-                className="text-gray-500 hover:text-white"
+                className="text-t2 hover:text-t1"
                 aria-label="Clear search"
               >
                 <X size={14} />
@@ -118,20 +118,20 @@ const GlobalSearch = () => {
           {query.trim().length >= MIN_QUERY_LENGTH && (
             <div className="max-h-80 overflow-y-auto">
               {isFetching ? (
-                <div className="flex items-center justify-center gap-2 px-4 py-6 text-gray-500 text-sm">
+                <div className="flex items-center justify-center gap-2 px-4 py-6 text-t2 text-sm">
                   <Loader2 size={14} className="animate-spin" />
                   Searching…
                 </div>
               ) : isError ? (
                 <div className="px-4 py-6 text-center text-red-400 text-sm">Search failed</div>
               ) : results.length === 0 ? (
-                <div className="px-4 py-6 text-center text-gray-500 text-sm">No applications found</div>
+                <div className="px-4 py-6 text-center text-t2 text-sm">No applications found</div>
               ) : (
                 results.map((app) => (
                   <button
                     key={app.id}
                     onClick={() => handleSelect(app)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.04] text-left transition-colors border-b border-white/5 last:border-0"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-hover text-left transition-colors border-b border-DEFAULT last:border-0"
                   >
                     <div className="shrink-0 w-8 h-8 rounded-lg bg-purple-600/10 flex items-center justify-center">
                       <span className="text-purple-400 text-xs font-bold">
@@ -139,8 +139,8 @@ const GlobalSearch = () => {
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm font-medium truncate">{app.company_name}</p>
-                      <p className="text-gray-400 text-xs truncate">{app.role_title ?? '—'}</p>
+                      <p className="text-t1 text-sm font-medium truncate">{app.company_name}</p>
+                      <p className="text-t2 text-xs truncate">{app.role_title ?? '—'}</p>
                     </div>
                     <ApplicationStatusBadge status={app.status} />
                   </button>
@@ -151,7 +151,7 @@ const GlobalSearch = () => {
 
           {query.trim().length < MIN_QUERY_LENGTH && (
             <div className="px-4 py-4">
-              <p className="text-gray-600 text-xs mb-3">Quick navigation</p>
+              <p className="text-t3 text-xs mb-3">Quick navigation</p>
               <div className="grid grid-cols-2 gap-1.5">
                 {[
                   { label: 'Applications', path: '/applications', icon: <FileText size={13} /> },
@@ -160,7 +160,7 @@ const GlobalSearch = () => {
                   <button
                     key={item.path}
                     onClick={() => { navigate(item.path); setOpen(false) }}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 text-xs transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-raised hover:bg-hover text-t2 text-xs transition-colors"
                   >
                     {item.icon}
                     {item.label}

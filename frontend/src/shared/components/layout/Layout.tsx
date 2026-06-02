@@ -1,38 +1,57 @@
 import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
-import { Menu } from 'lucide-react'
+import { Menu, Moon, Sun, X } from 'lucide-react'
 import Sidebar from './Sidebar.tsx'
 import GlobalSearch from './GlobalSearch.tsx'
+import { useTheme } from '../../hooks/useTheme.ts'
 
 const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'Overview',
-  '/pipeline': 'Pipeline',
+  '/dashboard':    'Dashboard',
+  '/pipeline':     'Pipeline',
   '/applications': 'Applications',
-  '/companies': 'Companies',
-  '/live-logger': 'Live Logger',
-  '/settings': 'Settings',
-  '/manage-data': 'Manage Data',
+  '/companies':    'Companies',
+  '/live-logger':  'Live Logger',
+  '/settings':     'Settings',
+  '/manage-data':  'Manage Data',
+  '/interviews':   'Interviews',
+}
+
+const Clock = () => {
+  const now = new Date()
+  const time = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })
+  const date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return (
+    <div className="flex flex-col items-end justify-center px-4 min-w-[80px]"
+      style={{ borderLeft: '1px solid var(--border)' }}>
+      <span className="text-[13px] font-medium" style={{ color: 'var(--text-1)' }}>{time}</span>
+      <span className="text-[11px] mt-0.5" style={{ color: 'var(--text-3)' }}>{date}</span>
+    </div>
+  )
 }
 
 const Layout = () => {
   const { pathname } = useLocation()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const { theme, toggle } = useTheme()
 
-  // Match /applications/:id
   const isDetailPage = /^\/applications\/\d+/.test(pathname)
   const pageTitle = isDetailPage
     ? 'Application Detail'
-    : PAGE_TITLES[pathname] ?? 'Overview'
+    : (PAGE_TITLES[pathname] ?? 'Dashboard')
+
+  const headerBg = theme === 'light'
+    ? 'rgba(255,255,255,0.88)'
+    : 'rgba(10,10,15,0.90)'
 
   return (
-    <div className="flex min-h-screen bg-[#0f0f13]">
-      {/* Desktop Sidebar */}
+    <div className="flex min-h-screen bg-base">
+      {/* Desktop sidebar */}
       <div className="hidden md:block">
         <Sidebar />
       </div>
 
-      {/* Mobile Sidebar overlay */}
+      {/* Mobile overlay */}
       {mobileNavOpen && (
         <>
           <div
@@ -46,35 +65,73 @@ const Layout = () => {
       )}
 
       <main className="flex-1 overflow-auto min-w-0">
-        <header className="h-14 border-b border-white/5 flex items-center justify-between px-4 md:px-6 gap-4 sticky top-0 z-30 bg-[#0f0f13]/80 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setMobileNavOpen(true)}
-              className="md:hidden text-gray-400 hover:text-white transition-colors"
-            >
-              <Menu size={20} />
-            </button>
-            <h2 className="text-white font-semibold text-sm">{pageTitle}</h2>
-          </div>
-          <div className="hidden sm:block">
+        {/* Header */}
+        <header
+          className="sticky top-0 z-30 flex items-center h-14 px-6 gap-4"
+          style={{
+            background: headerBg,
+            backdropFilter: 'blur(12px)',
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          <button
+            onClick={() => setMobileNavOpen((v) => !v)}
+            className="md:hidden transition-colors"
+            style={{ color: 'var(--text-2)' }}
+          >
+            {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+
+          <span className="page-title">{pageTitle}</span>
+
+          <div className="flex-1" />
+
+          <div className="hidden sm:flex items-center">
             <GlobalSearch />
           </div>
+
+          {/* Theme toggle */}
+          <button
+            onClick={toggle}
+            aria-label="Toggle theme"
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
+            style={{
+              color: 'var(--text-2)',
+              background: 'transparent',
+              border: '1px solid var(--border)',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)'
+              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-1)'
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-2)'
+            }}
+          >
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+
+          <Clock />
         </header>
 
-        <div className="p-4 md:p-6">
+        {/* Content */}
+        <div className="p-6 pb-10">
           <Outlet />
         </div>
       </main>
 
       <Toaster
         position="bottom-right"
-        theme="dark"
+        theme={theme}
         toastOptions={{
           style: {
-            background: '#1a1a24',
-            border: '1px solid rgba(255,255,255,0.08)',
-            color: '#ffffff',
+            background: 'var(--bg-raised)',
+            border: '1px solid var(--border-mid)',
+            color: 'var(--text-1)',
+            fontFamily: 'var(--font-sans)',
+            fontSize: 13,
+            borderRadius: 10,
           },
         }}
       />

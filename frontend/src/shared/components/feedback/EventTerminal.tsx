@@ -33,18 +33,18 @@ const EventTerminal = ({
   return (
     <div
       className="rounded-xl overflow-hidden"
-      style={{ background: '#07070f', border: '1px solid #ffffff08' }}
+      style={{ background: 'var(--bg-base)', border: '1px solid var(--border)' }}
     >
       <div
         className="flex items-center gap-2 px-4 py-2.5 border-b"
-        style={{ background: '#0c0c18', borderColor: '#ffffff07' }}
+        style={{ background: 'var(--bg-raised)', borderColor: 'var(--border)' }}
       >
         <div className="flex gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
           <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
           <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
         </div>
-        <span className="ml-2 font-mono text-[10px] text-gray-700 tracking-wider">{title}</span>
+        <span className="ml-2 font-mono text-[10px] text-t3 tracking-wider">{title}</span>
         {live && (
           <div className="ml-auto flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -63,7 +63,7 @@ const EventTerminal = ({
         }}
       >
         {lines.length === 0 ? (
-          <div className="text-[11px] text-gray-700">
+          <div className="text-[11px] text-t3">
             {'> '}<span className="animate-pulse">{emptyText}</span>
           </div>
         ) : (
@@ -73,7 +73,7 @@ const EventTerminal = ({
               className="flex gap-3 text-[11px] leading-5"
               style={{ animation: 'logIn 0.12s ease-out both' }}
             >
-              <span className="text-gray-700 shrink-0 tabular-nums select-none">
+              <span className="text-t3 shrink-0 tabular-nums select-none">
                 {new Date(line.ts).toLocaleTimeString('en-US', { hour12: false })}
               </span>
               <span
@@ -89,7 +89,7 @@ const EventTerminal = ({
           ))
         )}
         {live && (
-          <div className="text-[11px] text-gray-700 font-mono">
+          <div className="text-[11px] text-t3 font-mono">
             {'> '}<span className="animate-pulse">▋</span>
           </div>
         )}

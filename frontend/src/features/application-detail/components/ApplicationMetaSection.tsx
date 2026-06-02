@@ -4,10 +4,10 @@ const ApplicationMetaSection = ({ app }: { app: JobApplication }) => {
   if (!app.job_url && !app.notes) return null
 
   return (
-    <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+    <div className="mt-4 pt-4 border-t border-DEFAULT space-y-3">
       {app.job_url && (
         <div className="flex items-center gap-2">
-          <p className="text-gray-500 text-xs w-20 shrink-0">Job URL</p>
+          <p className="text-t2 text-xs w-20 shrink-0">Job URL</p>
           <a
             href={app.job_url}
             target="_blank"
@@ -20,8 +20,8 @@ const ApplicationMetaSection = ({ app }: { app: JobApplication }) => {
       )}
       {app.notes && (
         <div>
-          <p className="text-gray-500 text-xs mb-1">Notes</p>
-          <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{app.notes}</p>
+          <p className="text-t2 text-xs mb-1">Notes</p>
+          <p className="text-t1 text-sm whitespace-pre-wrap leading-relaxed">{app.notes}</p>
         </div>
       )}
     </div>

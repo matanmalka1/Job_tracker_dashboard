@@ -22,16 +22,16 @@ interface CardProps {
 }
 
 const InterviewCard = ({ app, onMoveOffer, onMoveRejected, loading }: CardProps) => (
-  <div className="bg-[#0f0f13] border border-white/5 rounded-xl p-4 flex flex-col gap-3 hover:border-purple-600/20 transition-colors">
+  <div className="bg-raised border border-DEFAULT rounded-xl p-4 flex flex-col gap-3 hover:border-DEFAULT transition-colors">
     <div className="flex items-start justify-between gap-3">
       <div>
-        <p className="text-white font-semibold text-sm">{app.company_name}</p>
-        <p className="text-gray-400 text-xs mt-0.5">{app.role_title ?? '—'}</p>
+        <p className="text-t1 font-semibold text-sm">{app.company_name}</p>
+        <p className="text-t2 text-xs mt-0.5">{app.role_title ?? '—'}</p>
       </div>
       <ApplicationStatusBadge status={app.status} />
     </div>
 
-    <div className="flex items-center gap-4 text-xs text-gray-500">
+    <div className="flex items-center gap-4 text-xs text-t2">
       <span className="flex items-center gap-1">
         <Calendar size={12} />
         {formatDate(app.applied_at ?? app.created_at)}
@@ -42,14 +42,14 @@ const InterviewCard = ({ app, onMoveOffer, onMoveRejected, loading }: CardProps)
           {app.email_count} email{app.email_count !== 1 ? 's' : ''}
         </span>
       )}
-      {app.last_email_at && <span className="text-gray-600">Last: {relativeTime(app.last_email_at)}</span>}
+      {app.last_email_at && <span className="text-t3">Last: {relativeTime(app.last_email_at)}</span>}
     </div>
 
     {app.confidence_score != null && (
       <div>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-gray-500 text-xs">Confidence</span>
-          <span className="text-gray-300 text-xs">{Math.round(app.confidence_score * 100)}%</span>
+          <span className="text-t2 text-xs">Confidence</span>
+          <span className="text-t1 text-xs">{Math.round(app.confidence_score * 100)}%</span>
         </div>
         <div className="h-1 bg-white/5 rounded-full overflow-hidden">
           <div

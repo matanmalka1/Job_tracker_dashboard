@@ -17,14 +17,14 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-  { to: '/applications', label: 'Applications', icon: <FileText size={20} /> },
-  { to: '/pipeline', label: 'Pipeline', icon: <Kanban size={20} /> },
-  { to: '/interviews', label: 'Interviews', icon: <Calendar size={20} /> },
-  { to: '/companies', label: 'Companies', icon: <Building2 size={20} /> },
-  { to: '/settings', label: 'Settings', icon: <Settings size={20} /> },
-  { to: '/manage-data', label: 'Manage Data', icon: <Database size={20} /> },
-  { to: '/live-logger', label: 'Live Logger', icon: <Radio size={20} /> },
+  { to: '/dashboard',    label: 'Dashboard',    icon: <LayoutDashboard size={16} /> },
+  { to: '/applications', label: 'Applications', icon: <FileText size={16} /> },
+  { to: '/pipeline',     label: 'Pipeline',     icon: <Kanban size={16} /> },
+  { to: '/interviews',   label: 'Interviews',   icon: <Calendar size={16} /> },
+  { to: '/companies',    label: 'Companies',    icon: <Building2 size={16} /> },
+  { to: '/settings',     label: 'Settings',     icon: <Settings size={16} /> },
+  { to: '/manage-data',  label: 'Manage Data',  icon: <Database size={16} /> },
+  { to: '/live-logger',  label: 'Live Logger',  icon: <Radio size={16} /> },
 ]
 
 interface SidebarProps {
@@ -32,41 +32,55 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ onNavClick }: SidebarProps) => (
-  <aside className="w-60 min-h-screen bg-[#1a1a24] flex flex-col py-6 px-3 shrink-0">
-    <div className="px-3 mb-8 flex items-center gap-3">
-      <img src="/logo.svg" alt="" className="h-10 w-10 shrink-0" />
+  <aside className="flex flex-col w-[220px] min-h-screen shrink-0"
+    style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border)' }}>
+
+    {/* logo */}
+    <div className="flex items-center gap-3 px-5 py-5"
+      style={{ borderBottom: '1px solid var(--border)' }}>
+      <img src="/logo.svg" alt="" className="w-7 h-7 shrink-0 opacity-90" />
       <div>
-        <h1 className="text-white text-lg font-bold tracking-tight">
-          Job<span className="text-purple-500">Tracker</span>
-        </h1>
-        <p className="text-gray-500 text-xs mt-0.5">Application Dashboard</p>
+        <div className="text-[14px] font-semibold" style={{ color: 'var(--text-1)' }}>
+          JobTracker
+        </div>
+        <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-3)' }}>
+          Job search dashboard
+        </div>
       </div>
     </div>
 
-    <nav className="flex flex-col gap-1">
+    {/* section label */}
+    <div className="px-4 pt-5 pb-2">
+      <span className="section-label">Menu</span>
+    </div>
+
+    {/* nav */}
+    <nav className="flex flex-col px-3 flex-1 gap-0.5">
       {NAV_ITEMS.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
           onClick={onNavClick}
-          className={({ isActive }) =>
-            [
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-              isActive
-                ? 'bg-purple-600/20 text-purple-400 border border-purple-600/30'
-                : 'text-gray-400 hover:text-white hover:bg-white/5',
-            ].join(' ')
-          }
+          className="no-underline"
         >
-          {item.icon}
-          {item.label}
+          {({ isActive }) => (
+            <div className={isActive ? 'nav-item-active' : 'nav-item'}>
+              <span style={{ opacity: isActive ? 0.9 : 0.55, color: isActive ? 'var(--accent)' : 'inherit' }}>
+                {item.icon}
+              </span>
+              <span>{item.label}</span>
+            </div>
+          )}
         </NavLink>
       ))}
     </nav>
 
-    <div className="flex-1" />
-
-    <p className="text-gray-600 text-xs text-center">v1.0.0</p>
+    {/* footer */}
+    <div className="flex items-center gap-2 px-5 py-4"
+      style={{ borderTop: '1px solid var(--border)' }}>
+      <div className="w-2 h-2 rounded-full shrink-0 bg-green-500" />
+      <span className="text-[12px]" style={{ color: 'var(--text-3)' }}>Connected</span>
+    </div>
   </aside>
 )
 

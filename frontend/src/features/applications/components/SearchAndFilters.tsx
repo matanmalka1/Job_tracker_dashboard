@@ -12,22 +12,22 @@ interface Props {
 const SearchAndFilters = ({ search, onSearchChange, statusFilter, onStatusChange }: Props) => (
   <div className="flex flex-col sm:flex-row gap-3">
     <div className="relative flex-1 max-w-sm">
-      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-t2" />
       <input
         type="text"
         placeholder="Search company or role…"
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="w-full bg-[#1a1a24] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-colors"
+        className="w-full bg-surface border border-DEFAULT rounded-lg pl-9 pr-3 py-2 text-t1 text-sm placeholder-t3 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
       />
     </div>
 
-    <div className="flex items-center gap-1 bg-[#1a1a24] p-1 rounded-lg border border-white/5 overflow-x-auto">
+    <div className="flex items-center gap-1 bg-surface p-1 rounded-lg border border-DEFAULT overflow-x-auto">
       <button
         onClick={() => onStatusChange('all')}
         className={[
           'px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors',
-          statusFilter === 'all' ? 'bg-purple-600/20 text-purple-400' : 'text-gray-400 hover:text-white',
+          statusFilter === 'all' ? 'bg-purple-600/20 text-purple-400' : 'text-t2 hover:text-t1',
         ].join(' ')}
       >
         All
@@ -38,7 +38,7 @@ const SearchAndFilters = ({ search, onSearchChange, statusFilter, onStatusChange
           onClick={() => onStatusChange(s)}
           className={[
             'px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors',
-            statusFilter === s ? 'bg-purple-600/20 text-purple-400' : 'text-gray-400 hover:text-white',
+            statusFilter === s ? 'bg-purple-600/20 text-purple-400' : 'text-t2 hover:text-t1',
           ].join(' ')}
         >
           {APPLICATION_STATUS_LABELS[s]}

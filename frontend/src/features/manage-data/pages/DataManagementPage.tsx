@@ -148,7 +148,7 @@ const DataManagementPage = () => {
         count={total}
       />
 
-      <div className="bg-[#1a1a24] border border-white/5 rounded-xl overflow-hidden">
+      <div className="bg-surface border border-DEFAULT rounded-xl overflow-hidden">
         {isLoading ? (
           <div className="py-16 flex justify-center">
             <LoadingSpinner />

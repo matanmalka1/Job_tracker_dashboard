@@ -30,15 +30,15 @@ const LiveLoggerHeader = ({ url, status, onConnect, onClose, onClear }: LiveLogg
   return (
     <div
       className="px-5 py-4 flex items-center justify-between border-b gap-4"
-      style={{ background: '#0b0b16', borderColor: '#ffffff07' }}
+      style={{ background: 'var(--bg-raised)', borderColor: 'var(--border)' }}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#1b1b2a' }}>
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--bg-hover)' }}>
           <Radio size={15} className="text-purple-300" />
         </div>
         <div className="min-w-0">
-          <p className="text-white text-sm font-semibold">SSE Stream</p>
-          <p className="text-gray-600 text-[11px] font-mono mt-px truncate max-w-[260px]">{url}</p>
+          <p className="text-t1 text-sm font-semibold">SSE Stream</p>
+          <p className="text-t3 text-[11px] font-mono mt-px truncate max-w-[260px]">{url}</p>
         </div>
       </div>
 
@@ -70,8 +70,8 @@ const LiveLoggerHeader = ({ url, status, onConnect, onClose, onClear }: LiveLogg
 
         <button
           onClick={onClear}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors"
-          style={{ background: '#1b1b2a', border: '1px solid #ffffff10' }}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-t2 hover:text-t1 transition-colors"
+          style={{ background: 'var(--bg-hover)', border: '1px solid #ffffff10' }}
         >
           <Trash2 size={13} />
           Clear

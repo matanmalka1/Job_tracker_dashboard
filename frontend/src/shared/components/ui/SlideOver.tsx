@@ -31,15 +31,15 @@ const SlideOver = ({ open, title, onClose, children }: Props) => {
       {/* Panel */}
       <div
         className={[
-          'fixed inset-y-0 right-0 z-50 w-full max-w-md bg-[#1a1a24] border-l border-white/10 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out',
+          'fixed inset-y-0 right-0 z-50 w-full max-w-md bg-surface border-l border-DEFAULT shadow-2xl flex flex-col transition-transform duration-300 ease-in-out',
           open ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
       >
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
-          <h2 className="text-white font-semibold text-lg">{title}</h2>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-DEFAULT">
+          <h2 className="text-t1 font-semibold text-lg">{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors"
+            className="text-t2 hover:text-t1 transition-colors"
           >
             <X size={20} />
           </button>

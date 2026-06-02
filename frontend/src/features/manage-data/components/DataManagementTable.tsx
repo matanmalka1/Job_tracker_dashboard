@@ -11,7 +11,7 @@ interface Props {
 const DataManagementTable = ({ applications, onEdit, onDelete }: Props) => (
   <div className="overflow-x-auto">
     <table className="w-full text-sm">
-      <thead className="bg-white/5 text-gray-400 uppercase text-[11px] tracking-wide">
+      <thead className="bg-white/5 text-t2 uppercase text-[11px] tracking-wide">
         <tr>
           <th className="text-left px-4 py-3">Company</th>
           <th className="text-left px-4 py-3">Role</th>
@@ -30,9 +30,9 @@ const DataManagementTable = ({ applications, onEdit, onDelete }: Props) => (
         ))}
         {applications.length === 0 && (
           <tr>
-            <td colSpan={9} className="px-4 py-10 text-center text-gray-500">
+            <td colSpan={9} className="px-4 py-10 text-center text-t2">
               <div className="flex flex-col items-center gap-2">
-                <AlertCircle size={20} className="text-gray-600" />
+                <AlertCircle size={20} className="text-t3" />
                 <p className="text-sm">No records match the current filters.</p>
               </div>
             </td>

@@ -29,7 +29,7 @@ const StageNodes = ({ currentStage, completedStages, scanning }: Props) => (
           <div
             className="relative z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-500"
             style={{
-              background: isDone ? stage.color : isActive ? `${stage.color}18` : '#0f1118',
+              background: isDone ? stage.color : isActive ? `${stage.color}18` : 'var(--bg-raised)',
               border: `1.5px solid ${isDone || isActive ? stage.color : '#1e2433'}`,
               boxShadow: isActive ? `0 0 16px ${stage.color}70, 0 0 32px ${stage.color}25` : 'none',
             }}

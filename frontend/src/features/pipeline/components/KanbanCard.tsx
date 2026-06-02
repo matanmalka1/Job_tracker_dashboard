@@ -13,73 +13,69 @@ const KanbanCard = ({ application }: Props) => {
     useSortable({ id: application.id })
   const navigate = useNavigate()
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  }
+  const style = { transform: CSS.Transform.toString(transform), transition }
 
   const confidencePct = application.confidence_score
     ? Math.round(application.confidence_score * 100)
     : null
 
-  const confidenceColor =
-    confidencePct === null
-      ? ''
-      : confidencePct >= 80
-        ? 'bg-green-500'
-        : confidencePct >= 60
-          ? 'bg-yellow-500'
-          : 'bg-red-500'
+  const confColor =
+    confidencePct === null   ? 'var(--text-3)'
+    : confidencePct >= 80   ? '#10b981'
+    : confidencePct >= 60   ? 'var(--accent)'
+    : '#ef4444'
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className="bg-[#0f0f13] rounded-lg border border-white/5 select-none"
+      style={{ ...style, background: 'var(--bg-base)', border: '1px solid var(--border)' }}
+      className={[
+        'rounded-xl select-none transition-opacity',
+        isDragging ? 'opacity-30' : 'opacity-100',
+      ].join(' ')}
     >
+      {/* drag handle */}
       <div
         {...attributes}
         {...listeners}
-        className="flex items-center justify-end px-3 pt-2 cursor-grab active:cursor-grabbing"
-        aria-label="Drag to move"
+        className="flex justify-end px-2.5 pt-2 cursor-grab active:cursor-grabbing"
       >
-        <GripVertical size={14} className="text-gray-700 hover:text-gray-400 transition-colors" />
+        <GripVertical size={13} style={{ color: 'var(--text-3)' }} />
       </div>
 
       <div
         onClick={() => navigate(`/applications/${application.id}`)}
-        className="px-3.5 pb-3.5 cursor-pointer"
+        className="px-3 pb-3 cursor-pointer"
       >
-        <div className="min-w-0">
-          <p className="text-white text-sm font-semibold truncate">{application.company_name}</p>
-          <p className="text-gray-400 text-xs mt-0.5 truncate">{application.role_title ?? '—'}</p>
-        </div>
+        <p className="font-semibold text-[13px] truncate m-0" style={{ color: 'var(--text-1)' }}>
+          {application.company_name}
+        </p>
+        <p className="text-[12px] truncate m-0 mt-0.5" style={{ color: 'var(--text-2)' }}>
+          {application.role_title ?? '—'}
+        </p>
 
         {confidencePct !== null && (
-          <div className="mt-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-gray-500 text-xs">Confidence</span>
-              <span className="text-gray-300 text-xs font-medium">{confidencePct}%</span>
+          <div className="mt-2.5">
+            <div className="flex justify-between mb-1">
+              <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>Confidence</span>
+              <span className="text-[11px] font-medium" style={{ color: confColor }}>{confidencePct}%</span>
             </div>
-            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+            <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--bg-hover)' }}>
               <div
-                className={['h-full rounded-full transition-all', confidenceColor].join(' ')}
-                style={{ width: `${confidencePct}%` }}
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${confidencePct}%`, background: confColor }}
               />
             </div>
           </div>
         )}
 
         {application.email_count > 0 && (
-          <div className="mt-2.5 flex items-center gap-1 text-gray-500 text-xs">
-            <Mail size={12} />
-            <span>{application.email_count} email{application.email_count > 1 ? 's' : ''}</span>
+          <div className="mt-2 flex items-center gap-1.5">
+            <Mail size={11} style={{ color: 'var(--text-3)' }} />
+            <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>
+              {application.email_count} email{application.email_count > 1 ? 's' : ''}
+            </span>
           </div>
-        )}
-
-        {application.source && (
-          <p className="mt-1.5 text-gray-600 text-xs">{application.source}</p>
         )}
       </div>
     </div>

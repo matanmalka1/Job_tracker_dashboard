@@ -49,14 +49,14 @@ const ScannerCard = ({
   <div
     className="rounded-2xl overflow-hidden transition-all duration-700"
     style={{
-      background: '#0e0e1a',
-      border: `1px solid ${scanning ? accent + '28' : '#ffffff0a'}`,
+      background: 'var(--bg-surface)',
+      border: `1px solid ${scanning ? accent + '28' : 'var(--border)'}`,
       boxShadow: scanning ? `0 0 80px ${accent}0c` : 'none',
     }}
   >
     <div
       className="px-6 py-4 flex items-center justify-between border-b transition-colors duration-700"
-      style={{ borderColor: scanning ? `${accent}18` : '#ffffff07', background: '#0b0b16' }}
+      style={{ borderColor: scanning ? `${accent}18` : 'var(--border)', background: 'var(--bg-raised)' }}
     >
       <div className="flex items-center gap-3">
         <div
@@ -66,8 +66,8 @@ const ScannerCard = ({
           <Mail size={15} style={{ color: accent }} />
         </div>
         <div>
-          <p className="text-white text-sm font-semibold">Gmail Scanner</p>
-          <p className="text-gray-600 text-[11px] mt-px font-mono">
+          <p className="text-t1 text-sm font-semibold">Gmail Scanner</p>
+          <p className="text-t3 text-[11px] mt-px font-mono">
             {scanning && activeStage ? activeStage.desc : 'Scan inbox for job applications'}
           </p>
         </div>
@@ -133,7 +133,7 @@ const ScannerCard = ({
                 </>
               )}
               {!done && !scanError && !scanning && (
-                <span className="font-mono text-[9px] text-gray-700 uppercase tracking-widest">Standby</span>
+                <span className="font-mono text-[9px] text-t3 uppercase tracking-widest">Standby</span>
               )}
               {scanning && (
                 <>
@@ -151,7 +151,7 @@ const ScannerCard = ({
             disabled={scanning}
             className="relative px-7 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 disabled:cursor-not-allowed overflow-hidden"
             style={{
-              background: scanning ? '#141424' : `linear-gradient(135deg, ${accent}ee, ${accent}99)`,
+              background: scanning ? 'var(--bg-raised)' : `linear-gradient(135deg, ${accent}ee, ${accent}99)`,
               color: scanning ? `${accent}cc` : '#000',
               border: `1px solid ${accent}${scanning ? '25' : '00'}`,
               boxShadow: scanning ? 'none' : `0 6px 28px ${accent}45`,
@@ -185,7 +185,7 @@ const ScannerCard = ({
           </button>
 
           {lastCompletedAt && !scanning && (
-            <span className="font-mono text-[10px] text-gray-600 flex items-center gap-1.5">
+            <span className="font-mono text-[10px] text-t3 flex items-center gap-1.5">
               <Clock size={9} />
               last {formatRelativeTime(lastCompletedAt)}
             </span>
@@ -193,8 +193,8 @@ const ScannerCard = ({
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col gap-4">
-          <div className="rounded-xl p-4" style={{ background: '#0a0a16', border: '1px solid #ffffff07' }}>
-            <p className="font-mono text-[9px] text-gray-700 uppercase tracking-widest mb-4">Pipeline</p>
+          <div className="rounded-xl p-4" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)' }}>
+            <p className="font-mono text-[9px] text-t3 uppercase tracking-widest mb-4">Pipeline</p>
             <StageNodes currentStage={currentStage} completedStages={completedStages} scanning={scanning} />
           </div>
 
@@ -203,7 +203,7 @@ const ScannerCard = ({
           {done && result && !scanError && (
             <div
               className="rounded-xl px-5 py-3.5 flex items-center gap-3"
-              style={{ background: '#0b1e16', border: '1px solid #34d39928' }}
+              style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(52,211,153,0.20)' }}
             >
               <CheckCircle2 size={15} color="#34d399" className="shrink-0" />
               <div>
@@ -220,7 +220,7 @@ const ScannerCard = ({
           {scanError && (
             <div
               className="rounded-xl px-5 py-3.5 flex items-center gap-3"
-              style={{ background: '#1c0d0d', border: '1px solid #f8717128' }}
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(248,113,113,0.20)' }}
             >
               <XCircle size={15} color="#f87171" className="shrink-0" />
               <p className="text-red-300 text-sm">{scanError}</p>

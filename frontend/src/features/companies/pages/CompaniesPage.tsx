@@ -33,40 +33,40 @@ const CompaniesPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-white text-2xl font-bold">Companies</h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <h1 className="text-t1 text-2xl font-bold">Companies</h1>
+        <p className="text-t2 text-sm mt-1">
           {data
             ? `${companyCount} compan${companyCount !== 1 ? 'ies' : 'y'}`
             : 'Loading…'}
         </p>
       </div>
 
-      <div className="bg-[#1a1a24] border border-white/5 rounded-lg px-4 py-3">
+      <div className="bg-surface border border-DEFAULT rounded-lg px-4 py-3">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search companies…"
-          className="w-full bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none"
+          className="w-full bg-transparent text-t1 text-sm placeholder-t3 focus:outline-none"
         />
       </div>
 
       {isLoading && <LoadingSpinner size="lg" message="Loading companies…" />}
 
       {isError && (
-        <div className="bg-[#1a1a24] rounded-xl p-8 border border-white/5 text-center">
+        <div className="bg-surface rounded-xl p-8 border border-DEFAULT text-center">
           <p className="text-red-400 text-sm">Failed to load companies.</p>
         </div>
       )}
 
       {!isLoading && !isError && companies.length === 0 && (
-        <div className="bg-[#1a1a24] rounded-xl p-12 border border-white/5 text-center">
-          <Building2 size={32} className="text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-400 text-sm font-medium">
+        <div className="bg-surface rounded-xl p-12 border border-DEFAULT text-center">
+          <Building2 size={32} className="text-t3 mx-auto mb-3" />
+          <p className="text-t2 text-sm font-medium">
             {search ? 'No companies match your search.' : 'No companies yet'}
           </p>
           {!search && (
-            <p className="text-gray-600 text-xs mt-1">Add applications to see them grouped by company.</p>
+            <p className="text-t3 text-xs mt-1">Add applications to see them grouped by company.</p>
           )}
         </div>
       )}

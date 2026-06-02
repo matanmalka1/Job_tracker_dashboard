@@ -24,7 +24,7 @@ const CompanyCard = ({ company }: { company: CompanySummary }) => {
   const applications = detailData?.items ?? []
 
   return (
-    <div className="bg-[#1a1a24] border border-white/5 rounded-xl overflow-hidden">
+    <div className="bg-surface border border-DEFAULT rounded-xl overflow-hidden">
       <button
         className="w-full flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors text-left"
         onClick={() => setExpanded((v) => !v)}
@@ -33,12 +33,12 @@ const CompanyCard = ({ company }: { company: CompanySummary }) => {
           <span className="text-purple-400 font-bold text-sm">{company.company_name.charAt(0).toUpperCase()}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-white font-semibold text-sm truncate">{company.company_name}</p>
+          <p className="text-t1 font-semibold text-sm truncate">{company.company_name}</p>
           <div className="flex items-center gap-3 mt-0.5">
-            <span className="text-gray-500 text-xs">
+            <span className="text-t2 text-xs">
               {company.application_count} role{company.application_count !== 1 ? 's' : ''}
             </span>
-            <span className="text-gray-600 text-xs">Last: {formatShortDate(company.latest_activity)}</span>
+            <span className="text-t3 text-xs">Last: {formatShortDate(company.latest_activity)}</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -51,16 +51,16 @@ const CompanyCard = ({ company }: { company: CompanySummary }) => {
               />
             ))}
           </div>
-          <div className="text-gray-500">{expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</div>
+          <div className="text-t2">{expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</div>
         </div>
       </button>
 
       {expanded && (
-        <div className="border-t border-white/5">
+        <div className="border-t border-DEFAULT">
           {detailLoading ? (
-            <div className="px-5 py-4 text-gray-500 text-sm">Loading…</div>
+            <div className="px-5 py-4 text-t2 text-sm">Loading…</div>
           ) : applications.length === 0 ? (
-            <div className="px-5 py-4 text-gray-600 text-sm">No applications found.</div>
+            <div className="px-5 py-4 text-t3 text-sm">No applications found.</div>
           ) : (
             applications.map((app, i) => (
               <div
@@ -68,16 +68,16 @@ const CompanyCard = ({ company }: { company: CompanySummary }) => {
                 onClick={() => navigate(`/applications/${app.id}`)}
                 className={[
                   'flex items-center gap-4 px-5 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors',
-                  i < applications.length - 1 ? 'border-b border-white/5' : '',
+                  i < applications.length - 1 ? 'border-b border-DEFAULT' : '',
                 ].join(' ')}
               >
                 <div className={['w-1.5 h-1.5 rounded-full shrink-0', APPLICATION_STATUS_DOT_COLORS[app.status]].join(' ')} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-gray-300 text-sm truncate">{app.role_title ?? '—'}</p>
-                  {app.source && <p className="text-gray-600 text-xs mt-0.5">{app.source}</p>}
+                  <p className="text-t1 text-sm truncate">{app.role_title ?? '—'}</p>
+                  {app.source && <p className="text-t3 text-xs mt-0.5">{app.source}</p>}
                 </div>
                 <ApplicationStatusBadge status={app.status} />
-                <span className="text-gray-600 text-xs shrink-0">
+                <span className="text-t3 text-xs shrink-0">
                   {formatShortDate(app.applied_at ?? app.created_at)}
                 </span>
               </div>

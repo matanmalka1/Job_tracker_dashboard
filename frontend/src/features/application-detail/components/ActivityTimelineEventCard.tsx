@@ -51,7 +51,7 @@ const ActivityTimelineEventCard = ({ event, isLast, delay }: ActivityTimelineEve
           <div className="flex items-start gap-2 px-3 py-2.5">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-white text-sm font-medium truncate">{event.label}</p>
+                <p className="text-t1 text-sm font-medium truncate">{event.label}</p>
                 {event.sublabel && (
                   <span
                     className="shrink-0 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full"
@@ -65,14 +65,14 @@ const ActivityTimelineEventCard = ({ event, isLast, delay }: ActivityTimelineEve
                 )}
               </div>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-gray-500 text-xs flex items-center gap-1">
+                <span className="text-t2 text-xs flex items-center gap-1">
                   <Clock size={10} />
                   {formatRelativeTime(event.date)}
                 </span>
               </div>
             </div>
             <span
-              className="text-gray-600 shrink-0 pt-0.5 transition-transform duration-150"
+              className="text-t3 shrink-0 pt-0.5 transition-transform duration-150"
               style={{
                 display: 'inline-block',
                 transform: expanded ? 'rotate(180deg)' : 'none',
@@ -84,16 +84,16 @@ const ActivityTimelineEventCard = ({ event, isLast, delay }: ActivityTimelineEve
 
           {expanded && (
             <div className="px-3 pb-3 pt-0 border-t space-y-2" style={{ borderColor: `${event.color}18` }}>
-              {event.detail && <p className="text-gray-400 text-xs leading-relaxed pt-2">{event.detail}</p>}
+              {event.detail && <p className="text-t2 text-xs leading-relaxed pt-2">{event.detail}</p>}
               <div className="flex items-center justify-between pt-1">
-                <span className="text-gray-600 text-[10px] font-mono">{formatDateTime(event.date)}</span>
+                <span className="text-t3 text-[10px] font-mono">{formatDateTime(event.date)}</span>
                 {event.gmailUrl && (
                   <a
                     href={event.gmailUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1 text-[10px] font-medium text-gray-500 hover:text-purple-300 transition-colors"
+                    className="flex items-center gap-1 text-[10px] font-medium text-t2 hover:text-purple-300 transition-colors"
                   >
                     Open in Gmail
                     <ExternalLink size={10} />

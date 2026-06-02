@@ -6,12 +6,53 @@ interface Props {
   isLoading: boolean
 }
 
+interface StatDef {
+  key: keyof Pick<DashboardStats, 'totalApplications' | 'activeInterviews' | 'offersReceived' | 'replyRate'>
+  label: string
+  sublabel: (s: DashboardStats) => string
+  accentVar: string
+  icon: React.ReactNode
+  format?: (v: number) => string
+}
+
+const STAT_DEFS: StatDef[] = [
+  {
+    key: 'totalApplications',
+    label: 'Total Applications',
+    accentVar: '#3b82f6',
+    icon: <FileText size={16} />,
+    sublabel: (s) => s.statusCounts.new > 0 ? `${s.statusCounts.new} new this week` : 'Across all stages',
+  },
+  {
+    key: 'activeInterviews',
+    label: 'Active Interviews',
+    accentVar: '#8b5cf6',
+    icon: <MessageSquare size={16} />,
+    sublabel: (s) => s.activeInterviews > 0 ? 'Currently in progress' : 'None active',
+  },
+  {
+    key: 'replyRate',
+    label: 'Reply Rate',
+    accentVar: 'var(--accent)',
+    icon: <TrendingUp size={16} />,
+    sublabel: (s) => s.replyRate >= 20 ? 'Above average' : 'Below average',
+    format: (v) => `${v.toFixed(1)}%`,
+  },
+  {
+    key: 'offersReceived',
+    label: 'Offers',
+    accentVar: '#10b981',
+    icon: <Trophy size={16} />,
+    sublabel: (s) => s.offersReceived > 0 ? 'Congratulations!' : 'Keep going',
+  },
+]
+
 const StatsCards = ({ stats, isLoading }: Props) => {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-[#1a1a24] rounded-xl p-5 animate-pulse h-28 border border-white/5" />
+          <div key={i} className="skeleton h-28" />
         ))}
       </div>
     )
@@ -19,85 +60,35 @@ const StatsCards = ({ stats, isLoading }: Props) => {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-      {/* Total Applications */}
-      <div className="bg-[#1a1a24] rounded-xl p-5 border border-white/5 flex items-start gap-4">
-        <div className="shrink-0 w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-          <FileText size={18} className="text-blue-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Total Applications</p>
-
-          <p className="text-white text-3xl font-bold mt-1">{stats.totalApplications}</p>
-          {stats.statusCounts.new > 0 && (
-            <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1.5 text-green-400 bg-green-500/10">
-              +{stats.statusCounts.new} new
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Active Interviews */}
-      <div className="bg-[#1a1a24] rounded-xl p-5 border border-white/5 flex items-start gap-4">
-        <div className="shrink-0 w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-          <MessageSquare size={18} className="text-purple-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Active Interviews</p>
-          <p className="text-white text-3xl font-bold mt-1">{stats.activeInterviews}</p>
-          <span
-            className={[
-              'inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1.5',
-              stats.activeInterviews > 0
-                ? 'text-purple-400 bg-purple-500/10'
-                : 'text-gray-500 bg-gray-500/10',
-            ].join(' ')}
+      {STAT_DEFS.map((def, idx) => {
+        const raw = stats[def.key] as number
+        const display = def.format ? def.format(raw) : String(raw)
+        return (
+          <div
+            key={def.key}
+            className="panel animate-fade-up p-5"
+            style={{ animationDelay: `${idx * 50}ms` }}
           >
-            {stats.activeInterviews > 0 ? 'In progress' : 'None active'}
-          </span>
-        </div>
-      </div>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[13px] font-medium" style={{ color: 'var(--text-2)' }}>
+                {def.label}
+              </span>
+              <span style={{ color: def.accentVar, opacity: 0.8 }}>{def.icon}</span>
+            </div>
 
-      {/* Reply Rate */}
-      <div className="bg-[#1a1a24] rounded-xl p-5 border border-white/5 flex items-start gap-4">
-        <div className="shrink-0 w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-          <TrendingUp size={18} className="text-yellow-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Response Rate</p>
-          <p className="text-white text-3xl font-bold mt-1">{stats.replyRate.toFixed(1)}%</p>
-          <span
-            className={[
-              'inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1.5',
-              stats.replyRate >= 20
-                ? 'text-green-400 bg-green-500/10'
-                : 'text-yellow-400 bg-yellow-500/10',
-            ].join(' ')}
-          >
-            {stats.replyRate >= 20 ? 'Good' : 'Below avg'}
-          </span>
-        </div>
-      </div>
+            <div
+              className="stat-num mb-1.5 animate-count-in"
+              style={{ animationDelay: `${idx * 50 + 80}ms` }}
+            >
+              {display}
+            </div>
 
-      {/* Offers */}
-      <div className="bg-[#1a1a24] rounded-xl p-5 border border-white/5 flex items-start gap-4">
-        <div className="shrink-0 w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
-          <Trophy size={18} className="text-teal-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Offers Received</p>
-          <p className="text-white text-3xl font-bold mt-1">{stats.offersReceived}</p>
-          <span
-            className={[
-              'inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1.5',
-              stats.offersReceived > 0
-                ? 'text-teal-400 bg-teal-500/10'
-                : 'text-gray-500 bg-gray-500/10',
-            ].join(' ')}
-          >
-            {stats.offersReceived > 0 ? 'Congratulations!' : 'Keep going'}
-          </span>
-        </div>
-      </div>
+            <div className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+              {def.sublabel(stats)}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

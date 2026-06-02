@@ -21,15 +21,15 @@ const LiveLoggerControls = ({ url, status, onUrlChange }: LiveLoggerControlsProp
         disabled={locked}
         spellCheck={false}
         placeholder="/job-tracker/scan/progress"
-        className="flex-1 rounded-lg bg-[#0a0a16] border border-white/10 text-sm text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:opacity-50 font-mono"
+        className="flex-1 rounded-lg bg-raised border border-DEFAULT text-sm text-t1 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50 font-mono"
       />
       {PRESETS.map((preset) => (
         <button
           key={preset.url}
           onClick={() => onUrlChange(preset.url)}
           disabled={locked}
-          className="px-2.5 py-2 rounded-lg text-[11px] font-mono text-gray-400 hover:text-white transition-colors disabled:opacity-40 whitespace-nowrap"
-          style={{ background: '#1b1b2a', border: '1px solid #ffffff0a' }}
+          className="px-2.5 py-2 rounded-lg text-[11px] font-mono text-t2 hover:text-t1 transition-colors disabled:opacity-40 whitespace-nowrap"
+          style={{ background: 'var(--bg-hover)', border: '1px solid #ffffff0a' }}
           title={preset.url}
         >
           {preset.label}

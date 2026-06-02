@@ -14,10 +14,10 @@ const LoadingSpinner = ({ size = 'md', message }: Props) => (
     <div
       className={[
         SIZE_CLASSES[size],
-        'rounded-full border-white/10 border-t-purple-500 animate-spin',
+        'rounded-full border-theme border-t-purple-500 animate-spin',
       ].join(' ')}
     />
-    {message && <p className="text-gray-400 text-sm">{message}</p>}
+    {message && <p className="text-t2 text-sm">{message}</p>}
   </div>
 )
 

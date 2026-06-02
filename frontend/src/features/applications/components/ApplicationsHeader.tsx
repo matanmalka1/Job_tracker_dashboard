@@ -12,8 +12,8 @@ interface Props {
 const ApplicationsHeader = ({ total, selectedCount, onBulkDelete, onExport, onAdd, disableExport }: Props) => (
   <div className="flex items-center justify-between flex-wrap gap-3">
     <div>
-      <h1 className="text-white text-2xl font-bold">Applications</h1>
-      <p className="text-gray-400 text-sm mt-1">
+      <h1 className="text-t1 text-2xl font-bold">Applications</h1>
+      <p className="text-t2 text-sm mt-1">
         {total != null ? `${total} total application${total !== 1 ? 's' : ''}` : 'Loading…'}
       </p>
     </div>
@@ -30,7 +30,7 @@ const ApplicationsHeader = ({ total, selectedCount, onBulkDelete, onExport, onAd
       <button
         onClick={onExport}
         disabled={disableExport}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/20 text-sm font-medium transition-colors disabled:opacity-40"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-DEFAULT text-t2 hover:text-t1 hover:border-hi text-sm font-medium transition-colors disabled:opacity-40"
         title="Export current page to CSV"
       >
         <Download size={15} />
@@ -38,7 +38,7 @@ const ApplicationsHeader = ({ total, selectedCount, onBulkDelete, onExport, onAd
       </button>
       <button
         onClick={onAdd}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-t1 text-sm font-medium transition-colors"
       >
         <Plus size={16} />
         Add Application

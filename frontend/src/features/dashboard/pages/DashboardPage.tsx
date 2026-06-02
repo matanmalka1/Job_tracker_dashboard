@@ -16,30 +16,19 @@ const EMPTY_STATS: DashboardStats = {
 }
 
 const DashboardPage = () => {
-  const {
-    data: statsData,
-    isLoading: statsLoading,
-  } = useQuery({
+  const { data: statsData, isLoading: statsLoading } = useQuery({
     queryKey: ['stats'],
     queryFn: fetchStats,
     staleTime: 30_000,
   })
 
-  const {
-    data: appsData,
-    isLoading: appsLoading,
-    isError: appsError,
-  } = useQuery({
+  const { data: appsData, isLoading: appsLoading, isError: appsError } = useQuery({
     queryKey: ['applications', 'dashboard-recent'],
     queryFn: () => fetchApplications({ limit: 5, offset: 0, sort: 'updated_at' }),
     staleTime: 30_000,
   })
 
-  const {
-    data: emailsData,
-    isLoading: emailsLoading,
-    isError: emailsError,
-  } = useQuery({
+  const { data: emailsData, isLoading: emailsLoading, isError: emailsError } = useQuery({
     queryKey: ['emails', 'recent'],
     queryFn: () => fetchEmails({ limit: 50, offset: 0 }),
     staleTime: 30_000,
@@ -63,23 +52,13 @@ const DashboardPage = () => {
     }
   }, [statsData])
 
-  const recentApplications = useMemo(
-    () => appsData?.items ?? [],
-    [appsData],
-  )
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-white text-2xl font-bold">Dashboard</h1>
-        <p className="text-gray-400 text-sm mt-1">Your job search at a glance</p>
-      </div>
-
+    <div className="flex flex-col gap-6 max-w-[1400px]">
       <StatsCards stats={stats} isLoading={statsLoading} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 min-h-[400px]">
         <StageDistribution stats={stats} isLoading={statsLoading} />
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 min-h-[400px]">
           <ActivityTimeline
             emails={emailsData?.items ?? []}
             isLoading={emailsLoading}
@@ -89,7 +68,7 @@ const DashboardPage = () => {
       </div>
 
       <RecentApplications
-        applications={recentApplications}
+        applications={appsData?.items ?? []}
         isLoading={appsLoading}
         isError={appsError}
       />

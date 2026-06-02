@@ -79,8 +79,8 @@ const InterviewsPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-white text-2xl font-bold">Interviews</h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <h1 className="text-t1 text-2xl font-bold">Interviews</h1>
+        <p className="text-t2 text-sm mt-1">
           {data
             ? `${data.total} active interview${data.total !== 1 ? 's' : ''}`
             : 'Loading...'}
@@ -90,18 +90,18 @@ const InterviewsPage = () => {
       {isLoading && <LoadingSpinner size="lg" message="Loading interviews..." />}
 
       {isError && (
-        <div className="bg-[#1a1a24] rounded-xl p-8 border border-white/5 text-center">
+        <div className="bg-surface rounded-xl p-8 border border-DEFAULT text-center">
           <p className="text-red-400 text-sm">Failed to load interviews.</p>
         </div>
       )}
 
       {!isLoading && !isError && interviews.length === 0 && (
-        <div className="bg-[#1a1a24] rounded-xl p-12 border border-white/5 text-center">
-          <Calendar size={32} className="text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-400 text-sm font-medium">
+        <div className="bg-surface rounded-xl p-12 border border-DEFAULT text-center">
+          <Calendar size={32} className="text-t3 mx-auto mb-3" />
+          <p className="text-t2 text-sm font-medium">
             No active interviews
           </p>
-          <p className="text-gray-600 text-xs mt-1">
+          <p className="text-t3 text-xs mt-1">
             Move applications to the "Interviewing" stage to track them here.
           </p>
         </div>
@@ -113,7 +113,7 @@ const InterviewsPage = () => {
             <div key={weekKey}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-px flex-1 bg-white/5" />
-                <span className="text-gray-500 text-xs font-medium whitespace-nowrap">
+                <span className="text-t2 text-xs font-medium whitespace-nowrap">
                   {formatWeekLabel(weekKey)}
                 </span>
                 <div className="h-px flex-1 bg-white/5" />

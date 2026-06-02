@@ -11,35 +11,59 @@ interface Props {
   total: number
 }
 
-const KanbanColumn = ({ status, label, applications, color, total }: Props) => {
+const STATUS_HEX: Record<ApplicationStatus, string> = {
+  new:          '#6366f1',
+  applied:      '#3b82f6',
+  interviewing: '#8b5cf6',
+  offer:        '#10b981',
+  rejected:     '#ef4444',
+  hired:        '#14b8a6',
+}
+
+const KanbanColumn = ({ status, label, applications, total }: Props) => {
   const { setNodeRef, isOver } = useDroppable({ id: status })
+  const accent = STATUS_HEX[status]
 
   return (
     <div className="flex flex-col min-w-[260px] w-[260px]">
+      {/* column header */}
       <div className="flex items-center gap-2 mb-3 px-1">
-        <div className={['w-2 h-2 rounded-full', color].join(' ')} />
-        <h3 className="text-white text-sm font-semibold">{label}</h3>
-        <span className="text-gray-500 text-xs ml-auto">{total}</span>
+        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
+        <span className="text-[13px] font-semibold flex-1" style={{ color: 'var(--text-1)' }}>
+          {label}
+        </span>
+        <span
+          className="col-count text-[11px] font-medium"
+          style={{
+            color: accent,
+            background: `${accent}15`,
+            borderColor: `${accent}30`,
+          }}
+        >
+          {total}
+        </span>
       </div>
 
+      {/* drop zone */}
       <div
         ref={setNodeRef}
-        className={[
-          'flex flex-col gap-2 min-h-[120px] p-2 rounded-xl transition-colors',
-          isOver ? 'bg-purple-600/10 border border-purple-600/30' : 'bg-[#1a1a24]/50 border border-white/5',
-        ].join(' ')}
+        className="flex flex-col gap-2 min-h-[140px] p-2.5 flex-1 rounded-xl transition-all duration-150"
+        style={{
+          background: isOver ? `${accent}06` : 'var(--bg-surface)',
+          border: `1px solid ${isOver ? `${accent}35` : 'var(--border)'}`,
+          borderTop: `2px solid ${accent}`,
+        }}
       >
-        <SortableContext
-          items={applications.map((a) => a.id)}
-          strategy={verticalListSortingStrategy}
-        >
+        <SortableContext items={applications.map((a) => a.id)} strategy={verticalListSortingStrategy}>
           {applications.map((app) => (
             <KanbanCard key={app.id} application={app} />
           ))}
         </SortableContext>
 
         {applications.length === 0 && (
-          <p className="text-gray-600 text-xs text-center py-4">Drop here</p>
+          <p className="text-[12px] text-center py-5" style={{ color: 'var(--text-3)' }}>
+            Drop here
+          </p>
         )}
       </div>
     </div>

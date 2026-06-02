@@ -38,14 +38,14 @@ class ErrorBoundary extends Component<Props, State> {
             <AlertTriangle size={22} className="text-red-400" />
           </div>
           <div className="text-center max-w-sm">
-            <h2 className="text-white font-semibold text-base">Something went wrong</h2>
-            <p className="text-gray-400 text-sm mt-1.5 leading-relaxed">
+            <h2 className="text-t1 font-semibold text-base">Something went wrong</h2>
+            <p className="text-t2 text-sm mt-1.5 leading-relaxed">
               {this.state.error?.message ?? 'An unexpected error occurred.'}
             </p>
           </div>
           <button
             onClick={this.reset}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-DEFAULT text-t1 text-sm font-medium transition-colors"
           >
             <RefreshCw size={14} />
             Try again

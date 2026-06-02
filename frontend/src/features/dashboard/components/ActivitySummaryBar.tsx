@@ -5,31 +5,34 @@ import type { Category } from './activityTimelineModel.tsx'
 
 const ActivitySummaryBar = ({ emails }: { emails: EmailReference[] }) => {
   const counts = useMemo(() => {
-    const nextCounts: Partial<Record<Category, number>> = {}
-    for (const email of emails) {
-      const category = categorize(email)
-      nextCounts[category] = (nextCounts[category] ?? 0) + 1
+    const next: Partial<Record<Category, number>> = {}
+    for (const e of emails) {
+      const c = categorize(e)
+      next[c] = (next[c] ?? 0) + 1
     }
-    return nextCounts
+    return next
   }, [emails])
 
-  const activeCategories = ALL_CATEGORIES.filter((category) => (counts[category] ?? 0) > 0)
-  if (activeCategories.length === 0) return null
+  const active = ALL_CATEGORIES.filter((c) => (counts[c] ?? 0) > 0)
+  if (active.length === 0) return null
 
   return (
-    <div className="flex items-center gap-2 flex-wrap mb-4">
-      {activeCategories.map((category) => {
-        const config = CATEGORY_CONFIG[category]
+    <div className="flex flex-wrap gap-1.5 mb-4">
+      {active.map((cat) => {
+        const cfg = CATEGORY_CONFIG[cat]
         return (
           <div
-            key={category}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold border ${config.pill} ${config.twBorder}`}
+            key={cat}
+            className="summary-pill"
+            style={{
+              borderColor: `${cfg.color}28`,
+              background: `${cfg.color}0e`,
+              color: cfg.color,
+              fontSize: 11,
+            }}
           >
-            <span style={{ color: config.color }}>{config.icon}</span>
-            <span>
-              {counts[category]} {config.label}
-              {(counts[category] ?? 0) > 1 ? 's' : ''}
-            </span>
+            <span>{cfg.icon}</span>
+            {counts[cat]} {cfg.label}{(counts[cat] ?? 0) > 1 ? 's' : ''}
           </div>
         )
       })}
