@@ -1,84 +1,89 @@
-# Job Dashboard — Backend
+# Backend
 
-FastAPI service that scans Gmail for job application emails, stores them in PostgreSQL, and exposes a REST + SSE API for the frontend dashboard.
-
-## Stack
-
-- **Python 3.11**
-- **FastAPI** + Uvicorn (async, lifespan-managed)
-- **SQLAlchemy 2.0** async ORM + **asyncpg** (PostgreSQL)
-- **Google API Python Client** — Gmail OAuth 2.0
-- **Pydantic Settings** — all config via env / `.env`
-
-## Layer Pattern
-
-```
-Router (api/router.py)
-  └─ Service (services/)
-       └─ Repository (repositories/)
-            └─ ORM Model (models/)
-```
+FastAPI service for job application records, Gmail scanning, and scan progress streaming.
 
 ## Setup
 
+Use the repo virtualenv:
+
 ```bash
+cd backend
 python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
+./.venv/bin/pip install -r requirements-dev.txt
+createdb job_dashboard
+./.venv/bin/alembic upgrade head
+./.venv/bin/uvicorn app.main:app --reload
 ```
 
-Create a `.env` (copy the table below). Then start PostgreSQL and create the database:
+Do not run migrations in FastAPI startup. See [database docs](../docs/database.md).
 
-```bash
-psql -U postgres -c "CREATE DATABASE job_dashboard;"
-uvicorn app.main:app --reload   # tables + indexes auto-created on first start
+## Stack
+
+- Python 3.11
+- FastAPI + Uvicorn
+- SQLAlchemy 2.0 async ORM + asyncpg
+- Alembic migrations
+- Pydantic Settings
+- Google API Python Client for Gmail OAuth
+
+## Structure
+
+```text
+app/main.py                         FastAPI factory, middleware, routers, static frontend mount
+app/config.py                       env-backed settings
+app/db.py                           Base, engine, session helpers, get_session
+app/health.py                       /health
+app/job_tracker/api/router.py       /job-tracker router assembly
+app/job_tracker/api/routes/         route modules by use case
+app/job_tracker/models/             SQLAlchemy ORM models
+app/job_tracker/repositories/       DB access layer
+app/job_tracker/schemas/            Pydantic schemas
+app/job_tracker/services/           application service and Gmail scan flow
+migrations/                         Alembic environment and versions
+scripts/test_all.py                 main backend test suite
+scripts/generate_token.py           Gmail OAuth token generator
 ```
 
-> **Existing local DB:** indexes on `job_applications.status` and `company_name` were added after initial setup. They are created automatically on a fresh DB via `Base.metadata.create_all`. If you have an existing DB, recreate it or add the indexes manually:
-> ```sql
-> CREATE INDEX IF NOT EXISTS ix_job_applications_status      ON job_applications (status);
-> CREATE INDEX IF NOT EXISTS ix_job_applications_company_name ON job_applications (company_name);
-> ```
+Layer pattern:
 
-## Configuration (`.env`)
+```text
+Router -> Service -> Repository -> ORM model
+```
+
+## Configuration
+
+Defined in `app/config.py`.
 
 | Variable | Default | Description |
-|---|---|---|
-| `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@localhost:5432/job_dashboard` | SQLAlchemy async URL |
-| `GMAIL_TOKEN_FILE` | — | Path to `token.json` (OAuth user token) |
-| `GMAIL_DELEGATED_USER` | — | Mailbox to scan; omit to use `"me"` (your own inbox) |
-| `GMAIL_QUERY_WINDOW_DAYS` | `30` | Days back to search Gmail |
-| `GMAIL_MAX_MESSAGES` | `200` | Max messages fetched per scan |
-| `GMAIL_LIST_PAGE_SIZE` | `50` | Gmail API page size |
-| `GMAIL_BATCH_SIZE` | `100` | Messages per Gmail batch-get request |
-| `GMAIL_RETRY_BACKOFF_SECONDS` | `2` | Backoff before retrying 429-throttled messages |
+|---|---:|---|
+| `APP_ENV` | `development` | Runtime environment |
+| `DATABASE_URL` | local PostgreSQL URL | SQLAlchemy async URL |
+| `GMAIL_TOKEN_FILE` | unset | OAuth token JSON path |
+| `GMAIL_DELEGATED_USER` | unset | Mailbox to scan; unset uses `me` |
+| `GMAIL_QUERY_WINDOW_DAYS` | `30` | Gmail search window |
+| `GMAIL_MAX_MESSAGES` | `200` | Max messages per scan |
+| `GMAIL_LIST_PAGE_SIZE` | `50` | Gmail list page size |
+| `GMAIL_BATCH_SIZE` | `100` | Gmail batch-get size |
+| `GMAIL_RETRY_BACKOFF_SECONDS` | `2` | Gmail 429 retry backoff |
 | `SCAN_RATE_LIMIT_SECONDS` | `10` | Minimum gap between scans |
-| `SCAN_EXECUTOR_MAX_WORKERS` | `4` | Thread-pool workers for Gmail I/O |
-| `SSE_KEEPALIVE_TIMEOUT` | `60` | Seconds before SSE keepalive is sent |
-| `SCAN_HISTORY_LIMIT` | `10` | Rows returned by `/scan/history` |
+| `SCAN_EXECUTOR_MAX_WORKERS` | `4` | Gmail I/O worker threads |
+| `SSE_KEEPALIVE_TIMEOUT` | `60` | SSE keepalive interval |
+| `SCAN_HISTORY_LIMIT` | `10` | Rows returned by scan history |
 | `PAGINATION_LIMIT_DEFAULT` | `50` | Default page size |
 | `PAGINATION_OFFSET_DEFAULT` | `0` | Default offset |
-| `BULK_DELETE_MAX_IDS` | `100` | Max IDs for bulk-delete |
-| `ERROR_TRUNCATE_LENGTH` | `2000` | Max chars stored in `scan_run.error` |
-| `CORS_ORIGINS` | localhost:5173/3000 | JSON list of allowed origins |
+| `BULK_DELETE_MAX_IDS` | `100` | Max IDs in bulk delete |
+| `ERROR_TRUNCATE_LENGTH` | `2000` | Stored scan error length |
+| `JOB_TRACKER_API_KEY` | unset | Optional `X-Api-Key` guard for `/job-tracker` |
+| `CORS_ORIGINS` | localhost origins | JSON list of allowed origins |
 
-## Gmail Setup
+`ENV_FILE` can point settings at a non-default env file. Production ignores `.env` unless `ENV_FILE` is explicitly set.
 
-1. Enable the **Gmail API** in Google Cloud Console.
-2. Create an **OAuth 2.0 Client ID** (Desktop app), download the JSON, save it as `secrets/client_secret.json`.
-3. Run the token generator once to get `secrets/token.json`:
-   ```bash
-   python scripts/generate_token.py
-   ```
-4. Set `GMAIL_TOKEN_FILE=secrets/token.json` in `.env`.
-
-The token is refreshed automatically. On Render, base64-encode `token.json` and set it as `GMAIL_TOKEN_JSON` (the app writes it to disk at startup).
-
-## API Endpoints
+## API
 
 ```
 GET    /health                                      → {status, db}
 
+GET    /job-tracker/applications/pipeline           → applications grouped by status
 GET    /job-tracker/applications                    → paginated list (limit, offset, status, search, sort)
 POST   /job-tracker/applications                    → create
 GET    /job-tracker/applications/:id                → single
@@ -88,9 +93,11 @@ DELETE /job-tracker/applications                    → bulk delete (?ids=1&ids=
 POST   /job-tracker/applications/:id/emails/:eid    → link email
 DELETE /job-tracker/applications/:id/emails/:eid    → unlink email
 
+GET    /job-tracker/companies/summary               → paginated company summaries
 GET    /job-tracker/emails                          → paginated list
 GET    /job-tracker/stats                           → {total, by_status, reply_rate}
 
+POST   /job-tracker/scan/token                      → short-lived SSE token when API key is enabled
 GET    /job-tracker/scan/progress                   → SSE stream
 POST   /job-tracker/scan                            → trigger scan (202)
 GET    /job-tracker/scan/history                    → last N ScanRun records
@@ -110,16 +117,23 @@ GET    /job-tracker/scan/history                    → last N ScanRun records
 
 Keepalive comments (`: keepalive\n\n`) arrive as empty-string `data` — filter client-side.
 
-## Running Tests
+## Gmail Setup
 
 ```bash
-pytest scripts/test_all.py -v
+cd backend
+./.venv/bin/python scripts/generate_token.py
 ```
 
-- Uses **in-memory SQLite** (no Postgres needed for tests)
-- Install `requirements-dev.txt` for test-only dependencies such as `aiosqlite`, `pytest`, and `httpx`
-- 74 tests across ~15 test classes
-- No Gmail credentials needed — scan tests mock the client
+Set `GMAIL_TOKEN_FILE=secrets/token.json`. On Render, set `GMAIL_TOKEN_JSON` to the base64-encoded token and `GMAIL_TOKEN_FILE=/tmp/gmail_token.json`.
+
+## Tests
+
+```bash
+./.venv/bin/pytest scripts/test_all.py -v
+```
+
+- Uses in-memory SQLite fixtures.
+- No Gmail credentials are needed for mocked scan tests.
 
 ## Troubleshooting
 

@@ -3,11 +3,15 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
+  MeasuringStrategy,
 } from '@dnd-kit/core'
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import type { DragEndEvent, DragStartEvent, CollisionDetection } from '@dnd-kit/core'
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { updateApplication } from '../../../api/client.ts'
@@ -23,12 +27,36 @@ interface Props {
   pipeline: PipelineResponse
 }
 
+// Hybrid collision: prefer pointerWithin (precise), fall back to rectIntersection
+// This prevents cross-column mis-fires that closestCorners causes.
+const collisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args)
+  if (pointerCollisions.length > 0) return pointerCollisions
+  return rectIntersection(args)
+}
+
+const measuring = {
+  droppable: { strategy: MeasuringStrategy.Always },
+}
+
+const dropAnimation = {
+  duration: 240,
+  easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+}
+
 const KanbanBoard = ({ pipeline }: Props) => {
   const queryClient = useQueryClient()
   const [activeApp, setActiveApp] = useState<PipelineCard | null>(null)
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 2,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   )
 
   const { mutate: moveApplication } = useMutation({
@@ -73,7 +101,8 @@ const KanbanBoard = ({ pipeline }: Props) => {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetection}
+      measuring={measuring}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
@@ -92,7 +121,7 @@ const KanbanBoard = ({ pipeline }: Props) => {
         })}
       </div>
 
-      <DragOverlay dropAnimation={{ duration: 180, easing: 'ease' }}>
+      <DragOverlay dropAnimation={dropAnimation}>
         {activeApp && <KanbanCard application={activeApp} isOverlay />}
       </DragOverlay>
     </DndContext>

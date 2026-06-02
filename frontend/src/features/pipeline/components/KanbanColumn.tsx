@@ -17,40 +17,40 @@ const STATUS_HEX: Record<ApplicationStatus, string> = {
   rejected:     '#ef4444',
 }
 
-const STATUS_EMOJI: Record<ApplicationStatus, string> = {
-  applied:      '◎',
+const STATUS_ICONS: Record<ApplicationStatus, string> = {
+  applied:      '↗',
   interviewing: '◈',
-  offer:        '◆',
-  rejected:     '✕',
+  offer:        '✦',
+  rejected:     '—',
 }
 
 const KanbanColumn = ({ status, label, applications, total }: Props) => {
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const accent = STATUS_HEX[status]
-  const glyph = STATUS_EMOJI[status]
+  const icon = STATUS_ICONS[status]
 
   return (
     <div className="kanban-col">
       {/* header */}
       <div className="kanban-col__header" style={{ '--col-accent': accent } as React.CSSProperties}>
-        <div className="kanban-col__header-left">
-          <span className="kanban-col__glyph" style={{ color: accent }}>{glyph}</span>
-          <span className="kanban-col__label">{label}</span>
+        <div className="kanban-col__header-inner">
+          <div className="kanban-col__header-left">
+            <span className="kanban-col__icon" style={{ color: accent }}>{icon}</span>
+            <span className="kanban-col__label">{label}</span>
+          </div>
+          <span className="kanban-col__count" style={{ color: accent, background: `${accent}18`, borderColor: `${accent}28` }}>
+            {total}
+          </span>
         </div>
-        <span className="kanban-col__count" style={{ color: accent, background: `${accent}18`, borderColor: `${accent}30` }}>
-          {total}
-        </span>
+        {/* accent progress strip */}
+        <div className="kanban-col__strip" style={{ background: `linear-gradient(90deg, ${accent}, ${accent}40)` }} />
       </div>
 
       {/* drop zone */}
       <div
         ref={setNodeRef}
         className={['kanban-col__zone', isOver ? 'kanban-col__zone--over' : ''].join(' ')}
-        style={{
-          borderTopColor: accent,
-          background: isOver ? `${accent}06` : undefined,
-          borderColor: isOver ? `${accent}30` : undefined,
-        }}
+        style={isOver ? { borderColor: `${accent}40`, background: `${accent}04` } : undefined}
       >
         <SortableContext items={applications.map((a) => a.id)} strategy={verticalListSortingStrategy}>
           {applications.map((app) => (
@@ -60,8 +60,10 @@ const KanbanColumn = ({ status, label, applications, total }: Props) => {
 
         {applications.length === 0 && (
           <div className="kanban-col__empty">
-            <span style={{ color: `${accent}40` }}>{glyph}</span>
-            <span>Drop here</span>
+            <div className="kanban-col__empty-icon" style={{ color: `${accent}50`, borderColor: `${accent}20` }}>
+              {icon}
+            </div>
+            <span className="kanban-col__empty-text">Drop cards here</span>
           </div>
         )}
       </div>

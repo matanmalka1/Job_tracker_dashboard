@@ -1,13 +1,13 @@
-# Job Dashboard — Frontend
+# Frontend
 
-React dashboard for tracking job applications. Connects to the FastAPI backend at `:8000` via Vite proxy.
+React dashboard for tracking job applications. It uses relative API URLs; in development Vite proxies backend requests to FastAPI.
 
 ## Stack
 
 - **React 19** + **TypeScript** (strict, `verbatimModuleSyntax`)
-- **Vite 7** — dev server on `:5173`, proxied to `:8000`
+- **Vite 7** — dev server on `:5173`
 - **Tailwind CSS 3** — dark theme, `bg-[#0f0f17]` base
-- **@tanstack/react-query** — server state, `staleTime: 30 000 ms`
+- **@tanstack/react-query** — server state, `staleTime: 30_000`, `retry: 1`
 - **axios** — shared `apiClient` in `src/api/client.ts`
 - **recharts** — donut PieChart in StageDistribution
 - **lucide-react** — all icons
@@ -19,10 +19,17 @@ React dashboard for tracking job applications. Connects to the FastAPI backend a
 ```bash
 npm install
 npm run dev      # http://localhost:5173
+npm run typecheck
 npm run build    # output → dist/
 ```
 
-The backend must be running on `:8000` for API calls to work.
+The backend must be running on `:8000` unless `VITE_API_PROXY_TARGET` points elsewhere.
+
+If the backend has `JOB_TRACKER_API_KEY` set, set this before building or running the frontend:
+
+```env
+VITE_JOB_TRACKER_API_KEY=...
+```
 
 ## Routes
 
@@ -31,24 +38,25 @@ The backend must be running on `:8000` for API calls to work.
 | `/dashboard` | DashboardPage | Stats cards, stage donut, activity timeline, recent apps |
 | `/pipeline` | PipelinePage | Kanban board (DnD) + list view toggle |
 | `/applications` | ApplicationsPage | Full table, status filter tabs, search, CSV export |
-| `/applications/:id` | ApplicationDetailPage | Email thread, edit SlideOver, delete |
-| `/interviews` | InterviewsPage | Week-grouped interviewing cards |
+| `/applications/:id` | ApplicationDetailPage | Email thread, edit form, delete |
+| `/interviews` | InterviewsPage | Interviewing applications |
 | `/companies` | CompaniesPage | Expandable company cards |
 | `/settings` | SettingsPage | Gmail scan trigger, SSE progress, scan history |
-| `/manage-data` | ManageDataUiPage | Raw CRUD table with inline edit/delete |
-| `/live-logger` | LiveLoggerPage | SSE stream viewer for scan progress |
+| `/manage-data` | redirect | Redirects to `/applications` |
+| `/live-logger` | redirect | Redirects to `/settings` |
 
 ## Key Files
 
 | File | Purpose |
 |---|---|
-| `src/main.tsx` | Entry: `BrowserRouter` + `QueryClientProvider` |
-| `src/App.tsx` | Route definitions |
-| `src/types/index.ts` | All TypeScript interfaces |
+| `src/main.tsx` | React entrypoint |
+| `src/app/App.tsx` | Route definitions |
+| `src/app/providers.tsx` | Error boundary, router, React Query provider |
+| `src/shared/types/job-tracker.ts` | API-facing TypeScript types |
 | `src/api/client.ts` | axios instance + all API functions |
-| `src/components/layout/Layout.tsx` | Shell: sidebar + header + Toaster |
-| `src/components/layout/Sidebar.tsx` | NavLinks, active = purple |
-| `src/components/ui/` | Shared UI: StatusBadge, SlideOver, ConfirmDialog, GlobalSearch, … |
+| `src/shared/components/layout/` | Shell, sidebar, header |
+| `src/shared/components/ui/` | Shared UI components |
+| `src/features/*/` | Feature-owned pages, hooks, and components |
 
 ## Code Style
 
@@ -66,8 +74,6 @@ The backend must be running on `:8000` for API calls to work.
 ['applications', 'pipeline']      // PipelinePage
 ['applications', 'interviewing']  // InterviewsPage
 ['applications', 'companies']     // CompaniesPage
-['applications', 'search-pool']   // GlobalSearch
-['applications', 'manage-data']   // ManageDataUiPage
 ['applications', id]              // ApplicationDetailPage (single)
 ['emails', 'recent']              // ActivityTimeline
 ['scan-history']                  // SettingsPage
@@ -82,3 +88,5 @@ queryClient.invalidateQueries({ queryKey: ['applications'] })
 
 All `/job-tracker` and `/health` requests are proxied to `http://localhost:8000`.  
 Override the target with `VITE_API_PROXY_TARGET` env var.
+
+Production builds use the same relative URLs. When the backend serves `frontend/dist`, API routes are handled before the SPA fallback.
