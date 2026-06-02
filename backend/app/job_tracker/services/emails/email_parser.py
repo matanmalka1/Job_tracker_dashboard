@@ -122,7 +122,12 @@ _STATUS_HINTS: list[tuple[re.Pattern, ApplicationStatus]] = [
         re.compile(
             r"\b(unfortunately|not moving forward|unable to proceed|cannot extend an offer|"
             r"decided not to proceed|regret to inform|not selected|declined|"
-            r"we will not be moving forward|we won't be moving forward)\b",
+            r"we will not be moving forward|we won't be moving forward|"
+            r"move forward with other|move forward with different|"
+            r"decided not to move forward|decided to pursue other|decided to proceed with other|"
+            r"after careful consideration|after carefully considering|"
+            r"did not find a match|position is now closed|we have concluded|"
+            r"more closely match|more closely align)\b",
             re.IGNORECASE,
         ),
         ApplicationStatus.REJECTED,

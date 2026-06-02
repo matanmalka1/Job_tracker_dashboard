@@ -1,8 +1,8 @@
 """initial_schema
 
-Revision ID: 039f3065c89e
+Revision ID: 001
 Revises:
-Create Date: 2026-06-02 12:17:21.688697
+Create Date: 2026-06-02
 
 """
 from typing import Sequence, Union
@@ -10,18 +10,20 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = '039f3065c89e'
+revision: str = '001'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 applicationstatus = sa.Enum(
-    'new', 'applied', 'interviewing', 'offer', 'rejected', 'hired',
+    'applied', 'interviewing', 'offer', 'rejected',
     name='applicationstatus',
 )
 
 
 def upgrade() -> None:
+    applicationstatus.create(op.get_bind(), checkfirst=True)
+
     op.create_table(
         'job_applications',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -90,4 +92,4 @@ def downgrade() -> None:
     op.drop_index('ix_job_applications_id', table_name='job_applications')
     op.drop_table('job_applications')
 
-    applicationstatus.drop(op.get_bind())
+    applicationstatus.drop(op.get_bind(), checkfirst=True)
