@@ -73,27 +73,27 @@ const ApplicationsTable = ({
                 aria-label={`Select ${app.company_name}`}
               />
             </td>
-            <td className="px-4 py-3">
-              <span className="text-t1 font-medium">{app.company_name}</span>
+            <td className="px-4 py-3 whitespace-nowrap max-w-[200px]">
+              <span className="text-t1 font-medium block truncate">{app.company_name}</span>
             </td>
-            <td className="px-4 py-3">
-              <span className="text-t1">{app.role_title ?? '—'}</span>
+            <td className="px-4 py-3 whitespace-nowrap max-w-[260px]">
+              <span className="text-t1 block truncate">{app.role_title ?? '—'}</span>
             </td>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3 whitespace-nowrap">
               <ApplicationStatusBadge status={app.status} />
             </td>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3 whitespace-nowrap">
               <span className="text-t2 text-xs">{app.source ?? '—'}</span>
             </td>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3 whitespace-nowrap">
               <span className="text-t2 text-xs">{formatShortDate(app.applied_at ?? app.created_at)}</span>
             </td>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3 whitespace-nowrap">
               <span className="text-t2 text-xs">
                 {app.email_count > 0 ? `${app.email_count} email${app.email_count !== 1 ? 's' : ''}` : '—'}
               </span>
             </td>
-            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+            <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-2 justify-end">
                 <IconButton
                   onClick={() => onEdit(app)}
