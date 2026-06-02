@@ -11,21 +11,17 @@ interface Props {
 }
 
 const STATUS_HEX: Record<ApplicationStatus, string> = {
-  new:          '#6366f1',
   applied:      '#3b82f6',
   interviewing: '#a78bfa',
   offer:        '#10b981',
   rejected:     '#ef4444',
-  hired:        '#14b8a6',
 }
 
 const STATUS_EMOJI: Record<ApplicationStatus, string> = {
-  new:          '✦',
   applied:      '◎',
   interviewing: '◈',
   offer:        '◆',
   rejected:     '✕',
-  hired:        '★',
 }
 
 const KanbanColumn = ({ status, label, applications, total }: Props) => {

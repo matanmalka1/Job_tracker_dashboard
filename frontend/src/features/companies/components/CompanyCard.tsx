@@ -9,7 +9,7 @@ import ApplicationStatusBadge from '../../../shared/components/data-display/Appl
 import { APPLICATION_STATUS_DOT_COLORS } from '../../../shared/constants/applicationStatus.ts'
 import { formatShortDate } from '../../../shared/utils/date.ts'
 
-const STATUS_ORDER: ApplicationStatus[] = ['hired', 'offer', 'interviewing', 'applied', 'new', 'rejected']
+const STATUS_ORDER: ApplicationStatus[] = ['offer', 'interviewing', 'applied', 'rejected']
 
 const CompanyCard = ({ company }: { company: CompanySummary }) => {
   const [expanded, setExpanded] = useState(false)

@@ -7,12 +7,10 @@ from app.db import Base, utcnow
 
 
 class ApplicationStatus(str, Enum):
-    NEW = "new"
     APPLIED = "applied"
     INTERVIEWING = "interviewing"
     OFFER = "offer"
     REJECTED = "rejected"
-    HIRED = "hired"
 
 
 class JobApplication(Base):

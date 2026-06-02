@@ -10,12 +10,10 @@ interface Props {
 }
 
 const STATUS_ACCENT: Record<string, string> = {
-  new:          '#6366f1',
   applied:      '#3b82f6',
   interviewing: '#a78bfa',
   offer:        '#10b981',
   rejected:     '#ef4444',
-  hired:        '#14b8a6',
 }
 
 const formatDate = (iso?: string) => {

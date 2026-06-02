@@ -98,7 +98,6 @@ class JobApplicationService:
         responded_statuses = [
             ApplicationStatus.INTERVIEWING,
             ApplicationStatus.OFFER,
-            ApplicationStatus.HIRED,
             ApplicationStatus.REJECTED,
         ]
         apps_with_response = await self.app_repo.count_by_statuses(responded_statuses)

@@ -1,10 +1,8 @@
 export type ApplicationStatus =
-  | 'new'
   | 'applied'
   | 'interviewing'
   | 'offer'
   | 'rejected'
-  | 'hired'
 
 export interface EmailReference {
   id: number
