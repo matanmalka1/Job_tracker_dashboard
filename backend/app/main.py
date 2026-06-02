@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import logging
 import os
@@ -43,7 +44,25 @@ def _bootstrap_gmail_token() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     _bootstrap_gmail_token()
+
+    settings = get_settings()
+    auto_scan_task = None
+    if settings.SCAN_INTERVAL_HOURS > 0:
+        from app.job_tracker.services.emails.auto_scanner import run_auto_scan_loop
+        auto_scan_task = asyncio.create_task(
+            run_auto_scan_loop(settings.SCAN_INTERVAL_HOURS),
+            name="auto-scan",
+        )
+
     yield
+
+    if auto_scan_task is not None:
+        auto_scan_task.cancel()
+        try:
+            await auto_scan_task
+        except asyncio.CancelledError:
+            pass
+
     try:
         from app.job_tracker.services.emails.email_scan_service import shutdown_executor
         shutdown_executor()

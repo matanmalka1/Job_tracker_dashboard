@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     SCAN_EXECUTOR_MAX_WORKERS: int = 4    # thread-pool workers for Gmail I/O
     SSE_KEEPALIVE_TIMEOUT: float = 60.0   # seconds before SSE keepalive is sent
     SCAN_HISTORY_LIMIT: int = 10          # rows returned by /scan/history
+    SCAN_INTERVAL_HOURS: float = 0        # auto-scan interval; 0 = disabled
 
     # ── API limits ────────────────────────────────────────────────────────────
     PAGINATION_LIMIT_DEFAULT: int = 50

@@ -180,3 +180,13 @@ async def scan_history(
     limit = get_settings().SCAN_HISTORY_LIMIT
     runs = await ScanRunRepository(session).list_recent(limit=limit)
     return [ScanRunRead.model_validate(r) for r in runs]
+
+
+@router.get("/scan/config")
+async def scan_config(_=Depends(check_api_key)):
+    """Return scan-related server config visible to the frontend."""
+    settings = get_settings()
+    return {
+        "auto_scan_interval_hours": settings.SCAN_INTERVAL_HOURS,
+        "auto_scan_enabled": settings.SCAN_INTERVAL_HOURS > 0,
+    }

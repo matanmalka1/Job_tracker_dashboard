@@ -69,6 +69,9 @@ export const fetchStats = (): Promise<DashboardStatsResponse> =>
 export const fetchScanHistory = (): Promise<ScanRun[]> =>
   apiClient.get<ScanRun[]>('/job-tracker/scan/history').then((r) => r.data)
 
+export const fetchScanConfig = (): Promise<{ auto_scan_interval_hours: number; auto_scan_enabled: boolean }> =>
+  apiClient.get('/job-tracker/scan/config').then((r) => r.data)
+
 export const triggerScan = (): Promise<{ inserted: number; applications_created: number }> =>
   apiClient
     .post<{ inserted: number; applications_created: number }>('/job-tracker/scan')

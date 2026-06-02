@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { fetchScanHistory } from '../../../api/client.ts'
+import { fetchScanHistory, fetchScanConfig } from '../../../api/client.ts'
 import AboutPanel from '../components/AboutPanel.tsx'
 import HistoryRow, { HistoryHeader } from '../components/HistoryRow.tsx'
 import ScannerCard from '../components/ScannerCard.tsx'
@@ -20,6 +20,12 @@ const SettingsPage = () => {
     queryKey: ['scan-history'],
     queryFn: fetchScanHistory,
     staleTime: 30_000,
+  })
+
+  const { data: scanConfig } = useQuery({
+    queryKey: ['scan-config'],
+    queryFn: fetchScanConfig,
+    staleTime: 60_000,
   })
 
   const scan = useScanRunner(refetchHistory)
@@ -56,6 +62,8 @@ const SettingsPage = () => {
         <ScannerCard
           activeStage={activeStage}
           accent={accent}
+          autoScanEnabled={scanConfig?.auto_scan_enabled ?? false}
+          autoScanIntervalHours={scanConfig?.auto_scan_interval_hours ?? 0}
           blipsRef={scan.blipsRef}
           completedStages={scan.completedStages}
           currentStage={scan.currentStage}

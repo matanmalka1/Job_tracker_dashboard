@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, Mail, XCircle } from 'lucide-react'
+import { CheckCircle2, Clock, Mail, RefreshCw, XCircle } from 'lucide-react'
 import EventTerminal from '../../../shared/components/feedback/EventTerminal.tsx'
 import RadarCanvas from './RadarCanvas.tsx'
 import StageNodes from './StageNodes.tsx'
@@ -16,6 +16,8 @@ type Stage = {
 interface Props {
   activeStage?: Stage
   accent: string
+  autoScanEnabled: boolean
+  autoScanIntervalHours: number
   blipsRef: React.MutableRefObject<Blip[]>
   completedStages: string[]
   currentStage: string | null
@@ -33,6 +35,8 @@ interface Props {
 const ScannerCard = ({
   activeStage,
   accent,
+  autoScanEnabled,
+  autoScanIntervalHours,
   blipsRef,
   completedStages,
   currentStage,
@@ -66,7 +70,18 @@ const ScannerCard = ({
           <Mail size={15} style={{ color: accent }} />
         </div>
         <div>
-          <p className="text-t1 text-sm font-semibold">Gmail Scanner</p>
+          <div className="flex items-center gap-2">
+            <p className="text-t1 text-sm font-semibold">Gmail Scanner</p>
+            {autoScanEnabled && (
+              <span
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded-full font-mono text-[9px] uppercase tracking-widest"
+                style={{ background: '#a78bfa15', border: '1px solid #a78bfa30', color: '#a78bfa' }}
+              >
+                <RefreshCw size={8} />
+                every {autoScanIntervalHours % 1 === 0 ? autoScanIntervalHours.toFixed(0) : autoScanIntervalHours}h
+              </span>
+            )}
+          </div>
           <p className="text-t3 text-[11px] mt-px font-mono">
             {scanning && activeStage ? activeStage.desc : 'Scan inbox for job applications'}
           </p>
