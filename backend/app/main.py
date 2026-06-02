@@ -9,7 +9,6 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
-from app.db import init_db
 from app.health import router as health_router
 from app.job_tracker.api.router import router as job_tracker_router
 
@@ -44,7 +43,6 @@ def _bootstrap_gmail_token() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     _bootstrap_gmail_token()
-    await init_db()
     yield
     try:
         from app.job_tracker.services.emails.email_scan_service import shutdown_executor
@@ -53,14 +51,14 @@ async def lifespan(_: FastAPI):
         logger.warning("Error shutting down executor", exc_info=True)
 
 
-def create_app() -> FastAPI:
+def create_app(lifespan_override=None) -> FastAPI:
     settings = get_settings()
 
     application = FastAPI(
         title="Job Dashboard API",
         description="Tracks job application emails from Gmail",
         version="1.0.0",
-        lifespan=lifespan,
+        lifespan=lifespan_override or lifespan,
     )
 
     application.add_middleware(

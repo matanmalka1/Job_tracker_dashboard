@@ -259,6 +259,16 @@ class TestSearchAndSort:
         data = response.json()
         assert data["total"] == 1
 
+    async def test_filter_by_exact_company_name(self, client):
+        await client.post("/job-tracker/applications", json={"company_name": "Acme", "role_title": "Dev"})
+        await client.post("/job-tracker/applications", json={"company_name": "Acme Labs", "role_title": "Dev"})
+
+        response = await client.get("/job-tracker/applications?company_name=Acme")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["company_name"] == "Acme"
+
     async def test_sort_by_company_name(self, client):
         await client.post("/job-tracker/applications", json={"company_name": "Zebra Corp", "role_title": "Dev"})
         await client.post("/job-tracker/applications", json={"company_name": "Alpha Corp", "role_title": "Dev"})

@@ -1,9 +1,20 @@
+import { Layers } from 'lucide-react'
+
 const PipelineHeader = ({ total }: { total?: number }) => (
-  <div>
-    <h1 className="text-t1 text-2xl font-bold">Pipeline Board</h1>
-    <p className="text-t2 text-sm mt-1">
-      {total != null ? `${total} application${total !== 1 ? 's' : ''}` : 'Loading...'}
-    </p>
+  <div className="pipeline-header">
+    <div className="pipeline-header__left">
+      <div className="pipeline-header__icon">
+        <Layers size={16} />
+      </div>
+      <div>
+        <h1 className="pipeline-header__title">Pipeline</h1>
+        <p className="pipeline-header__sub">
+          {total != null
+            ? `${total} application${total !== 1 ? 's' : ''} in flight`
+            : 'Loading…'}
+        </p>
+      </div>
+    </div>
   </div>
 )
 

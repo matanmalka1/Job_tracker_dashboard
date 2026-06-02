@@ -10,6 +10,7 @@ class EmailReference(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     gmail_message_id = Column(String(255), nullable=False, index=True)
+    gmail_thread_id = Column(String(255), nullable=True)
     subject = Column(String(500), nullable=True)
     sender = Column(String(255), nullable=True)
     received_at = Column(DateTime(timezone=True), nullable=False)

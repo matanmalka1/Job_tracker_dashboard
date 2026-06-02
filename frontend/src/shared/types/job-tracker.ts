@@ -9,6 +9,7 @@ export type ApplicationStatus =
 export interface EmailReference {
   id: number
   gmail_message_id: string
+  gmail_thread_id?: string
   subject?: string
   sender?: string
   received_at: string

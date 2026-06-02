@@ -50,10 +50,11 @@ class JobApplicationService:
         offset: int,
         status: Optional[ApplicationStatus] = None,
         search: Optional[str] = None,
+        company_name: Optional[str] = None,
         sort: Optional[str] = None,
     ) -> tuple[list[JobApplication], int]:
         return await self.app_repo.list_paginated(
-            limit=limit, offset=offset, status=status, search=search, sort=sort
+            limit=limit, offset=offset, status=status, search=search, company_name=company_name, sort=sort
         )
 
     async def assign_email(self, application_id: int, email_id: int) -> bool:

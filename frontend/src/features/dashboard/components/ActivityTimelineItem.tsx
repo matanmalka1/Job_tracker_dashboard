@@ -25,7 +25,7 @@ const ActivityTimelineItem = ({ email, isLast, delay }: Props) => {
   const [expanded, setExpanded] = useState(false)
   const category = categorize(email)
   const cfg = CATEGORY_CONFIG[category]
-  const gmailUrl = `https://mail.google.com/mail/u/0/#search/rfc822msgid:${encodeURIComponent(email.gmail_message_id)}`
+  const gmailUrl = `https://mail.google.com/mail/u/0/#all_mail/${email.gmail_thread_id ?? email.gmail_message_id}`
 
   return (
     <div className="flex gap-3 animate-tl-in" style={{ animationDelay: `${delay}ms` }}>

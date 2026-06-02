@@ -9,6 +9,7 @@ class EmailReferenceRead(BaseModel):
 
     id: int
     gmail_message_id: str
+    gmail_thread_id: Optional[str] = None
     subject: Optional[str] = None
     sender: Optional[str] = None
     received_at: datetime

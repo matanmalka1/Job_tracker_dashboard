@@ -52,6 +52,7 @@ export const fetchApplications = (params?: {
   offset?: number
   status?: string
   search?: string
+  company_name?: string
   sort?: ApplicationSortField
 }): Promise<JobApplicationPage> =>
   apiClient.get<JobApplicationPage>('/job-tracker/applications', { params }).then((r) => r.data)

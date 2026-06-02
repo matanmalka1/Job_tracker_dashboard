@@ -39,7 +39,7 @@ const EmailThread = ({ emails }: { emails: EmailReference[] }) => {
                 </div>
               </div>
               <a
-                href={`https://mail.google.com/mail/u/0/#search/rfc822msgid:${encodeURIComponent(email.gmail_message_id)}`}
+                href={`https://mail.google.com/mail/u/0/#all_mail/${email.gmail_thread_id ?? email.gmail_message_id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}

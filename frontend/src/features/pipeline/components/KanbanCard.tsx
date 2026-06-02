@@ -1,25 +1,37 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { useNavigate } from 'react-router-dom'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Mail } from 'lucide-react'
+import { Mail, Calendar, ExternalLink } from 'lucide-react'
 import type { PipelineCard } from '../../../shared/types/job-tracker.ts'
 
 interface Props {
   application: PipelineCard
+  isOverlay?: boolean
 }
 
-const confColorClass = (pct: number) =>
-  pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-accent' : 'bg-red-500'
+const STATUS_ACCENT: Record<string, string> = {
+  new:          '#6366f1',
+  applied:      '#3b82f6',
+  interviewing: '#a78bfa',
+  offer:        '#10b981',
+  rejected:     '#ef4444',
+  hired:        '#14b8a6',
+}
 
-const confTextClass = (pct: number) =>
-  pct >= 80 ? 'text-emerald-400' : pct >= 60 ? 'text-accent' : 'text-red-400'
+const formatDate = (iso?: string) => {
+  if (!iso) return null
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
-const KanbanCard = ({ application }: Props) => {
+const KanbanCard = ({ application, isOverlay = false }: Props) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: application.id })
   const navigate = useNavigate()
 
   const style = { transform: CSS.Transform.toString(transform), transition }
+  const accent = STATUS_ACCENT[application.status] ?? '#6366f1'
+  const date = formatDate(application.applied_at ?? application.last_email_at)
 
   const confidencePct = application.confidence_score
     ? Math.round(application.confidence_score * 100)
@@ -30,54 +42,65 @@ const KanbanCard = ({ application }: Props) => {
       ref={setNodeRef}
       style={style}
       className={[
-        'rounded-xl select-none border border-DEFAULT bg-base transition-opacity',
-        isDragging ? 'opacity-30' : 'opacity-100',
+        'kanban-card group select-none',
+        isDragging && !isOverlay ? 'kanban-card--dragging' : '',
+        isOverlay ? 'kanban-card--overlay' : '',
       ].join(' ')}
     >
+      {/* drag handle strip */}
       <div
         {...attributes}
         {...listeners}
-        className="flex justify-end px-2.5 pt-2 cursor-grab active:cursor-grabbing"
+        className="kanban-card__handle"
+        aria-label="Drag to reorder"
       >
-        <GripVertical size={13} className="text-t3" />
+        <span className="kanban-card__handle-dots">⠿</span>
       </div>
 
+      {/* content */}
       <div
         onClick={() => navigate(`/applications/${application.id}`)}
-        className="px-3 pb-3 cursor-pointer"
+        className="kanban-card__body"
       >
-        <p className="font-semibold text-[13px] truncate m-0 text-t1">
-          {application.company_name}
-        </p>
-        <p className="text-[12px] truncate m-0 mt-0.5 text-t2">
-          {application.role_title ?? '—'}
-        </p>
+        <div className="kanban-card__top">
+          <p className="kanban-card__company">{application.company_name}</p>
+          <ExternalLink
+            size={11}
+            className="kanban-card__ext opacity-0 group-hover:opacity-60 transition-opacity"
+          />
+        </div>
+
+        {application.role_title && (
+          <p className="kanban-card__role">{application.role_title}</p>
+        )}
 
         {confidencePct !== null && (
-          <div className="mt-2.5">
-            <div className="flex justify-between mb-1">
-              <span className="text-[11px] text-t3">Confidence</span>
-              <span className={`text-[11px] font-medium ${confTextClass(confidencePct)}`}>
-                {confidencePct}%
-              </span>
-            </div>
-            <div className="h-1 rounded-full overflow-hidden bg-hover">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${confColorClass(confidencePct)}`}
-                style={{ width: `${confidencePct}%` }}
-              />
-            </div>
+          <div className="kanban-card__confidence">
+            <div
+              className="kanban-card__confidence-bar"
+              style={{
+                width: `${confidencePct}%`,
+                background: accent,
+                opacity: 0.7,
+              }}
+            />
           </div>
         )}
 
-        {application.email_count > 0 && (
-          <div className="mt-2 flex items-center gap-1.5">
-            <Mail size={11} className="text-t3" />
-            <span className="text-[11px] text-t3">
-              {application.email_count} email{application.email_count > 1 ? 's' : ''}
+        <div className="kanban-card__footer">
+          {application.email_count > 0 && (
+            <span className="kanban-card__meta">
+              <Mail size={10} />
+              {application.email_count}
             </span>
-          </div>
-        )}
+          )}
+          {date && (
+            <span className="kanban-card__meta kanban-card__meta--date">
+              <Calendar size={10} />
+              {date}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )

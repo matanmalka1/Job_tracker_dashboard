@@ -22,6 +22,7 @@ async def list_applications(
     offset: Optional[int] = Query(None, ge=0),
     status_filter: Optional[ApplicationStatus] = Query(None, alias="status"),
     search: Optional[str] = Query(None, max_length=200),
+    company_name: Optional[str] = Query(None, max_length=255),
     sort: Optional[str] = Query(None, pattern="^(updated_at|created_at|applied_at|last_email_at|company_name|role_title|status)$"),
     session=Depends(get_session),
     _=Depends(check_api_key),
@@ -31,7 +32,7 @@ async def list_applications(
     offset = offset if offset is not None else settings.PAGINATION_OFFSET_DEFAULT
 
     items, total = await make_svc(session).list_paginated(
-        limit=limit, offset=offset, status=status_filter, search=search, sort=sort
+        limit=limit, offset=offset, status=status_filter, search=search, company_name=company_name, sort=sort
     )
     return JobApplicationPage(
         total=total,

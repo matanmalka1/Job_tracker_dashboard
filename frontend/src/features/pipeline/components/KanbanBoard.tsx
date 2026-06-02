@@ -15,7 +15,6 @@ import type { ApplicationStatus, PipelineCard, PipelineResponse } from '../../..
 import {
   APPLICATION_STATUSES,
   APPLICATION_STATUS_LABELS,
-  APPLICATION_STATUS_DOT_COLORS,
 } from '../../../shared/constants/applicationStatus.ts'
 import KanbanColumn from './KanbanColumn.tsx'
 import KanbanCard from './KanbanCard.tsx'
@@ -49,7 +48,6 @@ const KanbanBoard = ({ pipeline }: Props) => {
   })
 
   const columnMap = new Map(pipeline.columns.map((col) => [col.status, col]))
-
   const allCards = pipeline.columns.flatMap((col) => col.items)
 
   const onDragStart = ({ active }: DragStartEvent) => {
@@ -69,7 +67,6 @@ const KanbanBoard = ({ pipeline }: Props) => {
     const targetStatus: ApplicationStatus | undefined = overStatus ?? overCardStatus
 
     if (!targetStatus || targetStatus === draggedCard.status) return
-
     moveApplication({ id: draggedCard.id, status: targetStatus })
   }
 
@@ -80,7 +77,7 @@ const KanbanBoard = ({ pipeline }: Props) => {
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="kanban-board">
         {APPLICATION_STATUSES.map((status) => {
           const col = columnMap.get(status)
           return (
@@ -88,7 +85,6 @@ const KanbanBoard = ({ pipeline }: Props) => {
               key={status}
               status={status}
               label={APPLICATION_STATUS_LABELS[status]}
-              color={APPLICATION_STATUS_DOT_COLORS[status]}
               applications={col?.items ?? []}
               total={col?.total ?? 0}
             />
@@ -96,8 +92,8 @@ const KanbanBoard = ({ pipeline }: Props) => {
         })}
       </div>
 
-      <DragOverlay>
-        {activeApp && <KanbanCard application={activeApp} />}
+      <DragOverlay dropAnimation={{ duration: 180, easing: 'ease' }}>
+        {activeApp && <KanbanCard application={activeApp} isOverlay />}
       </DragOverlay>
     </DndContext>
   )

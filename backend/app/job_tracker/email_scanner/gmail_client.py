@@ -228,6 +228,7 @@ class GmailClient:
         body_text = self._extract_body_text(payload)
         return {
             "gmail_message_id": msg.get("id"),
+            "gmail_thread_id": msg.get("threadId"),
             "subject": subject,
             "sender": sender,
             "received_at": received_at,

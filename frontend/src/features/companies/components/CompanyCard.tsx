@@ -17,7 +17,7 @@ const CompanyCard = ({ company }: { company: CompanySummary }) => {
 
   const { data: detailData, isLoading: detailLoading } = useQuery({
     queryKey: ['applications', 'company-detail', company.company_name],
-    queryFn: () => fetchApplications({ search: company.company_name, limit: 50, offset: 0 }),
+    queryFn: () => fetchApplications({ company_name: company.company_name, limit: 50, offset: 0 }),
     enabled: expanded,
     staleTime: 30_000,
   })
@@ -74,8 +74,9 @@ const CompanyCard = ({ company }: { company: CompanySummary }) => {
               >
                 <div className={['w-1.5 h-1.5 rounded-full shrink-0', APPLICATION_STATUS_DOT_COLORS[app.status]].join(' ')} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-t1 text-sm truncate">{app.role_title ?? '—'}</p>
-                  {app.source && <p className="text-t3 text-xs mt-0.5">{app.source}</p>}
+                  <p className={['text-sm truncate', app.role_title ? 'text-t1' : 'text-t3 italic'].join(' ')}>
+                    {app.role_title ?? 'Untitled role'}
+                  </p>
                 </div>
                 <ApplicationStatusBadge status={app.status} />
                 <span className="text-t3 text-xs shrink-0">

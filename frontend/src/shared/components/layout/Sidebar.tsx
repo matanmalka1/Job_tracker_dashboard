@@ -5,9 +5,7 @@ import {
   Building2,
   Settings,
   Kanban,
-  Database,
   Calendar,
-  Radio,
 } from 'lucide-react'
 
 interface NavItem {
@@ -23,8 +21,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/interviews',   label: 'Interviews',   icon: <Calendar size={16} /> },
   { to: '/companies',    label: 'Companies',    icon: <Building2 size={16} /> },
   { to: '/settings',     label: 'Settings',     icon: <Settings size={16} /> },
-  { to: '/manage-data',  label: 'Manage Data',  icon: <Database size={16} /> },
-  { to: '/live-logger',  label: 'Live Logger',  icon: <Radio size={16} /> },
 ]
 
 interface SidebarProps {

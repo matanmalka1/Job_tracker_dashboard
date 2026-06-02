@@ -7,39 +7,41 @@ interface Props {
   status: ApplicationStatus
   label: string
   applications: PipelineCard[]
-  color: string
   total: number
 }
 
 const STATUS_HEX: Record<ApplicationStatus, string> = {
   new:          '#6366f1',
   applied:      '#3b82f6',
-  interviewing: '#8b5cf6',
+  interviewing: '#a78bfa',
   offer:        '#10b981',
   rejected:     '#ef4444',
   hired:        '#14b8a6',
 }
 
+const STATUS_EMOJI: Record<ApplicationStatus, string> = {
+  new:          '✦',
+  applied:      '◎',
+  interviewing: '◈',
+  offer:        '◆',
+  rejected:     '✕',
+  hired:        '★',
+}
+
 const KanbanColumn = ({ status, label, applications, total }: Props) => {
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const accent = STATUS_HEX[status]
+  const glyph = STATUS_EMOJI[status]
 
   return (
-    <div className="flex flex-col min-w-[260px] w-[260px]">
-      {/* column header */}
-      <div className="flex items-center gap-2 mb-3 px-1">
-        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
-        <span className="text-[13px] font-semibold flex-1" style={{ color: 'var(--text-1)' }}>
-          {label}
-        </span>
-        <span
-          className="col-count text-[11px] font-medium"
-          style={{
-            color: accent,
-            background: `${accent}15`,
-            borderColor: `${accent}30`,
-          }}
-        >
+    <div className="kanban-col">
+      {/* header */}
+      <div className="kanban-col__header" style={{ '--col-accent': accent } as React.CSSProperties}>
+        <div className="kanban-col__header-left">
+          <span className="kanban-col__glyph" style={{ color: accent }}>{glyph}</span>
+          <span className="kanban-col__label">{label}</span>
+        </div>
+        <span className="kanban-col__count" style={{ color: accent, background: `${accent}18`, borderColor: `${accent}30` }}>
           {total}
         </span>
       </div>
@@ -47,11 +49,11 @@ const KanbanColumn = ({ status, label, applications, total }: Props) => {
       {/* drop zone */}
       <div
         ref={setNodeRef}
-        className="flex flex-col gap-2 min-h-[140px] p-2.5 flex-1 rounded-xl transition-all duration-150"
+        className={['kanban-col__zone', isOver ? 'kanban-col__zone--over' : ''].join(' ')}
         style={{
-          background: isOver ? `${accent}06` : 'var(--bg-surface)',
-          border: `1px solid ${isOver ? `${accent}35` : 'var(--border)'}`,
-          borderTop: `2px solid ${accent}`,
+          borderTopColor: accent,
+          background: isOver ? `${accent}06` : undefined,
+          borderColor: isOver ? `${accent}30` : undefined,
         }}
       >
         <SortableContext items={applications.map((a) => a.id)} strategy={verticalListSortingStrategy}>
@@ -61,9 +63,10 @@ const KanbanColumn = ({ status, label, applications, total }: Props) => {
         </SortableContext>
 
         {applications.length === 0 && (
-          <p className="text-[12px] text-center py-5" style={{ color: 'var(--text-3)' }}>
-            Drop here
-          </p>
+          <div className="kanban-col__empty">
+            <span style={{ color: `${accent}40` }}>{glyph}</span>
+            <span>Drop here</span>
+          </div>
         )}
       </div>
     </div>

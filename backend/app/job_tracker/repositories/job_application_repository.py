@@ -69,6 +69,7 @@ class JobApplicationRepository:
         offset: int,
         status: Optional[ApplicationStatus] = None,
         search: Optional[str] = None,
+        company_name: Optional[str] = None,
         sort: Optional[str] = None,
     ) -> tuple[list[JobApplication], int]:
         query = select(JobApplication).options(selectinload(JobApplication.emails))
@@ -77,6 +78,10 @@ class JobApplicationRepository:
         if status:
             query = query.where(JobApplication.status == status)
             count_query = count_query.where(JobApplication.status == status)
+
+        if company_name:
+            query = query.where(JobApplication.company_name == company_name)
+            count_query = count_query.where(JobApplication.company_name == company_name)
 
         if search:
             pattern = f"%{search}%"

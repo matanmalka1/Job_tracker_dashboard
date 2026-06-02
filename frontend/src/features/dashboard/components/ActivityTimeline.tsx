@@ -161,7 +161,7 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
         )}
 
         {!isLoading && !isError && filtered.length > 0 && (
-          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-3">
+          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-3 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
             <ActivitySummaryBar emails={activeFilter === 'all' ? jobEmails : filtered} />
 
             {groups.map(([date, groupEmails], gi) => (

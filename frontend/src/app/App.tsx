@@ -6,9 +6,7 @@ import ApplicationsPage from '../features/applications/pages/ApplicationsPage.ts
 import CompaniesPage from '../features/companies/pages/CompaniesPage.tsx'
 import SettingsPage from '../features/settings/pages/SettingsPage.tsx'
 import ApplicationDetailPage from '../features/application-detail/pages/ApplicationDetailPage.tsx'
-import DataManagementPage from '../features/manage-data/pages/DataManagementPage.tsx'
 import InterviewsPage from '../features/interviews/pages/InterviewsPage.tsx'
-import LiveLoggerPage from '../features/live-logger/pages/LiveLoggerPage.tsx'
 
 const App = () => (
   <Routes>
@@ -21,8 +19,8 @@ const App = () => (
       <Route path="interviews" element={<InterviewsPage />} />
       <Route path="companies" element={<CompaniesPage />} />
       <Route path="settings" element={<SettingsPage />} />
-      <Route path="manage-data" element={<DataManagementPage />} />
-      <Route path="live-logger" element={<LiveLoggerPage />} />
+      <Route path="manage-data" element={<Navigate to="/applications" replace />} />
+      <Route path="live-logger" element={<Navigate to="/settings" replace />} />
     </Route>
   </Routes>
 )

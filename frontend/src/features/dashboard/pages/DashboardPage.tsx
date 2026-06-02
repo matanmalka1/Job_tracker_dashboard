@@ -56,9 +56,9 @@ const DashboardPage = () => {
     <div className="flex flex-col gap-6 max-w-[1400px]">
       <StatsCards stats={stats} isLoading={statsLoading} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 min-h-[400px]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 h-[520px]">
         <StageDistribution stats={stats} isLoading={statsLoading} />
-        <div className="lg:col-span-2 min-h-[400px]">
+        <div className="lg:col-span-2 h-full overflow-hidden">
           <ActivityTimeline
             emails={emailsData?.items ?? []}
             isLoading={emailsLoading}
