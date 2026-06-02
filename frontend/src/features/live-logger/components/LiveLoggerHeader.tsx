@@ -1,4 +1,5 @@
 import { Play, Radio, StopCircle, Trash2 } from 'lucide-react'
+import { Button } from '@/shared/components/ui'
 import type { LiveLoggerStatus } from '../hooks/useLiveLogger.ts'
 
 const STATUS_DOT: Record<LiveLoggerStatus, string> = {
@@ -54,28 +55,30 @@ const LiveLoggerHeader = ({ url, status, onConnect, onClose, onClear }: LiveLogg
           {STATUS_LABEL[status]}
         </div>
 
-        <button
+        <Button
           onClick={isOpen ? onClose : onConnect}
           disabled={status === 'connecting'}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          size="sm"
+          icon={isOpen ? <StopCircle size={13} /> : <Play size={13} />}
+          className="h-auto py-1.5 text-xs font-semibold"
           style={{
             background: isOpen ? '#1f2937' : '#4f46e5',
             color: '#fff',
             border: '1px solid #ffffff14',
           }}
         >
-          {isOpen ? <StopCircle size={13} /> : <Play size={13} />}
           {isOpen ? 'Stop' : 'Start'}
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={onClear}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-t2 hover:text-t1 transition-colors"
-          style={{ background: 'var(--bg-hover)', border: '1px solid #ffffff10' }}
+          variant="secondary"
+          size="sm"
+          icon={<Trash2 size={13} />}
+          className="h-auto py-1.5 text-xs font-semibold"
         >
-          <Trash2 size={13} />
           Clear
-        </button>
+        </Button>
       </div>
     </div>
   )

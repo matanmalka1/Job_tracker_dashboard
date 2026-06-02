@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Building2 } from 'lucide-react'
+import { Card, EmptyState, SearchInput } from '@/shared/components/ui'
 import { fetchCompaniesSummary } from '../../../api/client.ts'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
 import CompanyCard from '../components/CompanyCard.tsx'
@@ -41,34 +42,32 @@ const CompaniesPage = () => {
         </p>
       </div>
 
-      <div className="bg-surface border border-DEFAULT rounded-lg px-4 py-3">
-        <input
-          type="text"
+      <Card padding={false} className="px-4 py-3">
+        <SearchInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search companies…"
-          className="w-full bg-transparent text-t1 text-sm placeholder-t3 focus:outline-none"
+          className="bg-transparent border-transparent p-0 focus:border-transparent focus:ring-0"
         />
-      </div>
+      </Card>
 
       {isLoading && <LoadingSpinner size="lg" message="Loading companies…" />}
 
       {isError && (
-        <div className="bg-surface rounded-xl p-8 border border-DEFAULT text-center">
+        <Card className="p-8 text-center">
           <p className="text-red-400 text-sm">Failed to load companies.</p>
-        </div>
+        </Card>
       )}
 
       {!isLoading && !isError && companies.length === 0 && (
-        <div className="bg-surface rounded-xl p-12 border border-DEFAULT text-center">
-          <Building2 size={32} className="text-t3 mx-auto mb-3" />
-          <p className="text-t2 text-sm font-medium">
-            {search ? 'No companies match your search.' : 'No companies yet'}
-          </p>
-          {!search && (
-            <p className="text-t3 text-xs mt-1">Add applications to see them grouped by company.</p>
-          )}
-        </div>
+        <Card className="p-0">
+          <EmptyState
+            icon={<Building2 size={32} />}
+            title={search ? 'No companies match your search.' : 'No companies yet'}
+            description={!search ? 'Add applications to see them grouped by company.' : undefined}
+            className="py-12"
+          />
+        </Card>
       )}
 
       {!isLoading && !isError && companies.length > 0 && (

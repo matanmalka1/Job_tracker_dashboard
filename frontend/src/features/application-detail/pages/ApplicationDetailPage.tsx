@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Mail } from 'lucide-react'
 import { fetchApplication } from '../../../api/client.ts'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
-import SlideOver from '../../../shared/components/ui/SlideOver.tsx'
+import { Button, Card, SlideOver } from '@/shared/components/ui'
 import ConfirmDialog from '../../../shared/components/feedback/ConfirmDialog.tsx'
 import DetailHeader from '../components/DetailHeader.tsx'
 import ApplicationStatsGrid from '../components/ApplicationStatsGrid.tsx'
@@ -37,29 +37,29 @@ const ApplicationDetailPage = () => {
   if (isError || !app) {
     return (
       <div className="space-y-4">
-        <button
+        <Button
           onClick={() => navigate('/applications')}
-          className="flex items-center gap-2 text-t2 hover:text-t1 text-sm transition-colors"
+          variant="ghost"
+          icon={<ArrowLeft size={16} />}
         >
-          <ArrowLeft size={16} />
           Back to Applications
-        </button>
-        <div className="bg-surface rounded-xl p-12 border border-DEFAULT text-center">
+        </Button>
+        <Card className="p-12 text-center">
           <p className="text-red-400 text-sm">Application not found.</p>
-        </div>
+        </Card>
       </div>
     )
   }
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <button
+      <Button
         onClick={() => navigate('/applications')}
-        className="flex items-center gap-2 text-t2 hover:text-t1 text-sm transition-colors"
+        variant="ghost"
+        icon={<ArrowLeft size={16} />}
       >
-        <ArrowLeft size={16} />
         Back to Applications
-      </button>
+      </Button>
 
       <DetailHeader
         app={app}
@@ -70,7 +70,7 @@ const ApplicationDetailPage = () => {
       <ApplicationStatsGrid app={app} />
       <ApplicationMetaSection app={app} />
 
-      <div className="bg-surface border border-DEFAULT rounded-xl p-6">
+      <Card className="p-6">
         <div className="flex items-center gap-2 mb-5">
           <Mail size={16} className="text-t2" />
           <h2 className="text-t1 font-semibold text-sm">
@@ -79,7 +79,7 @@ const ApplicationDetailPage = () => {
           </h2>
         </div>
         <EmailThread emails={app.emails} />
-      </div>
+      </Card>
 
       <ActivityTimeline app={app} />
 

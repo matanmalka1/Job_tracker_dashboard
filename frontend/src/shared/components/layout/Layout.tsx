@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { Menu, Moon, Sun, X } from 'lucide-react'
+import { IconButton } from '@/shared/components/ui'
 import Sidebar from './Sidebar.tsx'
 import GlobalSearch from './GlobalSearch.tsx'
 import { useTheme } from '../../hooks/useTheme.ts'
@@ -74,13 +75,13 @@ const Layout = () => {
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <button
+          <IconButton
             onClick={() => setMobileNavOpen((v) => !v)}
-            className="md:hidden transition-colors"
-            style={{ color: 'var(--text-2)' }}
+            className="md:hidden"
+            label="Toggle navigation"
           >
             {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
+          </IconButton>
 
           <span className="page-title">{pageTitle}</span>
 
@@ -91,26 +92,13 @@ const Layout = () => {
           </div>
 
           {/* Theme toggle */}
-          <button
+          <IconButton
             onClick={toggle}
-            aria-label="Toggle theme"
-            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
-            style={{
-              color: 'var(--text-2)',
-              background: 'transparent',
-              border: '1px solid var(--border)',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)'
-              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-1)'
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
-              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-2)'
-            }}
+            label="Toggle theme"
+            variant="secondary"
           >
             {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-          </button>
+          </IconButton>
 
           <Clock />
         </header>

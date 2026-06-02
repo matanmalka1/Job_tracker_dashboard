@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, X, FileText, Building2, Loader2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { Button, IconButton, Input, Kbd } from '@/shared/components/ui'
 import { fetchApplications } from '../../../api/client.ts'
 import type { JobApplication } from '../../types/job-tracker.ts'
 import ApplicationStatusBadge from '../data-display/ApplicationStatusBadge.tsx'
@@ -76,15 +77,17 @@ const GlobalSearch = () => {
 
   return (
     <div ref={containerRef} className="relative">
-      <button
+      <Button
         onClick={openSearch}
-        className="flex items-center gap-2 bg-raised border border-DEFAULT rounded-lg px-3 py-1.5 text-t2 text-sm hover:border-mid transition-colors w-48"
+        variant="secondary"
+        size="sm"
+        icon={<Search size={14} />}
+        className="w-48 justify-start bg-surface border-mid"
         aria-label="Open search (⌘K)"
       >
-        <Search size={14} />
-        <span className="flex-1 text-left text-xs">Search…</span>
-        <kbd className="text-xs bg-raised border border-DEFAULT rounded px-1 py-0.5 font-mono">⌘K</kbd>
-      </button>
+        <span className="flex-1 text-left text-xs">Search...</span>
+        <Kbd>⌘K</Kbd>
+      </Button>
 
       {open && (
         <div
@@ -94,24 +97,24 @@ const GlobalSearch = () => {
         >
           <div className="flex items-center gap-2 px-4 py-3 border-b border-DEFAULT">
             <Search size={15} className="text-t2 shrink-0" />
-            <input
+            <Input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search company, role, or source…"
-              className="flex-1 bg-transparent text-t1 text-sm placeholder-t3 focus:outline-none"
+              className="flex-1 bg-transparent border-transparent p-0 focus:border-transparent focus:ring-0"
               autoComplete="off"
               aria-label="Search query"
             />
             {query && (
-              <button
+              <IconButton
                 onClick={() => { setQuery(''); setDebouncedQuery('') }}
-                className="text-t2 hover:text-t1"
-                aria-label="Clear search"
+                label="Clear search"
+                size="sm"
               >
                 <X size={14} />
-              </button>
+              </IconButton>
             )}
           </div>
 
@@ -157,14 +160,16 @@ const GlobalSearch = () => {
                   { label: 'Applications', path: '/applications', icon: <FileText size={13} /> },
                   { label: 'Companies', path: '/companies', icon: <Building2 size={13} /> },
                 ].map((item) => (
-                  <button
+                  <Button
                     key={item.path}
                     onClick={() => { navigate(item.path); setOpen(false) }}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-raised hover:bg-hover text-t2 text-xs transition-colors"
+                    variant="secondary"
+                    size="sm"
+                    icon={item.icon}
+                    className="h-auto justify-start py-2 bg-raised text-xs"
                   >
-                    {item.icon}
                     {item.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>

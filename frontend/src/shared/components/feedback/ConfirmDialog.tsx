@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   open: boolean
@@ -36,20 +37,23 @@ const ConfirmDialog = ({
         </div>
 
         <div className="flex gap-3">
-          <button
+          <Button
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 px-4 py-2.5 rounded-lg border border-DEFAULT text-t2 text-sm font-medium hover:text-t1 hover:border-hi transition-colors disabled:opacity-50"
+            variant="secondary"
+            className="flex-1 h-auto py-2.5"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onConfirm}
             disabled={loading}
-            className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 text-t1 text-sm font-medium transition-colors"
+            loading={loading}
+            variant="danger"
+            className="flex-1 h-auto py-2.5"
           >
             {loading ? 'Deleting…' : confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

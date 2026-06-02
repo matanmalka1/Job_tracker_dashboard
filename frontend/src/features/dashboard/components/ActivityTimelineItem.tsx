@@ -1,4 +1,10 @@
 import { useState } from 'react'
+
+const decodeHtmlEntities = (str: string): string => {
+  const txt = document.createElement('textarea')
+  txt.innerHTML = str
+  return txt.value
+}
 import { ChevronDown, ExternalLink } from 'lucide-react'
 import type { EmailReference } from '../../../shared/types/job-tracker.ts'
 import {
@@ -87,9 +93,10 @@ const ActivityTimelineItem = ({ email, isLast, delay }: Props) => {
               style={{ borderTop: `1px solid ${cfg.color}18` }}
             >
               {email.snippet && (
-                <p className="text-[12px] leading-relaxed pt-2.5 m-0" style={{ color: 'var(--text-2)' }}>
-                  {email.snippet}
-                </p>
+                <p
+                  className="text-[12px] leading-relaxed pt-2.5 m-0"
+                  style={{ color: 'var(--text-2)' }}
+                >{decodeHtmlEntities(email.snippet)}</p>
               )}
               <div className="flex items-center justify-between pt-2.5">
                 <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>

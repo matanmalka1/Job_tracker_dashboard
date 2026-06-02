@@ -1,4 +1,5 @@
 import { Calendar, Mail, TrendingUp, X } from 'lucide-react'
+import { Button, Card } from '@/shared/components/ui'
 import ApplicationStatusBadge from '../../../shared/components/data-display/ApplicationStatusBadge.tsx'
 import type { JobApplication } from '../../../shared/types/job-tracker.ts'
 
@@ -22,7 +23,7 @@ interface CardProps {
 }
 
 const InterviewCard = ({ app, onMoveOffer, onMoveRejected, loading }: CardProps) => (
-  <div className="bg-raised border border-DEFAULT rounded-xl p-4 flex flex-col gap-3 hover:border-DEFAULT transition-colors">
+  <Card className="bg-raised p-4 flex flex-col gap-3 hover:border-DEFAULT transition-colors">
     <div className="flex items-start justify-between gap-3">
       <div>
         <p className="text-t1 font-semibold text-sm">{app.company_name}</p>
@@ -61,24 +62,28 @@ const InterviewCard = ({ app, onMoveOffer, onMoveRejected, loading }: CardProps)
     )}
 
     <div className="flex gap-2 pt-1">
-      <button
+      <Button
         disabled={loading}
         onClick={() => onMoveOffer(app.id)}
-        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600/10 hover:bg-green-600/20 text-green-400 text-xs font-medium transition-colors disabled:opacity-50"
+        variant="ghost"
+        size="sm"
+        icon={<TrendingUp size={13} />}
+        className="flex-1 h-auto py-1.5 bg-green-600/10 hover:bg-green-600/20 text-green-400"
       >
-        <TrendingUp size={13} />
         Move to Offer
-      </button>
-      <button
+      </Button>
+      <Button
         disabled={loading}
         onClick={() => onMoveRejected(app.id)}
-        className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/10 hover:bg-red-600/20 text-red-400 text-xs font-medium transition-colors disabled:opacity-50"
+        variant="ghost"
+        size="sm"
+        icon={<X size={13} />}
+        className="h-auto py-1.5 bg-red-600/10 hover:bg-red-600/20 text-red-400"
       >
-        <X size={13} />
         Rejected
-      </button>
+      </Button>
     </div>
-  </div>
+  </Card>
 )
 
 export default InterviewCard

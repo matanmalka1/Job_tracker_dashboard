@@ -1,6 +1,7 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   children: ReactNode
@@ -43,13 +44,13 @@ class ErrorBoundary extends Component<Props, State> {
               {this.state.error?.message ?? 'An unexpected error occurred.'}
             </p>
           </div>
-          <button
+          <Button
             onClick={this.reset}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-DEFAULT text-t1 text-sm font-medium transition-colors"
+            variant="secondary"
+            icon={<RefreshCw size={14} />}
           >
-            <RefreshCw size={14} />
             Try again
-          </button>
+          </Button>
         </div>
       )
     }

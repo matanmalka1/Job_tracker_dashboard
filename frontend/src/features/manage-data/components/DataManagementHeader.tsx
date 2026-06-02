@@ -1,4 +1,5 @@
 import { Database, Plus, RefreshCw } from 'lucide-react'
+import { Button, IconButton } from '@/shared/components/ui'
 
 interface Props {
   onRefresh: () => void
@@ -22,21 +23,21 @@ const DataManagementHeader = ({ onRefresh, onCreate, isFetching }: Props) => (
     </div>
 
     <div className="flex items-center gap-2 shrink-0">
-      <button
+      <IconButton
         onClick={onRefresh}
         title="Refresh"
-        className="flex items-center justify-center w-8 h-8 rounded-lg border border-mid bg-raised text-t2 hover:border-hi hover:text-t1 transition-colors"
+        label="Refresh"
+        variant="secondary"
       >
         <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
-      </button>
+      </IconButton>
 
-      <button
+      <Button
         onClick={onCreate}
-        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-medium bg-indigo-500/[0.18] border border-indigo-500/35 text-indigo-300 hover:bg-indigo-500/25 hover:border-indigo-500/55 hover:text-indigo-200 transition-colors"
+        icon={<Plus size={14} />}
       >
-        <Plus size={14} />
         New record
-      </button>
+      </Button>
     </div>
   </div>
 )

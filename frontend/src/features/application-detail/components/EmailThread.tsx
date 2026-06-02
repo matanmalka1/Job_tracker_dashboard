@@ -2,6 +2,12 @@ import { ExternalLink, Mail, Calendar } from 'lucide-react'
 import type { EmailReference } from '../../../shared/types/job-tracker.ts'
 import { formatDateTime, formatRelativeTime } from '../../../shared/utils/date.ts'
 
+const decodeHtmlEntities = (str: string): string => {
+  const txt = document.createElement('textarea')
+  txt.innerHTML = str
+  return txt.value
+}
+
 const EmailThread = ({ emails }: { emails: EmailReference[] }) => {
   if (emails.length === 0) {
     return (
@@ -43,7 +49,11 @@ const EmailThread = ({ emails }: { emails: EmailReference[] }) => {
                 <ExternalLink size={13} />
               </a>
             </div>
-            {email.snippet && <p className="text-t2 text-xs mt-2 leading-relaxed line-clamp-2">{email.snippet}</p>}
+            {email.snippet && (
+              <p className="text-t2 text-xs mt-2 leading-relaxed line-clamp-2">
+                {decodeHtmlEntities(email.snippet)}
+              </p>
+            )}
           </div>
         ))}
     </div>

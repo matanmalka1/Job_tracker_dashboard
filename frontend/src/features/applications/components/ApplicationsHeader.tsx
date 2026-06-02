@@ -1,4 +1,5 @@
 import { Plus, Trash2, Download } from 'lucide-react'
+import { Button } from '@/shared/components/ui'
 
 interface Props {
   total?: number
@@ -19,30 +20,29 @@ const ApplicationsHeader = ({ total, selectedCount, onBulkDelete, onExport, onAd
     </div>
     <div className="flex items-center gap-2 flex-wrap">
       {selectedCount > 0 && (
-        <button
+        <Button
           onClick={onBulkDelete}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-600/30 text-red-400 hover:bg-red-600/10 text-sm font-medium transition-colors"
+          variant="danger"
+          icon={<Trash2 size={15} />}
         >
-          <Trash2 size={15} />
           Delete {selectedCount}
-        </button>
+        </Button>
       )}
-      <button
+      <Button
         onClick={onExport}
         disabled={disableExport}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-DEFAULT text-t2 hover:text-t1 hover:border-hi text-sm font-medium transition-colors disabled:opacity-40"
+        variant="secondary"
+        icon={<Download size={15} />}
         title="Export current page to CSV"
       >
-        <Download size={15} />
         Export
-      </button>
-      <button
+      </Button>
+      <Button
         onClick={onAdd}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-t1 text-sm font-medium transition-colors"
+        icon={<Plus size={16} />}
       >
-        <Plus size={16} />
         Add Application
-      </button>
+      </Button>
     </div>
   </div>
 )

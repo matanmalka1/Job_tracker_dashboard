@@ -1,4 +1,5 @@
 import { Pencil, Trash2 } from 'lucide-react'
+import { IconButton } from '@/shared/components/ui'
 import type { JobApplication } from '../../../shared/types/job-tracker.ts'
 import { APPLICATION_STATUS_LABELS } from '../../../shared/constants/applicationStatus.ts'
 import { formatShortDate } from '../../../shared/utils/date.ts'
@@ -77,22 +78,25 @@ const ApplicationRow = ({ app, onEdit, onDelete }: Props) => (
     {/* Actions */}
     <td className="px-4 py-2.5">
       <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
-        <button
+        <IconButton
           onClick={() => onEdit(app)}
           title="Edit"
-          aria-label={`Edit ${app.company_name}`}
-          className="flex items-center justify-center w-7 h-7 rounded-md bg-raised border border-mid text-t2 hover:border-hi hover:text-t1 transition-colors"
+          label={`Edit ${app.company_name}`}
+          size="sm"
+          variant="secondary"
         >
           <Pencil size={12} />
-        </button>
-        <button
+        </IconButton>
+        <IconButton
           onClick={() => onDelete(app)}
           title="Delete"
-          aria-label={`Delete ${app.company_name}`}
-          className="flex items-center justify-center w-7 h-7 rounded-md bg-red-500/[0.06] border border-red-500/20 text-red-500/60 hover:bg-red-500/[0.12] hover:border-red-500/40 hover:text-red-300 transition-colors"
+          label={`Delete ${app.company_name}`}
+          size="sm"
+          variant="danger"
+          className="bg-red-500/[0.06] border-red-500/20 text-red-500/60 hover:bg-red-500/[0.12] hover:border-red-500/40 hover:text-red-300"
         >
           <Trash2 size={12} />
-        </button>
+        </IconButton>
       </div>
     </td>
   </tr>

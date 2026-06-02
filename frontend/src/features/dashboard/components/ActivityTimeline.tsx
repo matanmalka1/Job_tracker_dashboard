@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { ChevronDown, Mail } from 'lucide-react'
+import { Button, Card, EmptyState } from '@/shared/components/ui'
 import type { EmailReference } from '../../../shared/types/job-tracker.ts'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
 import ActivitySummaryBar from './ActivitySummaryBar.tsx'
@@ -54,7 +55,7 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
     : CATEGORY_CONFIG[activeFilter as Category].label
 
   return (
-    <div className="panel flex flex-col h-full">
+    <Card padding={false} className="flex flex-col h-full">
       {/* header */}
       <div className="flex items-center justify-between px-5 py-4 gap-2"
         style={{ borderBottom: '1px solid var(--border)' }}>
@@ -74,22 +75,27 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
 
         {jobEmails.length > 0 && (
           <div className="relative">
-            <button
+            <Button
               onClick={() => setShowFilterMenu((v) => !v)}
+              variant="secondary"
+              size="sm"
+              icon={(
+                <ChevronDown
+                  size={12}
+                  className="transition-transform duration-150"
+                  style={{ transform: showFilterMenu ? 'rotate(180deg)' : 'none' }}
+                />
+              )}
+              iconPosition="right"
               className={[
-                'flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-lg border transition-colors',
+                'h-auto py-1.5 text-[12px]',
                 activeFilter !== 'all'
-                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-glow)]'
-                  : 'border-[var(--border-mid)] text-[var(--text-2)] hover:text-[var(--text-1)] hover:bg-[var(--bg-hover)]',
+                  ? 'border-accent text-accent bg-[var(--accent-glow)]'
+                  : '',
               ].join(' ')}
             >
               {activeFilterLabel}
-              <ChevronDown
-                size={12}
-                className="transition-transform duration-150"
-                style={{ transform: showFilterMenu ? 'rotate(180deg)' : 'none' }}
-              />
-            </button>
+            </Button>
 
             {showFilterMenu && (
               <div
@@ -132,25 +138,25 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
         )}
 
         {!isLoading && !isError && jobEmails.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-2.5 p-8">
-            <Mail size={22} style={{ color: 'var(--text-3)' }} />
-            <p className="text-[13px] m-0" style={{ color: 'var(--text-3)' }}>No email activity yet</p>
-            <p className="text-[12px] m-0" style={{ color: 'var(--text-3)', opacity: 0.6 }}>
-              Run a Gmail scan to populate
-            </p>
-          </div>
+          <EmptyState
+            icon={<Mail size={22} />}
+            title="No email activity yet"
+            description="Run a Gmail scan to populate"
+            className="flex-1"
+          />
         )}
 
         {!isLoading && !isError && jobEmails.length > 0 && filtered.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center gap-2.5 p-8">
             <p className="text-[13px] m-0" style={{ color: 'var(--text-3)' }}>No results for this filter</p>
-            <button
+            <Button
               onClick={() => setActiveFilter('all')}
-              className="text-[12px] font-medium bg-transparent border-none cursor-pointer transition-colors"
-              style={{ color: 'var(--accent)' }}
+              variant="ghost"
+              size="sm"
+              className="text-[12px] text-accent hover:text-accent"
             >
               Clear filter
-            </button>
+            </Button>
           </div>
         )}
 
@@ -188,7 +194,7 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
           </div>
         )}
       </div>
-    </div>
+    </Card>
   )
 }
 

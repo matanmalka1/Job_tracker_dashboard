@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
+import { Button, Card } from '@/shared/components/ui'
 import type { JobApplication } from '../../../shared/types/job-tracker.ts'
 import ApplicationStatusBadge from '../../../shared/components/data-display/ApplicationStatusBadge.tsx'
 import LoadingSpinner from '../../../shared/components/feedback/LoadingSpinner.tsx'
@@ -19,7 +20,7 @@ const RecentApplications = ({ applications, isLoading, isError }: Props) => {
   const navigate = useNavigate()
 
   return (
-    <div className="panel">
+    <Card padding={false}>
       {/* header */}
       <div className="flex items-center justify-between px-5 py-4"
         style={{ borderBottom: '1px solid var(--border)' }}>
@@ -36,13 +37,16 @@ const RecentApplications = ({ applications, isLoading, isError }: Props) => {
             </span>
           )}
         </div>
-        <button
+        <Button
           onClick={() => navigate('/applications')}
-          className="flex items-center gap-1.5 text-[13px] font-medium bg-transparent border-none cursor-pointer transition-colors"
-          style={{ color: 'var(--accent)' }}
+          variant="ghost"
+          size="sm"
+          icon={<ArrowRight size={13} />}
+          iconPosition="right"
+          className="text-[13px] text-accent hover:text-accent"
         >
-          View all <ArrowRight size={13} />
-        </button>
+          View all
+        </Button>
       </div>
 
       {isLoading && <div className="p-6"><LoadingSpinner size="sm" message="Loading..." /></div>}
@@ -92,7 +96,7 @@ const RecentApplications = ({ applications, isLoading, isError }: Props) => {
           ))}
         </div>
       )}
-    </div>
+    </Card>
   )
 }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
+import { Button, FormField, IconButton, Input, SelectField, Textarea } from '@/shared/components/ui'
 import type { ApplicationWritePayload, JobApplication } from '../../../shared/types/job-tracker.ts'
 import { APPLICATION_STATUS_OPTIONS } from '../../../shared/constants/applicationStatus.ts'
 import {
@@ -44,9 +45,6 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }))
 
-  const inputCls =
-    'w-full bg-raised border border-DEFAULT rounded-lg px-3 py-2.5 text-t1 text-sm placeholder-t3 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors'
-
   const isEdit = !!initial
 
   return (
@@ -62,63 +60,55 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
           <h2 className="text-t1 font-semibold text-lg">
             {isEdit ? 'Edit Application' : 'Add Application'}
           </h2>
-          <button type="button" onClick={onClose} className="text-t2 hover:text-t1 transition-colors" aria-label="Close">
+          <IconButton type="button" onClick={onClose} label="Close" size="sm">
             <X size={20} />
-          </button>
+          </IconButton>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs text-t2 font-medium mb-1.5">Company *</label>
-            <input type="text" required value={form.company_name} onChange={set('company_name')} placeholder="e.g. Acme Corp" className={inputCls} autoFocus />
-          </div>
+          <FormField label="Company" required>
+            <Input type="text" required value={form.company_name} onChange={set('company_name')} placeholder="e.g. Acme Corp" autoFocus />
+          </FormField>
 
-          <div>
-            <label className="block text-xs text-t2 font-medium mb-1.5">Role</label>
-            <input type="text" value={form.role_title} onChange={set('role_title')} placeholder="e.g. Senior Engineer" className={inputCls} />
-          </div>
+          <FormField label="Role">
+            <Input type="text" value={form.role_title} onChange={set('role_title')} placeholder="e.g. Senior Engineer" />
+          </FormField>
 
-          <div>
-            <label className="block text-xs text-t2 font-medium mb-1.5">Status</label>
-            <select value={form.status} onChange={set('status')} className={inputCls}>
+          <FormField label="Status">
+            <SelectField value={form.status} onChange={set('status')}>
               {APPLICATION_STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
-            </select>
-          </div>
+            </SelectField>
+          </FormField>
 
-          <div>
-            <label className="block text-xs text-t2 font-medium mb-1.5">Source</label>
-            <input type="text" value={form.source} onChange={set('source')} placeholder="e.g. LinkedIn, Referral" className={inputCls} />
-          </div>
+          <FormField label="Source">
+            <Input type="text" value={form.source} onChange={set('source')} placeholder="e.g. LinkedIn, Referral" />
+          </FormField>
 
-          <div>
-            <label className="block text-xs text-t2 font-medium mb-1.5">Applied Date</label>
-            <input type="date" value={form.applied_at} onChange={set('applied_at')} className={`${inputCls}`} />
-          </div>
+          <FormField label="Applied Date">
+            <Input type="date" value={form.applied_at} onChange={set('applied_at')} />
+          </FormField>
 
-          <div>
-            <label className="block text-xs text-t2 font-medium mb-1.5">Job URL</label>
-            <input type="url" value={form.job_url} onChange={set('job_url')} placeholder="https://…" className={inputCls} />
-          </div>
+          <FormField label="Job URL">
+            <Input type="url" value={form.job_url} onChange={set('job_url')} placeholder="https://…" />
+          </FormField>
 
-          <div>
-            <label className="block text-xs text-t2 font-medium mb-1.5">Follow-up Date</label>
-            <input type="date" value={form.next_action_at} onChange={set('next_action_at')} className={`${inputCls}`} />
-          </div>
+          <FormField label="Follow-up Date">
+            <Input type="date" value={form.next_action_at} onChange={set('next_action_at')} />
+          </FormField>
 
-          <div>
-            <label className="block text-xs text-t2 font-medium mb-1.5">Notes</label>
-            <textarea value={form.notes} onChange={set('notes')} placeholder="Interview prep, impressions, contacts…" rows={3} className={`${inputCls} resize-none`} />
-          </div>
+          <FormField label="Notes">
+            <Textarea value={form.notes} onChange={set('notes')} placeholder="Interview prep, impressions, contacts…" rows={3} />
+          </FormField>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} disabled={loading} className="flex-1 px-4 py-2.5 rounded-lg border border-DEFAULT text-t2 text-sm font-medium hover:text-t1 hover:border-hi transition-colors disabled:opacity-50">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={loading} className="flex-1 h-auto py-2.5">
               Cancel
-            </button>
-            <button type="submit" disabled={loading} className="flex-1 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-t1 text-sm font-medium transition-colors">
+            </Button>
+            <Button type="submit" disabled={loading} loading={loading} className="flex-1 h-auto py-2.5">
               {loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Application'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

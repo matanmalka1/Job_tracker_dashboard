@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
+import { Button, FormField, Input, SelectField } from '@/shared/components/ui'
 import type { ApplicationStatus } from '../../../shared/types/job-tracker.ts'
 import type { FormState } from '../types.ts'
 import { APPLICATION_STATUS_OPTIONS } from '../../../shared/constants/applicationStatus.ts'
@@ -15,89 +16,77 @@ interface Props {
 const ApplicationForm = ({ form, setForm, onSubmit, onCancel, loading, editing }: Props) => (
   <div className="space-y-4">
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div>
-        <label className="text-xs text-t2">Company *</label>
-        <input
+      <FormField label="Company" required>
+        <Input
           value={form.company_name}
           onChange={(e) => setForm((f) => ({ ...f, company_name: e.target.value }))}
-          className="mt-1 w-full bg-raised border border-DEFAULT rounded-lg px-3 py-2 text-t1 text-sm focus:outline-none focus:border-accent/50"
           autoFocus
         />
-      </div>
-      <div>
-        <label className="text-xs text-t2">Role</label>
-        <input
+      </FormField>
+      <FormField label="Role">
+        <Input
           value={form.role_title}
           onChange={(e) => setForm((f) => ({ ...f, role_title: e.target.value }))}
-          className="mt-1 w-full bg-raised border border-DEFAULT rounded-lg px-3 py-2 text-t1 text-sm focus:outline-none focus:border-accent/50"
         />
-      </div>
+      </FormField>
     </div>
 
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div>
-        <label className="text-xs text-t2">Status</label>
-        <select
+      <FormField label="Status">
+        <SelectField
           value={form.status}
           onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as ApplicationStatus }))}
-          className="mt-1 w-full bg-raised border border-DEFAULT rounded-lg px-3 py-2 text-t1 text-sm focus:outline-none focus:border-accent/50"
         >
           {APPLICATION_STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
           ))}
-        </select>
-      </div>
-      <div>
-        <label className="text-xs text-t2">Source</label>
-        <input
+        </SelectField>
+      </FormField>
+      <FormField label="Source">
+        <Input
           value={form.source}
           onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))}
-          className="mt-1 w-full bg-raised border border-DEFAULT rounded-lg px-3 py-2 text-t1 text-sm focus:outline-none focus:border-accent/50"
           placeholder="LinkedIn, referral, etc"
         />
-      </div>
+      </FormField>
     </div>
 
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div>
-        <label className="text-xs text-t2">Applied date</label>
-        <input
+      <FormField label="Applied date">
+        <Input
           type="date"
           value={form.applied_at}
           onChange={(e) => setForm((f) => ({ ...f, applied_at: e.target.value }))}
-          className="mt-1 w-full bg-raised border border-DEFAULT rounded-lg px-3 py-2 text-t1 text-sm focus:outline-none focus:border-accent/50"
         />
-      </div>
-      <div>
-        <label className="text-xs text-t2">Confidence (%)</label>
-        <input
+      </FormField>
+      <FormField label="Confidence (%)">
+        <Input
           type="number"
           min={0}
           max={100}
           value={form.confidence_score}
           onChange={(e) => setForm((f) => ({ ...f, confidence_score: e.target.value }))}
-          className="mt-1 w-full bg-raised border border-DEFAULT rounded-lg px-3 py-2 text-t1 text-sm focus:outline-none focus:border-accent/50"
           placeholder="0 - 100"
         />
-      </div>
+      </FormField>
     </div>
 
     <div className="flex items-center justify-end gap-3 pt-2">
-      <button
+      <Button
         onClick={onCancel}
-        className="px-4 py-2 rounded-lg border border-DEFAULT text-sm text-t2 hover:text-t1 hover:border-hi"
+        variant="secondary"
       >
         Cancel
-      </button>
-      <button
+      </Button>
+      <Button
         onClick={onSubmit}
         disabled={!form.company_name.trim() || loading}
-        className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-sm text-t1 font-medium"
+        loading={loading}
       >
         {loading ? 'Saving…' : editing ? 'Save changes' : 'Create record'}
-      </button>
+      </Button>
     </div>
   </div>
 )

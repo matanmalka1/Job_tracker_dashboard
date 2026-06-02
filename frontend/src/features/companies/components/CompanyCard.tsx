@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { Card } from '@/shared/components/ui'
 import type { ApplicationStatus, CompanySummary } from '../../../shared/types/job-tracker.ts'
 import { fetchApplications } from '../../../api/client.ts'
 import ApplicationStatusBadge from '../../../shared/components/data-display/ApplicationStatusBadge.tsx'
@@ -24,7 +25,7 @@ const CompanyCard = ({ company }: { company: CompanySummary }) => {
   const applications = detailData?.items ?? []
 
   return (
-    <div className="bg-surface border border-DEFAULT rounded-xl overflow-hidden">
+    <Card padding={false} className="overflow-hidden">
       <button
         className="w-full flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors text-left"
         onClick={() => setExpanded((v) => !v)}
@@ -85,7 +86,7 @@ const CompanyCard = ({ company }: { company: CompanySummary }) => {
           )}
         </div>
       )}
-    </div>
+    </Card>
   )
 }
 

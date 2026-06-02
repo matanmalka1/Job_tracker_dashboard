@@ -1,4 +1,5 @@
 import { Pencil, Trash2 } from 'lucide-react'
+import { IconButton } from '@/shared/components/ui'
 import type { JobApplication } from '../../../shared/types/job-tracker.ts'
 import ApplicationStatusBadge from '../../../shared/components/data-display/ApplicationStatusBadge.tsx'
 import { formatShortDate } from '../../../shared/utils/date.ts'
@@ -94,22 +95,23 @@ const ApplicationsTable = ({
             </td>
             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-2 justify-end">
-                <button
+                <IconButton
                   onClick={() => onEdit(app)}
-                  className="text-t2 hover:text-purple-400 transition-colors"
                   title="Edit"
-                  aria-label={`Edit ${app.company_name}`}
+                  label={`Edit ${app.company_name}`}
+                  size="sm"
                 >
                   <Pencil size={15} />
-                </button>
-                <button
+                </IconButton>
+                <IconButton
                   onClick={() => onDelete(app)}
-                  className="text-t2 hover:text-red-400 transition-colors"
                   title="Delete"
-                  aria-label={`Delete ${app.company_name}`}
+                  label={`Delete ${app.company_name}`}
+                  variant="danger"
+                  size="sm"
                 >
                   <Trash2 size={15} />
-                </button>
+                </IconButton>
               </div>
             </td>
           </tr>
