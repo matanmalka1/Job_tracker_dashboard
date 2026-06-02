@@ -7,6 +7,9 @@ interface Props {
   label: string
   applications: PipelineCard[]
   total: number
+  hasNext: boolean
+  isLoadingMore: boolean
+  onLoadMore: () => void
 }
 
 const STATUS_HEX: Record<ApplicationStatus, string> = {
@@ -23,7 +26,7 @@ const STATUS_ICONS: Record<ApplicationStatus, string> = {
   rejected:     '—',
 }
 
-const KanbanColumn = ({ status, label, applications, total }: Props) => {
+const KanbanColumn = ({ status, label, applications, total, hasNext, isLoadingMore, onLoadMore }: Props) => {
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const accent = STATUS_HEX[status]
   const icon = STATUS_ICONS[status]
@@ -59,6 +62,21 @@ const KanbanColumn = ({ status, label, applications, total }: Props) => {
             </div>
             <span className="kanban-col__empty-text">Drop cards here</span>
           </div>
+        )}
+
+        {hasNext && (
+          <button
+            onClick={onLoadMore}
+            disabled={isLoadingMore}
+            className="w-full mt-2 py-2 text-xs rounded-lg border transition-colors"
+            style={{
+              color: accent,
+              borderColor: `${accent}30`,
+              background: `${accent}08`,
+            }}
+          >
+            {isLoadingMore ? 'Loading...' : 'Load more'}
+          </button>
         )}
       </div>
     </div>

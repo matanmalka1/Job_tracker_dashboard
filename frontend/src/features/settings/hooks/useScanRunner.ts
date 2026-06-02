@@ -78,7 +78,7 @@ export const useScanRunner = (
     setScanning(false)
     addLog('done', `${nextResult.inserted} emails · ${nextResult.applications_created} apps created`, 'success')
     queryClient.invalidateQueries({ queryKey: ['applications'] })
-    queryClient.invalidateQueries({ queryKey: ['pipeline'] })
+    queryClient.invalidateQueries({ queryKey: ['pipeline-column'] })
     queryClient.invalidateQueries({ queryKey: ['companies'] })
     queryClient.invalidateQueries({ queryKey: ['stats'] })
     void refetchHistory()

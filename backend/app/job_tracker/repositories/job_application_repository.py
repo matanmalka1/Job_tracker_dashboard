@@ -166,15 +166,75 @@ class JobApplicationRepository:
             .values(last_email_at=value)
         )
 
-    async def list_pipeline(self) -> list[JobApplication]:
-        """Return all applications with minimal fields, ordered by last_email_at desc.
-        Groups are assembled by the service/route layer."""
-        result = await self.session.execute(
+    async def update_status_from_email(
+        self,
+        application: JobApplication,
+        inferred_status: ApplicationStatus,
+    ) -> bool:
+        """Safely advance application status based on an inferred email signal.
+
+        Priority order: applied < interviewing < offer
+        rejected: allowed only from applied; cannot override interviewing or offer.
+        Returns True if status was changed, False if skipped.
+        """
+        current = application.status
+
+        # Never act on applied — it's the default, not a signal
+        if inferred_status == ApplicationStatus.APPLIED:
+            return False
+
+        # No-op: already at this status
+        if current == inferred_status:
+            return False
+
+        _priority = {
+            ApplicationStatus.APPLIED: 0,
+            ApplicationStatus.INTERVIEWING: 1,
+            ApplicationStatus.OFFER: 2,
+        }
+
+        if inferred_status == ApplicationStatus.REJECTED:
+            # rejected only upgrades from applied; never downgrades interviewing/offer
+            if current != ApplicationStatus.APPLIED:
+                return False
+        else:
+            # For the priority chain, only allow upgrades
+            if _priority.get(inferred_status, -1) <= _priority.get(current, -1):
+                return False
+
+        await self.session.execute(
+            update(JobApplication)
+            .where(JobApplication.id == application.id)
+            .values(status=inferred_status, updated_at=utcnow())
+        )
+        application.status = inferred_status
+        return True
+
+    async def list_pipeline_page(
+        self,
+        status: ApplicationStatus,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[JobApplication], int]:
+        """Return one page of pipeline cards for a single status column."""
+        offset = (page - 1) * page_size
+        base = (
             select(JobApplication)
+            .where(JobApplication.status == status)
+        )
+        count_q = select(func.count()).select_from(
+            select(JobApplication.id).where(JobApplication.status == status).subquery()
+        )
+        total = await self.session.scalar(count_q) or 0
+        items_q = (
+            base
             .options(selectinload(JobApplication.emails))
             .order_by(JobApplication.last_email_at.desc().nulls_last(), JobApplication.id.desc())
+            .limit(page_size)
+            .offset(offset)
         )
-        return list(result.scalars().all())
+        result = await self.session.execute(items_q)
+        return list(result.scalars().all()), total
 
     async def list_company_summary_page(
         self,

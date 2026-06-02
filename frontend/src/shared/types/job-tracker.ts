@@ -102,15 +102,13 @@ export interface PipelineCard {
   email_count: number
 }
 
-export interface PipelineColumn {
+export interface PipelineColumnPage {
   status: ApplicationStatus
   total: number
+  page: number
+  page_size: number
+  has_next: boolean
   items: PipelineCard[]
-}
-
-export interface PipelineResponse {
-  columns: PipelineColumn[]
-  total: number
 }
 
 // Companies summary types

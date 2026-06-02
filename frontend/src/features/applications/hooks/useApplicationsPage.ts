@@ -51,7 +51,7 @@ export const useApplicationsPage = () => {
 
   const invalidateApplicationData = () => {
     queryClient.invalidateQueries({ queryKey: ['applications'] })
-    queryClient.invalidateQueries({ queryKey: ['pipeline'] })
+    queryClient.invalidateQueries({ queryKey: ['pipeline-column'] })
     queryClient.invalidateQueries({ queryKey: ['companies'] })
     queryClient.invalidateQueries({ queryKey: ['stats'] })
   }

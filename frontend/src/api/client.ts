@@ -1,12 +1,13 @@
 import axios from 'axios'
 import type {
+  ApplicationStatus,
   ApplicationWritePayload,
   CompanySummaryPage,
   JobApplication,
   JobApplicationPage,
   EmailReferencePage,
   DashboardStatsResponse,
-  PipelineResponse,
+  PipelineColumnPage,
   ScanRun,
 } from '../shared/types/job-tracker.ts'
 
@@ -114,8 +115,16 @@ export const unassignEmail = (applicationId: number, emailId: number): Promise<v
     .delete(`/job-tracker/applications/${applicationId}/emails/${emailId}`)
     .then(() => undefined)
 
-export const fetchPipeline = (): Promise<PipelineResponse> =>
-  apiClient.get<PipelineResponse>('/job-tracker/applications/pipeline').then((r) => r.data)
+export const fetchPipelineColumn = (
+  status: ApplicationStatus,
+  page: number,
+  pageSize = 20,
+): Promise<PipelineColumnPage> =>
+  apiClient
+    .get<PipelineColumnPage>('/job-tracker/applications/pipeline/column', {
+      params: { status, page, page_size: pageSize },
+    })
+    .then((r) => r.data)
 
 export const fetchCompaniesSummary = (params?: {
   search?: string

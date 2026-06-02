@@ -19,6 +19,7 @@ from app.job_tracker.services.emails.email_parser import (
     infer_status,
     parse_application_from_email,
 )
+from app.job_tracker.models.job_application import ApplicationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +161,7 @@ class EmailScanService:
             return
 
         linked_count = 0
+        status_updated_count = 0
         for email in unlinked:
             best = match_email_to_application(email, applications)
             if best is not None:
@@ -167,9 +169,19 @@ class EmailScanService:
                 await self.app_repo.update_last_email_at(best.id, email.received_at)
                 linked_count += 1
 
+                haystack = " ".join(filter(None, [email.subject, email.snippet, getattr(email, "body_text", None)]))
+                inferred = infer_status(haystack)
+                changed = await self.app_repo.update_status_from_email(best, inferred)
+                if changed:
+                    status_updated_count += 1
+
         if linked_count:
             await self.repo.session.commit()
-            logger.info("Linked %s emails to existing applications", linked_count)
+            logger.info(
+                "Linked %s emails to existing applications, status updated for %s",
+                linked_count,
+                status_updated_count,
+            )
 
     async def _auto_create_applications(self) -> int:
         """

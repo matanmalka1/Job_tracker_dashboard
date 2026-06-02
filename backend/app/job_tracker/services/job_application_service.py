@@ -3,6 +3,7 @@ from typing import Optional
 from app.job_tracker.models.job_application import ApplicationStatus, JobApplication
 from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
 from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
+from app.job_tracker.services.emails.email_parser import infer_status
 
 
 class JobApplicationService:
@@ -69,6 +70,11 @@ class JobApplicationService:
 
         email.application_id = application_id
         await self.app_repo.update_last_email_at(application_id, email.received_at)
+
+        haystack = " ".join(filter(None, [email.subject, email.snippet, getattr(email, "body_text", None)]))
+        inferred = infer_status(haystack)
+        await self.app_repo.update_status_from_email(app, inferred)
+
         await self._session.commit()
         return True
 
@@ -105,39 +111,37 @@ class JobApplicationService:
 
         return {"total": total, "by_status": by_status, "reply_rate": round(reply_rate, 1)}
 
-    async def get_pipeline(self) -> dict:
-        """Return all applications grouped by status for the Kanban board."""
-        apps = await self.app_repo.list_pipeline()
-        total = len(apps)
-
-        by_status: dict[ApplicationStatus, list[JobApplication]] = {s: [] for s in ApplicationStatus}
-        for app in apps:
-            by_status[app.status].append(app)
-
-        columns = [
-            {
-                "status": status,
-                "total": len(group),
-                "items": [
-                    {
-                        "id": app.id,
-                        "company_name": app.company_name,
-                        "role_title": app.role_title,
-                        "status": app.status,
-                        "source": app.source,
-                        "confidence_score": app.confidence_score,
-                        "applied_at": app.applied_at,
-                        "last_email_at": app.last_email_at,
-                        "updated_at": app.updated_at,
-                        "email_count": len(app.emails),
-                    }
-                    for app in group
-                ],
-            }
-            for status, group in by_status.items()
-        ]
-
-        return {"columns": columns, "total": total}
+    async def get_pipeline_column_page(
+        self,
+        status: ApplicationStatus,
+        page: int,
+        page_size: int,
+    ) -> dict:
+        """Return one paginated page of cards for a single Kanban column."""
+        apps, total = await self.app_repo.list_pipeline_page(status, page, page_size)
+        has_next = (page * page_size) < total
+        return {
+            "status": status,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "has_next": has_next,
+            "items": [
+                {
+                    "id": app.id,
+                    "company_name": app.company_name,
+                    "role_title": app.role_title,
+                    "status": app.status,
+                    "source": app.source,
+                    "confidence_score": app.confidence_score,
+                    "applied_at": app.applied_at,
+                    "last_email_at": app.last_email_at,
+                    "updated_at": app.updated_at,
+                    "email_count": len(app.emails),
+                }
+                for app in apps
+            ],
+        }
 
     async def get_companies_summary(
         self,

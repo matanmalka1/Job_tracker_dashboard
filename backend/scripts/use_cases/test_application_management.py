@@ -334,54 +334,6 @@ class TestStatsEndpoint:
 
 
 @pytest.mark.asyncio
-class TestPipelineEndpoint:
-    async def test_pipeline_empty(self, client):
-        response = await client.get("/job-tracker/applications/pipeline")
-        assert response.status_code == 200
-        data = response.json()
-        assert "columns" in data
-        assert "total" in data
-        assert data["total"] == 0
-        statuses = [col["status"] for col in data["columns"]]
-        for status in ("applied", "interviewing", "offer", "rejected"):
-            assert status in statuses
-
-    async def test_pipeline_groups_by_status(self, client):
-        await client.post("/job-tracker/applications", json={"company_name": "A", "status": "applied"})
-        await client.post("/job-tracker/applications", json={"company_name": "B", "status": "applied"})
-        await client.post("/job-tracker/applications", json={"company_name": "C", "status": "interviewing"})
-
-        response = await client.get("/job-tracker/applications/pipeline")
-        assert response.status_code == 200
-        data = response.json()
-
-        col_map = {col["status"]: col for col in data["columns"]}
-        assert col_map["applied"]["total"] == 2
-        assert len(col_map["applied"]["items"]) == 2
-        assert col_map["interviewing"]["total"] == 1
-        assert data["total"] == 3
-
-    async def test_pipeline_card_has_required_fields(self, client):
-        await client.post("/job-tracker/applications", json={
-            "company_name": "CardCo",
-            "role_title": "Dev",
-            "status": "applied",
-        })
-
-        response = await client.get("/job-tracker/applications/pipeline")
-        assert response.status_code == 200
-        data = response.json()
-        col_map = {col["status"]: col for col in data["columns"]}
-        card = col_map["applied"]["items"][0]
-        assert "id" in card
-        assert "company_name" in card
-        assert "status" in card
-        assert "email_count" in card
-        assert "notes" not in card
-        assert "job_url" not in card
-
-
-@pytest.mark.asyncio
 class TestCompaniesSummaryEndpoint:
     async def test_companies_summary_empty(self, client):
         response = await client.get("/job-tracker/companies/summary")
@@ -497,3 +449,69 @@ class TestExtendedSearchAndSort:
         data = response.json()
         assert data["total"] == 0
         assert data["items"] == []
+
+
+@pytest.mark.asyncio
+class TestPipelineColumnEndpoint:
+    async def test_column_empty(self, client):
+        response = await client.get("/job-tracker/applications/pipeline/column?status=applied")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "applied"
+        assert data["total"] == 0
+        assert data["items"] == []
+        assert data["has_next"] is False
+        assert data["page"] == 1
+
+    async def test_column_returns_only_requested_status(self, client):
+        await client.post("/job-tracker/applications", json={"company_name": "A", "status": "applied"})
+        await client.post("/job-tracker/applications", json={"company_name": "B", "status": "interviewing"})
+
+        response = await client.get("/job-tracker/applications/pipeline/column?status=applied&page=1&page_size=20")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert len(data["items"]) == 1
+        assert data["items"][0]["company_name"] == "A"
+        assert data["has_next"] is False
+
+    async def test_column_pagination_has_next(self, client):
+        for i in range(5):
+            await client.post("/job-tracker/applications", json={"company_name": f"Co{i}", "status": "applied"})
+
+        response = await client.get("/job-tracker/applications/pipeline/column?status=applied&page=1&page_size=2")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 5
+        assert len(data["items"]) == 2
+        assert data["has_next"] is True
+
+    async def test_column_pagination_last_page_no_next(self, client):
+        for i in range(3):
+            await client.post("/job-tracker/applications", json={"company_name": f"P{i}", "status": "applied"})
+
+        response = await client.get("/job-tracker/applications/pipeline/column?status=applied&page=2&page_size=2")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 1
+        assert data["has_next"] is False
+
+    async def test_column_page_size_capped_at_100(self, client):
+        response = await client.get("/job-tracker/applications/pipeline/column?status=applied&page_size=101")
+        assert response.status_code == 422
+
+    async def test_column_invalid_status_returns_422(self, client):
+        response = await client.get("/job-tracker/applications/pipeline/column?status=not_a_status")
+        assert response.status_code == 422
+
+    async def test_column_card_fields(self, client):
+        await client.post("/job-tracker/applications", json={
+            "company_name": "FieldCo", "role_title": "Dev", "status": "offer"
+        })
+        response = await client.get("/job-tracker/applications/pipeline/column?status=offer")
+        assert response.status_code == 200
+        card = response.json()["items"][0]
+        for field in ("id", "company_name", "status", "email_count", "updated_at"):
+            assert field in card
+        assert "notes" not in card
+        assert "job_url" not in card

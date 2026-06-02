@@ -22,13 +22,12 @@ class PipelineCardRead(BaseModel):
     email_count: int = 0
 
 
-class PipelineColumnRead(BaseModel):
+class PipelineColumnPage(BaseModel):
+    """Paginated response for a single pipeline column (status)."""
     status: ApplicationStatus
     total: int
+    page: int
+    page_size: int
+    has_next: bool
     items: list[PipelineCardRead]
-
-
-class PipelineRead(BaseModel):
-    columns: list[PipelineColumnRead]
-    total: int
 
