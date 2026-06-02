@@ -18,11 +18,12 @@ depends_on: Union[str, Sequence[str], None] = None
 applicationstatus = sa.Enum(
     'applied', 'interviewing', 'offer', 'rejected',
     name='applicationstatus',
+    create_type=False,
 )
 
 
 def upgrade() -> None:
-    applicationstatus.create(op.get_bind(), checkfirst=True)
+    op.execute("CREATE TYPE applicationstatus AS ENUM ('applied', 'interviewing', 'offer', 'rejected')")
 
     op.create_table(
         'job_applications',
@@ -92,4 +93,4 @@ def downgrade() -> None:
     op.drop_index('ix_job_applications_id', table_name='job_applications')
     op.drop_table('job_applications')
 
-    applicationstatus.drop(op.get_bind(), checkfirst=True)
+    op.execute("DROP TYPE IF EXISTS applicationstatus")
