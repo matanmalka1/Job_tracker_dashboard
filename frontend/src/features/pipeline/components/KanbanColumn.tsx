@@ -1,5 +1,4 @@
 import { useDroppable } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { ApplicationStatus, PipelineCard } from '../../../shared/types/job-tracker.ts'
 import KanbanCard from './KanbanCard.tsx'
 
@@ -31,7 +30,6 @@ const KanbanColumn = ({ status, label, applications, total }: Props) => {
 
   return (
     <div className="kanban-col">
-      {/* header */}
       <div className="kanban-col__header" style={{ '--col-accent': accent } as React.CSSProperties}>
         <div className="kanban-col__header-inner">
           <div className="kanban-col__header-left">
@@ -42,25 +40,21 @@ const KanbanColumn = ({ status, label, applications, total }: Props) => {
             {total}
           </span>
         </div>
-        {/* accent progress strip */}
         <div className="kanban-col__strip" style={{ background: `linear-gradient(90deg, ${accent}, ${accent}40)` }} />
       </div>
 
-      {/* drop zone */}
       <div
         ref={setNodeRef}
         className={['kanban-col__zone', isOver ? 'kanban-col__zone--over' : ''].join(' ')}
-        style={isOver ? { borderColor: `${accent}40`, background: `${accent}04` } : undefined}
+        style={isOver ? { borderColor: accent, background: `${accent}0d`, boxShadow: `inset 0 0 0 1.5px ${accent}30` } : undefined}
       >
-        <SortableContext items={applications.map((a) => a.id)} strategy={verticalListSortingStrategy}>
-          {applications.map((app) => (
-            <KanbanCard key={app.id} application={app} />
-          ))}
-        </SortableContext>
+        {applications.map((app) => (
+          <KanbanCard key={app.id} application={app} />
+        ))}
 
         {applications.length === 0 && (
           <div className="kanban-col__empty">
-            <div className="kanban-col__empty-icon" style={{ color: `${accent}50`, borderColor: `${accent}20` }}>
+            <div className="kanban-col__empty-icon" style={{ color: `${accent}60`, borderColor: `${accent}25` }}>
               {icon}
             </div>
             <span className="kanban-col__empty-text">Drop cards here</span>

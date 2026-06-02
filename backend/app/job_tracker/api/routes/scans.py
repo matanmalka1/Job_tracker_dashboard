@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+SCAN_UNAVAILABLE_MESSAGE = "Gmail scan is unavailable. Check server logs and configuration."
+SCAN_FAILED_MESSAGE = "Scan failed. Check server logs."
+
 
 @router.post("/scan/token", status_code=status.HTTP_200_OK)
 async def create_scan_stream_token(
@@ -66,10 +69,17 @@ async def trigger_scan(
         )
         return await service.scan_for_applications()
     except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+        logger.exception("Scan unavailable")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=SCAN_UNAVAILABLE_MESSAGE,
+        ) from exc
     except Exception as exc:
         logger.exception("Scan failed")
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=SCAN_FAILED_MESSAGE,
+        ) from exc
 
 
 @router.get("/scan/progress")
@@ -120,7 +130,8 @@ async def scan_progress(
                 queue.put_nowait({"stage": "result", "detail": "", **result})
             except Exception as exc:
                 logger.exception("SSE scan failed")
-                queue.put_nowait({"stage": "error", "detail": str(exc)})
+                detail = SCAN_UNAVAILABLE_MESSAGE if isinstance(exc, RuntimeError) else SCAN_FAILED_MESSAGE
+                queue.put_nowait({"stage": "error", "detail": detail})
 
         try:
             scan_task = asyncio.create_task(run_scan())
@@ -145,8 +156,10 @@ async def scan_progress(
                 scan_task.cancel()
                 try:
                     await scan_task
-                except (asyncio.CancelledError, Exception):
+                except asyncio.CancelledError:
                     pass
+                except Exception:
+                    logger.debug("Cancelled scan task raised while closing SSE stream", exc_info=True)
 
     return StreamingResponse(
         event_stream(),

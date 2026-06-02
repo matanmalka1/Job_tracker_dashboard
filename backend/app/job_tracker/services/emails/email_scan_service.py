@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 _executor: Optional[ThreadPoolExecutor] = None
 _executor_lock = threading.Lock()
+SCAN_RUN_ERROR_MESSAGE = "Scan failed. Check server logs."
 
 
 def _get_executor() -> ThreadPoolExecutor:
@@ -137,7 +138,7 @@ class EmailScanService:
         except Exception as exc:
             if scan_run_id is not None and self.scan_run_repo is not None:
                 try:
-                    await self.scan_run_repo.fail(scan_run_id, str(exc))
+                    await self.scan_run_repo.fail(scan_run_id, SCAN_RUN_ERROR_MESSAGE)
                     await self.repo.session.commit()
                 except Exception:
                     logger.warning("Could not record scan run failure", exc_info=True)

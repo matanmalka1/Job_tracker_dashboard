@@ -70,7 +70,7 @@ class TestJobApplicationRepository:
         from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
 
         repo = JobApplicationRepository(db_session)
-        await repo.create({"company_name": "A", "role_title": "R", "status": ApplicationStatus.NEW})
+        await repo.create({"company_name": "A", "role_title": "R", "status": ApplicationStatus.INTERVIEWING})
         await repo.create({"company_name": "B", "role_title": "R", "status": ApplicationStatus.APPLIED})
         await db_session.commit()
 
@@ -95,10 +95,10 @@ class TestApplicationsEndpoint:
     async def test_create_application_explicit_status(self, client):
         response = await client.post(
             "/job-tracker/applications",
-            json={"company_name": "Acme", "role_title": "Engineer", "status": "new"},
+            json={"company_name": "Acme", "role_title": "Engineer", "status": "interviewing"},
         )
         assert response.status_code == 201
-        assert response.json()["status"] == "new"
+        assert response.json()["status"] == "interviewing"
 
     async def test_get_application(self, client):
         create_resp = await client.post(
@@ -158,7 +158,7 @@ class TestApplicationsEndpoint:
     async def test_list_applications_status_filter(self, client):
         await client.post(
             "/job-tracker/applications",
-            json={"company_name": "A", "role_title": "R", "status": "new"},
+            json={"company_name": "A", "role_title": "R", "status": "interviewing"},
         )
         await client.post(
             "/job-tracker/applications",
@@ -343,7 +343,7 @@ class TestPipelineEndpoint:
         assert "total" in data
         assert data["total"] == 0
         statuses = [col["status"] for col in data["columns"]]
-        for status in ("new", "applied", "interviewing", "offer", "rejected", "hired"):
+        for status in ("applied", "interviewing", "offer", "rejected"):
             assert status in statuses
 
     async def test_pipeline_groups_by_status(self, client):
@@ -365,14 +365,14 @@ class TestPipelineEndpoint:
         await client.post("/job-tracker/applications", json={
             "company_name": "CardCo",
             "role_title": "Dev",
-            "status": "new",
+            "status": "applied",
         })
 
         response = await client.get("/job-tracker/applications/pipeline")
         assert response.status_code == 200
         data = response.json()
         col_map = {col["status"]: col for col in data["columns"]}
-        card = col_map["new"]["items"][0]
+        card = col_map["applied"]["items"][0]
         assert "id" in card
         assert "company_name" in card
         assert "status" in card
@@ -393,7 +393,7 @@ class TestCompaniesSummaryEndpoint:
     async def test_companies_summary_groups_correctly(self, client):
         await client.post("/job-tracker/applications", json={"company_name": "Acme", "status": "applied"})
         await client.post("/job-tracker/applications", json={"company_name": "Acme", "status": "interviewing"})
-        await client.post("/job-tracker/applications", json={"company_name": "Beta", "status": "new"})
+        await client.post("/job-tracker/applications", json={"company_name": "Beta", "status": "offer"})
 
         response = await client.get("/job-tracker/companies/summary")
         assert response.status_code == 200
@@ -428,7 +428,7 @@ class TestCompaniesSummaryEndpoint:
         assert len(data["items"]) == 2
 
     async def test_companies_summary_required_fields(self, client):
-        await client.post("/job-tracker/applications", json={"company_name": "FieldCo", "status": "new"})
+        await client.post("/job-tracker/applications", json={"company_name": "FieldCo", "status": "applied"})
 
         response = await client.get("/job-tracker/companies/summary")
         assert response.status_code == 200
@@ -465,7 +465,7 @@ class TestExtendedSearchAndSort:
         assert data["items"][0]["company_name"] == "Second"
 
     async def test_sort_by_status(self, client):
-        await client.post("/job-tracker/applications", json={"company_name": "Z", "status": "new"})
+        await client.post("/job-tracker/applications", json={"company_name": "Z", "status": "interviewing"})
         await client.post("/job-tracker/applications", json={"company_name": "A", "status": "applied"})
 
         response = await client.get("/job-tracker/applications?sort=status")
@@ -483,7 +483,7 @@ class TestExtendedSearchAndSort:
             await client.post("/job-tracker/applications", json={
                 "company_name": f"PagCo{i}", "status": "applied"
             })
-        await client.post("/job-tracker/applications", json={"company_name": "NewCo", "status": "new"})
+        await client.post("/job-tracker/applications", json={"company_name": "NewCo", "status": "offer"})
 
         response = await client.get("/job-tracker/applications?status=applied&limit=3&offset=0")
         assert response.status_code == 200

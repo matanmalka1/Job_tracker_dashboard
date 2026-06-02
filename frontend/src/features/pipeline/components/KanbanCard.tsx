@@ -1,7 +1,8 @@
-import { useSortable } from '@dnd-kit/sortable'
+import { useRef } from 'react'
+import { useDraggable } from '@dnd-kit/core'
 import { useNavigate } from 'react-router-dom'
 import { CSS } from '@dnd-kit/utilities'
-import { Mail, Calendar, GripVertical } from 'lucide-react'
+import { Mail, Calendar } from 'lucide-react'
 import type { PipelineCard } from '../../../shared/types/job-tracker.ts'
 
 interface Props {
@@ -36,28 +37,32 @@ const getInitials = (name: string) => {
 }
 
 const KanbanCard = ({ application, isOverlay = false }: Props) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: application.id })
   const navigate = useNavigate()
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
 
-  // Lock scaleX to 1 — prevents card from stretching during cross-column drags.
-  // Use a smooth spring-like easing instead of dnd-kit's default linear transition.
-  const transformStr = transform
-    ? CSS.Transform.toString({ ...transform, scaleX: 1, scaleY: 1 })
-    : undefined
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: application.id,
+    data: { application },
+  })
+
   const style = {
-    transform: transformStr,
-    // transition comes from dnd-kit during sort; undefined when idle (no extra CSS delay)
-    transition,
+    transform: CSS.Transform.toString(transform),
+    // No transition on the dragged card itself — smoothness comes from the overlay
+    transition: isDragging ? 'none' : undefined,
   }
+
   const accent = STATUS_ACCENT[application.status] ?? '#6366f1'
   const avatarBg = STATUS_AVATAR_BG[application.status] ?? 'rgba(99,102,241,0.15)'
   const date = formatDate(application.applied_at ?? application.last_email_at)
   const initials = getInitials(application.company_name)
 
-  const handleClick = (e: React.MouseEvent) => {
-    // Don't navigate if this was a drag (pointer moved > 4px)
-    if (isDragging) { e.preventDefault(); return }
+  // Distinguish tap vs drag: only navigate if pointer didn't move much
+  const handlePointerDown = (e: React.PointerEvent) => {
+    pointerDownPos.current = { x: e.clientX, y: e.clientY }
+  }
+
+  const handleClick = () => {
+    if (!pointerDownPos.current) return
     navigate(`/applications/${application.id}`)
   }
 
@@ -67,25 +72,21 @@ const KanbanCard = ({ application, isOverlay = false }: Props) => {
       style={{ ...style, '--card-accent': accent } as React.CSSProperties}
       className={[
         'kanban-card group select-none',
-        isDragging && !isOverlay ? 'kanban-card--dragging' : '',
+        isDragging ? 'kanban-card--dragging' : '',
         isOverlay ? 'kanban-card--overlay' : '',
       ].join(' ')}
       {...attributes}
       {...listeners}
+      onPointerDown={handlePointerDown}
+      onClick={handleClick}
     >
-      <div className="kanban-card__inner" onClick={handleClick}>
-        {/* left accent bar */}
+      <div className="kanban-card__inner">
         <div className="kanban-card__accent-bar" style={{ background: accent }} />
 
-        {/* avatar */}
-        <div
-          className="kanban-card__avatar"
-          style={{ background: avatarBg, color: accent }}
-        >
+        <div className="kanban-card__avatar" style={{ background: avatarBg, color: accent }}>
           {initials}
         </div>
 
-        {/* main content */}
         <div className="kanban-card__content">
           <p className="kanban-card__company">{application.company_name}</p>
           {application.role_title && (
@@ -105,11 +106,6 @@ const KanbanCard = ({ application, isOverlay = false }: Props) => {
               </span>
             )}
           </div>
-        </div>
-
-        {/* visual drag hint */}
-        <div className="kanban-card__handle" aria-hidden>
-          <GripVertical size={13} />
         </div>
       </div>
     </div>

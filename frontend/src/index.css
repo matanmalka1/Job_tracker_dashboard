@@ -294,6 +294,22 @@ body {
   margin: 2px 0 0;
 }
 
+/* fade mask wrapper — reveals that columns continue off-screen */
+.kanban-board-wrap {
+  position: relative;
+}
+.kanban-board-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 48px;
+  height: 100%;
+  background: linear-gradient(to right, transparent, var(--bg-base));
+  pointer-events: none;
+  border-radius: 0 12px 12px 0;
+}
+
 /* board scroll container */
 .kanban-board {
   display: flex;
@@ -373,6 +389,7 @@ body {
 }
 .kanban-col__zone--over {
   transition: background 80ms, border-color 80ms;
+  /* accent color injected via inline style from KanbanColumn */
 }
 
 /* empty state */
@@ -404,27 +421,36 @@ body {
 .kanban-card {
   border-radius: 10px;
   overflow: hidden;
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms;
-  cursor: default;
+  /* No transform transition at idle — avoids hover jank */
+  transition: box-shadow 120ms ease, border-color 120ms, opacity 120ms;
+  cursor: grab;
   flex-shrink: 0;
   border: 1.5px solid var(--border);
   background: var(--bg-raised);
+  /* Required by dnd-kit docs to prevent browser scroll competing with drag on touch */
+  touch-action: none;
+}
+.kanban-card:active {
+  cursor: grabbing;
 }
 .kanban-card:hover {
-  transform: translateY(-1px);
   border-color: var(--border-hi);
   box-shadow: 0 4px 20px rgba(0,0,0,0.22), 0 1px 4px rgba(0,0,0,0.12);
 }
+/* Ghost card left behind during drag — keep visible but faded */
 .kanban-card--dragging {
-  opacity: 0.22;
+  opacity: 0;
+  pointer-events: none;
 }
+/* Floating overlay card — shadow + subtle scale, NO tilt (looks broken on horizontal drag) */
 .kanban-card--overlay {
-  box-shadow: 0 12px 40px rgba(0,0,0,0.40), 0 2px 8px rgba(0,0,0,0.20);
-  transform: rotate(1.2deg) scale(1.03);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.20);
+  transform: scale(1.02);
   border-color: var(--border-hi);
+  cursor: grabbing;
 }
 
-/* card inner layout: accent bar | avatar | content | handle */
+/* card inner layout: accent bar | avatar | content */
 .kanban-card__inner {
   display: flex;
   align-items: stretch;
@@ -434,8 +460,7 @@ body {
 .kanban-card__accent-bar {
   width: 3px;
   flex-shrink: 0;
-  border-radius: 0;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .kanban-card__avatar {
@@ -456,8 +481,7 @@ body {
 .kanban-card__content {
   flex: 1;
   min-width: 0;
-  padding: 10px 8px 10px 10px;
-  cursor: pointer;
+  padding: 10px 12px 10px 10px;
 }
 
 .kanban-card__company {
@@ -502,21 +526,6 @@ body {
   margin-left: auto;
 }
 
-.kanban-card__handle {
-  display: flex;
-  align-items: center;
-  padding: 0 8px 0 4px;
-  cursor: grab;
-  color: var(--text-3);
-  user-select: none;
-  opacity: 0;
-  transition: opacity 120ms, color 100ms;
-  flex-shrink: 0;
-}
-.kanban-card:hover .kanban-card__handle { opacity: 1; }
-.kanban-card__handle:hover { color: var(--text-2); }
-.kanban-card__handle:active { cursor: grabbing; }
-
 /* light mode overrides */
 [data-theme="light"] .kanban-card {
   background: var(--bg-surface);
@@ -525,7 +534,7 @@ body {
   background: var(--bg-raised);
 }
 [data-theme="light"] .kanban-card--overlay {
-  box-shadow: 0 12px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10);
 }
 [data-theme="light"] .kanban-card:hover {
   box-shadow: 0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);

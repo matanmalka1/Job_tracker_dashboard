@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { BUTTON_VARIANT } from './Button.tsx'
 import type { ButtonVariant, ButtonSize } from './Button.tsx'
+import { BUTTON_VARIANT } from './buttonStyles.ts'
 
 interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant

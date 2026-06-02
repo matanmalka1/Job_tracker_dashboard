@@ -21,7 +21,7 @@ const STAT_DEFS: StatDef[] = [
     label: 'Total Applications',
     accentVar: '#3b82f6',
     icon: <FileText size={16} />,
-    sublabel: (s) => s.statusCounts.new > 0 ? `${s.statusCounts.new} new this week` : 'Across all stages',
+    sublabel: () => 'Across all stages',
   },
   {
     key: 'activeInterviews',

@@ -23,7 +23,11 @@ const PipelinePage = () => {
         </div>
       )}
 
-      {!isLoading && !isError && data && <KanbanBoard pipeline={data} />}
+      {!isLoading && !isError && data && (
+        <div className="kanban-board-wrap">
+          <KanbanBoard pipeline={data} />
+        </div>
+      )}
     </div>
   )
 }

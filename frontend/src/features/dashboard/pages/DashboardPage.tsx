@@ -12,7 +12,7 @@ const EMPTY_STATS: DashboardStats = {
   activeInterviews: 0,
   offersReceived: 0,
   replyRate: 0,
-  statusCounts: { new: 0, applied: 0, interviewing: 0, offer: 0, rejected: 0, hired: 0 },
+  statusCounts: { applied: 0, interviewing: 0, offer: 0, rejected: 0 },
 }
 
 const DashboardPage = () => {
@@ -39,15 +39,13 @@ const DashboardPage = () => {
     return {
       totalApplications: statsData.total,
       activeInterviews: statsData.by_status.interviewing ?? 0,
-      offersReceived: (statsData.by_status.offer ?? 0) + (statsData.by_status.hired ?? 0),
+      offersReceived: statsData.by_status.offer ?? 0,
       replyRate: statsData.reply_rate,
       statusCounts: {
-        new: statsData.by_status.new ?? 0,
         applied: statsData.by_status.applied ?? 0,
         interviewing: statsData.by_status.interviewing ?? 0,
         offer: statsData.by_status.offer ?? 0,
         rejected: statsData.by_status.rejected ?? 0,
-        hired: statsData.by_status.hired ?? 0,
       },
     }
   }, [statsData])
