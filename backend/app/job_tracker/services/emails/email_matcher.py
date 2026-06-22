@@ -40,7 +40,28 @@ _EXCLUDE_PHRASES: list[str] = [
     "people you may know",
     "grow your network",
     "new connection",
+    # CI/CD / infra noise
+    "deploy failed",
+    "deployment failed",
+    "build failed",
+    "pipeline failed",
+    "deploy succeeded",
+    "deployment succeeded",
+    "deploy cancelled",
 ]
+
+_EXCLUDE_SENDER_DOMAINS: frozenset[str] = frozenset([
+    "render.com",
+    "github.com",
+    "gitlab.com",
+    "circleci.com",
+    "travis-ci.com",
+    "heroku.com",
+    "netlify.com",
+    "vercel.com",
+    "fly.io",
+    "railway.app",
+])
 
 # Free email providers and other generic domains that should never be used
 # as a company-matching signal.
@@ -62,7 +83,16 @@ _GENERIC_EMAIL_DOMAINS: frozenset[str] = frozenset([
 ])
 
 
-def matches_job_keywords(subject: str | None, snippet: str | None, body_text: str | None = None) -> bool:
+def matches_job_keywords(
+    subject: str | None,
+    snippet: str | None,
+    body_text: str | None = None,
+    sender: str | None = None,
+) -> bool:
+    if sender:
+        domain = extract_email_domain(sender)
+        if domain and normalize_domain(domain) in _EXCLUDE_SENDER_DOMAINS:
+            return False
     haystack = " ".join(filter(None, [subject, snippet, body_text])).lower()
     if any(phrase in haystack for phrase in _EXCLUDE_PHRASES):
         return False
