@@ -1,3 +1,5 @@
+# Requires Python 3.11 — pinned pydantic-core 2.18.2 has no wheels for 3.12+.
+# Create venv with: python3.11 -m venv .venv
 aiofiles==23.2.1
 alembic==1.18.4
 anyio==4.4.0
