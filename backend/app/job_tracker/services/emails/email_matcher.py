@@ -213,24 +213,32 @@ def match_email_to_application(email_reference, applications: list) -> Optional[
     best_score = 0
 
     for app in applications:
-        score = 0
         company_lower = app.company_name.lower()
         role_lower = (app.role_title or "").lower()
 
         # Word-boundary match, not a bare substring check: a short company
         # name like "Co" would otherwise match inside the ".com"/".co.il" TLD
         # of virtually every sender address, auto-linking unrelated emails.
+        company_score = 0
         if re.search(r"\b" + re.escape(company_lower) + r"\b", haystack):
-            score += 10
+            company_score += 10
+
+        role_score = 0
         if role_lower and re.search(r"\b" + re.escape(role_lower) + r"\b", haystack):
-            score += 8
+            role_score += 8
 
         hay_kw = _extract_keywords(haystack)
         company_kw = _extract_keywords(company_lower)
         role_kw = _extract_keywords(role_lower) if role_lower else set()
 
-        score += len(hay_kw & company_kw) * 3
-        score += len(hay_kw & role_kw) * 2
+        company_score += len(hay_kw & company_kw) * 3
+        role_score += len(hay_kw & role_kw) * 2
+
+        # Role title alone is not trustworthy: generic titles ("Full Stack
+        # Engineer", "Account Executive") appear in countless unrelated
+        # postings/notifications from other companies. Only count role
+        # evidence when there's at least some company-name evidence too.
+        score = company_score + role_score if company_score > 0 else 0
 
         if score > best_score:
             best_score = score

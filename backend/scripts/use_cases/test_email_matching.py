@@ -165,6 +165,32 @@ class TestApplicationMatcher:
         result = match_email_to_application(email, apps)
         assert result is apps[0]
 
+    def test_generic_role_title_alone_does_not_match_other_company(self):
+        """Regression test: a generic role title ("Full Stack Engineer") was
+        worth +8 (and more via keyword overlap) all on its own, above the
+        score>=5 threshold — so any unrelated posting/notification for the
+        same common title auto-linked to the wrong company's application."""
+        from app.job_tracker.services.emails.email_matcher import match_email_to_application
+
+        apps = [self._make_app("Melio", "Full Stack Engineer")]
+        email = self._make_email(
+            "Full Stack Engineer at Gotfriends",
+            sender="LinkedIn Job Alerts <jobalerts-noreply@linkedin.com>",
+        )
+        result = match_email_to_application(email, apps)
+        assert result is None
+
+    def test_generic_role_title_still_matches_when_company_also_present(self):
+        from app.job_tracker.services.emails.email_matcher import match_email_to_application
+
+        apps = [self._make_app("Melio", "Full Stack Engineer")]
+        email = self._make_email(
+            "Full Stack Engineer opportunity at Melio",
+            sender="no-reply@melio.com",
+        )
+        result = match_email_to_application(email, apps)
+        assert result is apps[0]
+
     def test_short_company_name_does_not_match_dot_com_substring(self):
         """Regression test: a bare `company_lower in haystack` substring check
         made a 2-char company name like "Co" match inside ANY sender address
