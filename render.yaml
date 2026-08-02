@@ -28,6 +28,15 @@ services:
         sync: false   # set manually in Render dashboard (secret)
       - key: GMAIL_TOKEN_FILE
         value: /tmp/gmail_token.json
+      # Required in production — startup fails without it (config.py
+      # validate_production_api_key). Guards all /job-tracker routes.
+      - key: JOB_TRACKER_API_KEY
+        sync: false   # set manually in Render dashboard (secret)
+      # Must match JOB_TRACKER_API_KEY above — compiled into the frontend
+      # build (same buildCommand builds both), so if this is missing while
+      # the backend key is set, every frontend request 401s.
+      - key: VITE_JOB_TRACKER_API_KEY
+        sync: false   # set manually in Render dashboard (secret)
 
 databases:
   - name: job-dashboard-db
