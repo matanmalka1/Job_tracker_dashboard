@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { ChevronDown, Mail } from 'lucide-react'
 import { Button, Card, EmptyState } from '@/shared/components/ui'
 import type { EmailReference } from '../../../shared/types/job-tracker.ts'
@@ -9,6 +9,7 @@ import {
   ALL_CATEGORIES,
   CATEGORY_CONFIG,
   categorize,
+  dateGroupKey,
   formatDateLabel,
   isJobEmail,
 } from './activityTimelineModel.tsx'
@@ -23,6 +24,26 @@ interface Props {
 const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
   const [activeFilter, setActiveFilter] = useState<Category | 'all'>('all')
   const [showFilterMenu, setShowFilterMenu] = useState(false)
+  const filterMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showFilterMenu) return
+    const handler = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent) {
+        if (e.key === 'Escape') setShowFilterMenu(false)
+        return
+      }
+      if (filterMenuRef.current && !filterMenuRef.current.contains(e.target as Node)) {
+        setShowFilterMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    document.addEventListener('keydown', handler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('keydown', handler)
+    }
+  }, [showFilterMenu])
 
   const jobEmails = useMemo(() => emails.filter(isJobEmail), [emails])
 
@@ -37,7 +58,7 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
     )
     const map = new Map<string, EmailReference[]>()
     for (const e of sorted) {
-      const key = formatDateLabel(e.received_at)
+      const key = dateGroupKey(e.received_at)
       map.set(key, [...(map.get(key) ?? []), e])
     }
     return Array.from(map.entries())
@@ -74,11 +95,13 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
         </div>
 
         {jobEmails.length > 0 && (
-          <div className="relative">
+          <div className="relative" ref={filterMenuRef}>
             <Button
               onClick={() => setShowFilterMenu((v) => !v)}
               variant="secondary"
               size="sm"
+              aria-haspopup="menu"
+              aria-expanded={showFilterMenu}
               icon={(
                 <ChevronDown
                   size={12}
@@ -99,6 +122,7 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
 
             {showFilterMenu && (
               <div
+                role="menu"
                 className="absolute right-0 top-full mt-1 z-20 min-w-[140px] rounded-xl overflow-hidden"
                 style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-mid)' }}
               >
@@ -164,8 +188,8 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
           <div className="flex-1 overflow-y-auto px-4 pt-4 pb-3 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
             <ActivitySummaryBar emails={activeFilter === 'all' ? jobEmails : filtered} />
 
-            {groups.map(([date, groupEmails], gi) => (
-              <div key={date} className={gi > 0 ? 'mt-5' : ''}>
+            {groups.map(([groupKey, groupEmails], gi) => (
+              <div key={groupKey} className={gi > 0 ? 'mt-5' : ''}>
                 {/* date separator */}
                 <div className="flex items-center gap-2.5 mb-3">
                   <div className="divider" />
@@ -173,7 +197,7 @@ const ActivityTimeline = ({ emails, isLoading, isError }: Props) => {
                     className="text-[11px] font-medium shrink-0"
                     style={{ color: 'var(--text-3)' }}
                   >
-                    {date}
+                    {formatDateLabel(groupEmails[0].received_at)}
                   </span>
                   <div className="divider" />
                 </div>

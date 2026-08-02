@@ -226,6 +226,29 @@ class TestBulkDeleteEndpoint:
             get_resp = await client.get(f"/job-tracker/applications/{app_id}")
             assert get_resp.status_code == 404
 
+    async def test_bulk_delete_removes_apps_with_linked_emails(self, client, db_session):
+        """Regression test: bulk_delete used a Core-level DELETE that bypassed
+        the ORM cascade, so deleting an application with linked emails raised
+        an unhandled IntegrityError (the FK has no ondelete clause)."""
+        from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
+
+        create_resp = await client.post("/job-tracker/applications", json={"company_name": "HasEmails"})
+        app_id = create_resp.json()["id"]
+
+        repo = EmailReferenceRepository(db_session)
+        email_record, _ = await repo.create_from_raw_message(make_email_data("bulk-del-linked-1"))
+        await db_session.commit()
+
+        assign_resp = await client.post(f"/job-tracker/applications/{app_id}/emails/{email_record.id}")
+        assert assign_resp.status_code == 200
+
+        response = await client.delete(f"/job-tracker/applications?ids={app_id}")
+        assert response.status_code == 200
+        assert response.json()["deleted"] == 1
+
+        get_resp = await client.get(f"/job-tracker/applications/{app_id}")
+        assert get_resp.status_code == 404
+
     async def test_bulk_delete_reports_not_found_ids(self, client):
         create_resp = await client.post("/job-tracker/applications", json={"company_name": "Exists"})
         real_id = create_resp.json()["id"]

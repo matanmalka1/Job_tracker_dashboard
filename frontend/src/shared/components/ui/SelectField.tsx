@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react'
 import type { ReactNode, SelectHTMLAttributes } from 'react'
 import { INPUT_BASE, INPUT_NORMAL, INPUT_ERROR } from './Input.tsx'
 
@@ -16,7 +17,7 @@ const SelectField = ({ leadingIcon, error, className = '', children, ...rest }: 
     <select
       className={[
         INPUT_BASE,
-        'appearance-none cursor-pointer',
+        'appearance-none cursor-pointer pr-8',
         error ? INPUT_ERROR : INPUT_NORMAL,
         leadingIcon ? 'pl-8' : '',
         className,
@@ -25,6 +26,7 @@ const SelectField = ({ leadingIcon, error, className = '', children, ...rest }: 
     >
       {children}
     </select>
+    <ChevronDown size={14} className="pointer-events-none absolute right-3 text-t3" />
   </div>
 )
 

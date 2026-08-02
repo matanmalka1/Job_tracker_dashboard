@@ -141,7 +141,13 @@ _STATUS_HINTS: list[tuple[re.Pattern, ApplicationStatus]] = [
         ApplicationStatus.OFFER,
     ),
     (
-        re.compile(r"\b(interview|assessment|screening|schedule)\b", re.IGNORECASE),
+        # "schedule" alone is too generic (matches "please schedule a call to
+        # discuss...", onboarding logistics, etc.) — require it to co-occur
+        # with interview-specific language.
+        re.compile(
+            r"\b(interview|assessment|screening|schedule (a|an|your) interview)\b",
+            re.IGNORECASE,
+        ),
         ApplicationStatus.INTERVIEWING,
     ),
 ]

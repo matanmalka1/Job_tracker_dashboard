@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard,
   FileText,
@@ -7,6 +8,9 @@ import {
   Kanban,
   Calendar,
 } from 'lucide-react'
+import { fetchHealth } from '../../../api/client.ts'
+
+const HEALTH_CHECK_INTERVAL_MS = 30_000
 
 interface NavItem {
   to: string
@@ -27,7 +31,20 @@ interface SidebarProps {
   onNavClick?: () => void
 }
 
-const Sidebar = ({ onNavClick }: SidebarProps) => (
+const Sidebar = ({ onNavClick }: SidebarProps) => {
+  const { data, isError, isLoading } = useQuery({
+    queryKey: ['health'],
+    queryFn: fetchHealth,
+    refetchInterval: HEALTH_CHECK_INTERVAL_MS,
+    retry: 1,
+    staleTime: 0, // always poll live — cached "connected" is meaningless for a status indicator
+  })
+
+  const connected = !isLoading && !isError && data?.status === 'ok'
+  const statusLabel = isLoading ? 'Checking…' : connected ? 'Connected' : 'Disconnected'
+  const statusDotClass = isLoading ? 'bg-white/20' : connected ? 'bg-green-500' : 'bg-red-500'
+
+  return (
   <aside className="flex flex-col w-[220px] min-h-screen shrink-0"
     style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border)' }}>
 
@@ -74,10 +91,11 @@ const Sidebar = ({ onNavClick }: SidebarProps) => (
     {/* footer */}
     <div className="flex items-center gap-2 px-5 py-4"
       style={{ borderTop: '1px solid var(--border)' }}>
-      <div className="w-2 h-2 rounded-full shrink-0 bg-green-500" />
-      <span className="text-[12px]" style={{ color: 'var(--text-3)' }}>Connected</span>
+      <div className={['w-2 h-2 rounded-full shrink-0', statusDotClass].join(' ')} />
+      <span className="text-[12px]" style={{ color: 'var(--text-3)' }}>{statusLabel}</span>
     </div>
   </aside>
-)
+  )
+}
 
 export default Sidebar

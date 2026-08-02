@@ -67,6 +67,9 @@ export const fetchEmails = (params?: {
 export const fetchStats = (): Promise<DashboardStatsResponse> =>
   apiClient.get<DashboardStatsResponse>('/job-tracker/stats').then((r) => r.data)
 
+export const fetchHealth = (): Promise<{ status: string; db: string }> =>
+  apiClient.get('/health').then((r) => r.data)
+
 export const fetchScanHistory = (): Promise<ScanRun[]> =>
   apiClient.get<ScanRun[]>('/job-tracker/scan/history').then((r) => r.data)
 

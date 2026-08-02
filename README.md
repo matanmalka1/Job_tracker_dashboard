@@ -39,6 +39,7 @@ Open `http://localhost:5173`. API docs are at `http://localhost:8000/docs`.
 - [Development](docs/development.md)
 - [Database and migrations](docs/database.md)
 - [Deployment](docs/deployment.md)
+- [Resume Tailoring feature specification](docs/resume-tailoring-feature.md)
 - [Backend README](backend/README.md)
 - [Frontend README](frontend/README.md)
 

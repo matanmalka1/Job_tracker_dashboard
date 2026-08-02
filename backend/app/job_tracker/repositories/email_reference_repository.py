@@ -82,14 +82,26 @@ class EmailReferenceRepository:
             try:
                 await self.session.flush()
             except IntegrityError:
-                # Handle concurrent duplicate inserts that slip past the
-                # pre-check (e.g. two simultaneous scans).
+                # A concurrent scan may have inserted one of these
+                # gmail_message_ids between our pre-check and this flush.
+                # Retry rows individually so only the actual colliding row(s)
+                # are dropped, rather than discarding the whole batch.
                 await self.session.rollback()
                 logger.warning(
-                    "bulk_create flush failed (likely concurrent duplicate); returning 0 inserted",
+                    "bulk_create batch flush failed (likely concurrent duplicate); retrying rows individually",
                     exc_info=True,
                 )
-                return 0, len(existing_ids)
+                inserted = 0
+                skipped = len(existing_ids)
+                for record in records:
+                    self.session.add(record)
+                    try:
+                        await self.session.flush()
+                        inserted += 1
+                    except IntegrityError:
+                        await self.session.rollback()
+                        skipped += 1
+                return inserted, skipped
 
         return len(records), len(existing_ids)
 

@@ -183,6 +183,18 @@ class TestInferStatusIntegration:
         result = infer_status("Please complete the following assessment")
         assert result == ApplicationStatus.INTERVIEWING
 
+    def test_bare_schedule_does_not_infer_interviewing(self):
+        from app.job_tracker.services.emails.email_parser import infer_status
+
+        result = infer_status("Please schedule a call to discuss your candidacy")
+        assert result == ApplicationStatus.APPLIED
+
+    def test_schedule_interview_infers_interviewing(self):
+        from app.job_tracker.services.emails.email_parser import infer_status
+
+        result = infer_status("We'd like to schedule an interview with you")
+        assert result == ApplicationStatus.INTERVIEWING
+
     def test_rejection_before_offer_phrase(self):
         from app.job_tracker.services.emails.email_parser import infer_status
 

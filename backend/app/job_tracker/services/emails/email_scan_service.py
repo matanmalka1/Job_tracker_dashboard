@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Optional
 
 from app.job_tracker.email_scanner.gmail_client import GmailClient
+from app.job_tracker.models.email_reference import EmailReference
 from app.job_tracker.models.job_application import JobApplication
 from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
 from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
@@ -150,6 +151,12 @@ class EmailScanService:
         await self.repo.session.commit()
         return created, duplicates
 
+    async def _apply_inferred_status(self, email: EmailReference, application: JobApplication) -> bool:
+        """Infer a status signal from an email and apply it to the linked application."""
+        haystack = " ".join(filter(None, [email.subject, email.snippet, getattr(email, "body_text", None)]))
+        inferred = infer_status(haystack)
+        return await self.app_repo.update_status_from_email(application, inferred)
+
     async def _match_unlinked_emails(self) -> None:
         """Link unlinked EmailReference rows to existing JobApplications via heuristic matcher."""
         unlinked = await self.repo.list_unlinked()
@@ -169,10 +176,7 @@ class EmailScanService:
                 await self.app_repo.update_last_email_at(best.id, email.received_at)
                 linked_count += 1
 
-                haystack = " ".join(filter(None, [email.subject, email.snippet, getattr(email, "body_text", None)]))
-                inferred = infer_status(haystack)
-                changed = await self.app_repo.update_status_from_email(best, inferred)
-                if changed:
+                if await self._apply_inferred_status(email, best):
                     status_updated_count += 1
 
         if linked_count:
@@ -223,12 +227,14 @@ class EmailScanService:
                 if best:
                     email.application_id = best.id
                     await self.app_repo.update_last_email_at(best.id, email.received_at)
+                    await self._apply_inferred_status(email, best)
                 continue
 
             if key in created_this_run:
                 app = created_this_run[key]
                 email.application_id = app.id
                 await self.app_repo.update_last_email_at(app.id, email.received_at)
+                await self._apply_inferred_status(email, app)
                 continue
 
             new_app = await self.app_repo.create(parsed)

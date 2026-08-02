@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db import utcnow
+from app.job_tracker.models.email_reference import EmailReference
 from app.job_tracker.models.job_application import JobApplication, ApplicationStatus
 
 
@@ -57,6 +58,14 @@ class JobApplicationRepository:
         found_ids = set(existing_result.scalars().all())
         not_found = [i for i in ids if i not in found_ids]
         if found_ids:
+            # Core-level delete bypasses the ORM's cascade="all, delete-orphan"
+            # on JobApplication.emails, and the FK has no ondelete clause, so
+            # linked email_references rows must be removed explicitly first —
+            # otherwise deleting an application that still has linked emails
+            # raises an IntegrityError.
+            await self.session.execute(
+                delete(EmailReference).where(EmailReference.application_id.in_(found_ids))
+            )
             await self.session.execute(
                 delete(JobApplication).where(JobApplication.id.in_(found_ids))
             )
@@ -107,7 +116,9 @@ class JobApplicationRepository:
 
         total = await self.session.scalar(count_query)
         result = await self.session.execute(
-            query.order_by(sort_col).limit(limit).offset(offset)
+            # id as tiebreaker: ties on sort_col alone (e.g. multiple rows with
+            # last_email_at IS NULL) make OFFSET pagination non-deterministic.
+            query.order_by(sort_col, JobApplication.id.desc()).limit(limit).offset(offset)
         )
         return list(result.scalars().all()), total or 0
 
@@ -266,7 +277,13 @@ class JobApplicationRepository:
         )
         if search:
             page_q = page_q.where(JobApplication.company_name.ilike(f"%{search}%"))
-        page_q = page_q.order_by(func.max(JobApplication.updated_at).desc()).limit(limit).offset(offset)
+        # company_name as tiebreaker: it's the group_by key so it's already
+        # unique per row, making ties on latest_activity deterministic.
+        page_q = (
+            page_q.order_by(func.max(JobApplication.updated_at).desc(), JobApplication.company_name.asc())
+            .limit(limit)
+            .offset(offset)
+        )
 
         company_result = await self.session.execute(page_q)
         company_rows = [dict(row._mapping) for row in company_result.all()]

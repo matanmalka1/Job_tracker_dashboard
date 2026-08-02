@@ -24,8 +24,22 @@ export const formatRelative = (iso: string): string => {
   return new Date(iso).toLocaleDateString()
 }
 
-export const formatDateLabel = (iso: string): string =>
-  new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+// Local calendar day, not month/day alone — used as the timeline grouping key
+// so emails a year apart (e.g. Jan 5 2025 vs Jan 5 2026) never bucket together.
+export const dateGroupKey = (iso: string): string => {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+}
+
+export const formatDateLabel = (iso: string): string => {
+  const d = new Date(iso)
+  const isCurrentYear = d.getFullYear() === new Date().getFullYear()
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(isCurrentYear ? {} : { year: 'numeric' }),
+  })
+}
 
 export const formatFull = (iso: string): string =>
   new Date(iso).toLocaleString('en-US', {
