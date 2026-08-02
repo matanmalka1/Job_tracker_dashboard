@@ -217,9 +217,12 @@ def match_email_to_application(email_reference, applications: list) -> Optional[
         company_lower = app.company_name.lower()
         role_lower = (app.role_title or "").lower()
 
-        if company_lower in haystack:
+        # Word-boundary match, not a bare substring check: a short company
+        # name like "Co" would otherwise match inside the ".com"/".co.il" TLD
+        # of virtually every sender address, auto-linking unrelated emails.
+        if re.search(r"\b" + re.escape(company_lower) + r"\b", haystack):
             score += 10
-        if role_lower and role_lower in haystack:
+        if role_lower and re.search(r"\b" + re.escape(role_lower) + r"\b", haystack):
             score += 8
 
         hay_kw = _extract_keywords(haystack)

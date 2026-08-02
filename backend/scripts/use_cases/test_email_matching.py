@@ -164,3 +164,18 @@ class TestApplicationMatcher:
         email = self._make_email("Application status update from Google")
         result = match_email_to_application(email, apps)
         assert result is apps[0]
+
+    def test_short_company_name_does_not_match_dot_com_substring(self):
+        """Regression test: a bare `company_lower in haystack` substring check
+        made a 2-char company name like "Co" match inside ANY sender address
+        ending in .com/.co.il (the literal "co" in the TLD), silently
+        vacuuming up unrelated emails from dozens of unrelated companies."""
+        from app.job_tracker.services.emails.email_matcher import match_email_to_application
+
+        apps = [self._make_app("Co", "Account Manager")]
+        email = self._make_email(
+            "Thanks for applying to Palo Alto Networks",
+            sender="notification@smartrecruiters.com",
+        )
+        result = match_email_to_application(email, apps)
+        assert result is None

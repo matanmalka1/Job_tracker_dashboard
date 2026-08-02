@@ -209,6 +209,13 @@ def parse_application_from_email(email: EmailReference) -> Optional[dict]:
             if not company:
                 continue
 
+            if len(company) < 3:
+                # Too short to be a trustworthy company name (e.g. a stray "Co"
+                # fragment) — and dangerously easy for the matcher's substring
+                # check to false-positive against domain TLDs like ".com"/".co.il".
+                logger.warning("Parsed company name too short, skipping: %r", company)
+                continue
+
             if len(role) > 120:
                 logger.warning("Role title exceeds 120 chars (%d), skipping: %r", len(role), role[:40])
                 continue

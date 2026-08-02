@@ -92,6 +92,16 @@ class TestParseApplicationFromEmail:
         assert result is not None
         assert "Beta Inc" in result["company_name"]
 
+    def test_too_short_company_name_rejected(self):
+        """Regression test: a 2-char parsed company name (e.g. "Co") used to
+        slip through and later act as a magnet for match_email_to_application's
+        substring check (matches inside any .com/.co.il sender domain)."""
+        from app.job_tracker.services.emails.email_parser import parse_application_from_email
+
+        email = self._make_email("Thank you for applying to Co")
+        result = parse_application_from_email(email)
+        assert result is None
+
     def test_pattern3_company_only_no_role(self):
         from app.job_tracker.services.emails.email_parser import parse_application_from_email
 
