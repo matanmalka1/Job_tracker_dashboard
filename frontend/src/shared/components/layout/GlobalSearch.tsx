@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button, IconButton, Input, Kbd } from '@/shared/components/ui'
 import { fetchApplications } from '../../../api/client.ts'
 import type { JobApplication } from '../../types/job-tracker.ts'
+import { useDialogA11y } from '../../hooks/useDialogA11y.ts'
 import ApplicationStatusBadge from '../data-display/ApplicationStatusBadge.tsx'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -34,17 +35,20 @@ const GlobalSearch = () => {
 
   const results: JobApplication[] = isQueryValid ? (data?.items ?? []) : []
 
+  const closeSearch = () => {
+    setOpen(false)
+    setQuery('')
+    setDebouncedQuery('')
+  }
+
+  // Escape-to-close, initial focus, and Tab focus trap scoped to the dropdown panel.
+  const panelRef = useDialogA11y<HTMLDivElement>(open, closeSearch)
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
         setOpen(true)
-        setTimeout(() => inputRef.current?.focus(), 0)
-      }
-      if (e.key === 'Escape') {
-        setOpen(false)
-        setQuery('')
-        setDebouncedQuery('')
       }
     }
     window.addEventListener('keydown', handler)
@@ -54,9 +58,7 @@ const GlobalSearch = () => {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-        setQuery('')
-        setDebouncedQuery('')
+        closeSearch()
       }
     }
     if (open) document.addEventListener('mousedown', handler)
@@ -65,15 +67,10 @@ const GlobalSearch = () => {
 
   const handleSelect = (app: JobApplication) => {
     navigate(`/applications/${app.id}`)
-    setOpen(false)
-    setQuery('')
-    setDebouncedQuery('')
+    closeSearch()
   }
 
-  const openSearch = () => {
-    setOpen(true)
-    setTimeout(() => inputRef.current?.focus(), 0)
-  }
+  const openSearch = () => setOpen(true)
 
   return (
     <div ref={containerRef} className="relative">
@@ -91,8 +88,11 @@ const GlobalSearch = () => {
 
       {open && (
         <div
+          ref={panelRef}
+          tabIndex={-1}
           className="absolute top-full mt-2 left-0 w-96 bg-surface border border-DEFAULT rounded-xl shadow-2xl z-50 overflow-hidden"
           role="dialog"
+          aria-modal="true"
           aria-label="Search applications"
         >
           <div className="flex items-center gap-2 px-4 py-3 border-b border-DEFAULT">

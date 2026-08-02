@@ -1,5 +1,13 @@
 import type { JobApplication } from '../../shared/types/job-tracker.ts'
 
+// Neutralize CSV formula injection: company_name/role_title/source can come
+// from parsed (untrusted) Gmail content, and a leading =/+/-/@ is interpreted
+// as a formula by Excel/Sheets when the export is opened.
+const FORMULA_TRIGGER_CHARS = new Set(['=', '+', '-', '@'])
+
+const csvSafeCell = (value: string): string =>
+  FORMULA_TRIGGER_CHARS.has(value[0]) ? `'${value}` : value
+
 export const exportCsv = (apps: JobApplication[]) => {
   const headers = ['Company', 'Role', 'Status', 'Source', 'Applied Date', 'Confidence', 'Emails']
   const rows = apps.map((a) => [
@@ -12,7 +20,7 @@ export const exportCsv = (apps: JobApplication[]) => {
     a.email_count,
   ])
   const csv = [headers, ...rows]
-    .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .map((r) => r.map((v) => `"${csvSafeCell(String(v)).replace(/"/g, '""')}"`).join(','))
     .join('\n')
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)

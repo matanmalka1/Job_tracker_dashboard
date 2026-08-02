@@ -79,7 +79,13 @@ const RecentApplications = ({ applications, isLoading, isError }: Props) => {
             <div
               key={app.id}
               onClick={() => navigate(`/applications/${app.id}`)}
-              className="hover-row grid px-5 py-3.5 gap-4 items-center cursor-pointer"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return
+                e.preventDefault()
+                navigate(`/applications/${app.id}`)
+              }}
+              className="hover-row grid px-5 py-3.5 gap-4 items-center cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-500 focus-visible:-outline-offset-2"
               style={{ gridTemplateColumns: '1fr 1fr 140px 90px' }}
             >
               <span className="font-medium text-[13px] truncate" style={{ color: 'var(--text-1)' }}>

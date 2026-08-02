@@ -110,6 +110,32 @@ class TestUpdateStatusFromEmail:
         assert changed is False
         assert app.status == ApplicationStatus.OFFER
 
+    async def test_rejected_is_terminal_does_not_revert_to_interviewing(self, db_session):
+        from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
+
+        repo = JobApplicationRepository(db_session)
+        app = await repo.create({"company_name": "Acme", "status": "rejected"})
+        await db_session.commit()
+
+        changed = await repo.update_status_from_email(app, ApplicationStatus.INTERVIEWING)
+        await db_session.commit()
+
+        assert changed is False
+        assert app.status == ApplicationStatus.REJECTED
+
+    async def test_rejected_is_terminal_does_not_revert_to_offer(self, db_session):
+        from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
+
+        repo = JobApplicationRepository(db_session)
+        app = await repo.create({"company_name": "Acme", "status": "rejected"})
+        await db_session.commit()
+
+        changed = await repo.update_status_from_email(app, ApplicationStatus.OFFER)
+        await db_session.commit()
+
+        assert changed is False
+        assert app.status == ApplicationStatus.REJECTED
+
     async def test_same_status_no_change(self, db_session):
         from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
 
@@ -199,3 +225,45 @@ class TestAssignEmailStatusInference:
 
         refreshed = await app_repo.get_by_id(app.id)
         assert refreshed.status == ApplicationStatus.INTERVIEWING
+
+    async def test_reassigning_email_updates_previous_applications_last_email_at(self, db_session):
+        """assign_email must recompute the OLD application's last_email_at when an
+        email is reassigned away from it — otherwise it's left with a stale
+        timestamp that no longer corresponds to any of its linked emails."""
+        import datetime as dt
+        from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
+        from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
+        from app.job_tracker.services.job_application_service import JobApplicationService
+        from app.job_tracker.models.email_reference import EmailReference
+
+        app_repo = JobApplicationRepository(db_session)
+        email_repo = EmailReferenceRepository(db_session)
+        service = JobApplicationService(app_repo, email_repo)
+
+        app_a = await app_repo.create({"company_name": "A Corp", "status": "applied"})
+        app_b = await app_repo.create({"company_name": "B Corp", "status": "applied"})
+        await db_session.commit()
+
+        email = EmailReference(
+            gmail_message_id="msg-reassign-001",
+            subject="Application received",
+            snippet="Thanks for applying",
+            sender="hr@acorp.com",
+            received_at=dt.datetime(2024, 6, 1, tzinfo=dt.timezone.utc),
+        )
+        db_session.add(email)
+        await db_session.flush()
+
+        # Link to A first, so A.last_email_at is driven by this email
+        assert await service.assign_email(app_a.id, email.id) is True
+        refreshed_a = await app_repo.get_by_id(app_a.id)
+        assert refreshed_a.last_email_at == email.received_at
+
+        # Reassign the same email to B — A no longer has any linked emails,
+        # so A.last_email_at must be cleared, not left stale.
+        assert await service.assign_email(app_b.id, email.id) is True
+
+        refreshed_a_after = await app_repo.get_by_id(app_a.id)
+        refreshed_b = await app_repo.get_by_id(app_b.id)
+        assert refreshed_a_after.last_email_at is None
+        assert refreshed_b.last_email_at == email.received_at

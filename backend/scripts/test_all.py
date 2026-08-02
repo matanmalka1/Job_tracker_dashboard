@@ -10,4 +10,5 @@ from use_cases.test_application_management import *  # noqa: F401,F403
 from use_cases.test_email_ingestion import *  # noqa: F401,F403
 from use_cases.test_email_matching import *  # noqa: F401,F403
 from use_cases.test_email_parsing import *  # noqa: F401,F403
+from use_cases.test_gmail_client import *  # noqa: F401,F403
 from use_cases.test_health import *  # noqa: F401,F403

@@ -1,5 +1,6 @@
 """Shared FastAPI dependencies and factory helpers used across all route modules."""
 import logging
+import secrets
 from typing import Optional
 
 from fastapi import Header, HTTPException, status
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 async def check_api_key(x_api_key: Optional[str] = Header(None, alias="X-Api-Key")) -> None:
     """Optional API key guard. Skipped when JOB_TRACKER_API_KEY is not set."""
     required = get_settings().JOB_TRACKER_API_KEY
-    if required and x_api_key != required:
+    if required and not secrets.compare_digest(x_api_key or "", required):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing API key")
 
 

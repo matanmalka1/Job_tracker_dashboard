@@ -44,7 +44,7 @@ const InterviewsPage = () => {
       fetchApplications({ status: 'interviewing', limit: 200, offset: 0 }),
   })
 
-  const { mutate: moveStatus, isPending } = useMutation({
+  const { mutate: moveStatus, isPending, variables: pendingVariables } = useMutation({
     mutationFn: ({
       id,
       status,
@@ -123,7 +123,7 @@ const InterviewsPage = () => {
                   <InterviewCard
                     key={app.id}
                     app={app}
-                    loading={isPending}
+                    loading={isPending && pendingVariables?.id === app.id}
                     onMoveOffer={(id) => moveStatus({ id, status: 'offer' })}
                     onMoveRejected={(id) =>
                       moveStatus({ id, status: 'rejected' })

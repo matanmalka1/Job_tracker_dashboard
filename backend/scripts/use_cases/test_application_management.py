@@ -208,6 +208,76 @@ class TestApplicationsEndpoint:
 
 
 @pytest.mark.asyncio
+class TestBulkDeleteEndpoint:
+    async def test_bulk_delete_removes_all_and_reports_count(self, client):
+        ids = []
+        for i in range(3):
+            resp = await client.post("/job-tracker/applications", json={"company_name": f"Bulk{i}"})
+            ids.append(resp.json()["id"])
+
+        query = "&".join(f"ids={i}" for i in ids)
+        response = await client.delete(f"/job-tracker/applications?{query}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["deleted"] == 3
+        assert data["not_found"] == []
+
+        for app_id in ids:
+            get_resp = await client.get(f"/job-tracker/applications/{app_id}")
+            assert get_resp.status_code == 404
+
+    async def test_bulk_delete_reports_not_found_ids(self, client):
+        create_resp = await client.post("/job-tracker/applications", json={"company_name": "Exists"})
+        real_id = create_resp.json()["id"]
+
+        response = await client.delete(f"/job-tracker/applications?ids={real_id}&ids=999999")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["deleted"] == 1
+        assert data["not_found"] == [999999]
+
+    async def test_bulk_delete_no_ids_returns_422(self, client):
+        # ids is a required Query(...) param, so FastAPI itself rejects a
+        # completely missing `ids` before the handler's own `if not ids` check
+        # is ever reached.
+        response = await client.delete("/job-tracker/applications")
+        assert response.status_code == 422
+
+    async def test_bulk_delete_over_max_returns_400(self, client):
+        query = "&".join(f"ids={i}" for i in range(101))
+        response = await client.delete(f"/job-tracker/applications?{query}")
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+class TestApiKeyGuard:
+    """check_api_key is a no-op by default (JOB_TRACKER_API_KEY unset); these
+    tests force it on to verify the guard itself, independent of config.py."""
+
+    @staticmethod
+    def _require_api_key(monkeypatch, key: str) -> None:
+        import app.job_tracker.api.deps as deps_module
+        from app.config import Settings
+
+        monkeypatch.setattr(deps_module, "get_settings", lambda: Settings(JOB_TRACKER_API_KEY=key, _env_file=None))
+
+    async def test_missing_api_key_returns_401(self, client, monkeypatch):
+        self._require_api_key(monkeypatch, "secret123")
+        response = await client.get("/job-tracker/applications")
+        assert response.status_code == 401
+
+    async def test_wrong_api_key_returns_401(self, client, monkeypatch):
+        self._require_api_key(monkeypatch, "secret123")
+        response = await client.get("/job-tracker/applications", headers={"X-Api-Key": "wrong"})
+        assert response.status_code == 401
+
+    async def test_correct_api_key_is_accepted(self, client, monkeypatch):
+        self._require_api_key(monkeypatch, "secret123")
+        response = await client.get("/job-tracker/applications", headers={"X-Api-Key": "secret123"})
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
 class TestUnassignEmailEndpoint:
     async def test_unassign_email(self, client, db_session):
         from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository

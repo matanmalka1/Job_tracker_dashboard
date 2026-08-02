@@ -15,14 +15,17 @@ const CompanyCard = ({ company }: { company: CompanySummary }) => {
   const [expanded, setExpanded] = useState(false)
   const navigate = useNavigate()
 
+  const DETAIL_LIMIT = 50
+
   const { data: detailData, isLoading: detailLoading } = useQuery({
     queryKey: ['applications', 'company-detail', company.company_name],
-    queryFn: () => fetchApplications({ company_name: company.company_name, limit: 50, offset: 0 }),
+    queryFn: () => fetchApplications({ company_name: company.company_name, limit: DETAIL_LIMIT, offset: 0 }),
     enabled: expanded,
     staleTime: 30_000,
   })
 
   const applications = detailData?.items ?? []
+  const hiddenCount = Math.max(0, (detailData?.total ?? 0) - applications.length)
 
   return (
     <Card padding={false} className="overflow-hidden">
@@ -67,8 +70,14 @@ const CompanyCard = ({ company }: { company: CompanySummary }) => {
               <div
                 key={app.id}
                 onClick={() => navigate(`/applications/${app.id}`)}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return
+                  e.preventDefault()
+                  navigate(`/applications/${app.id}`)
+                }}
                 className={[
-                  'flex items-center gap-4 px-5 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors',
+                  'flex items-center gap-4 px-5 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-500 focus-visible:-outline-offset-2',
                   i < applications.length - 1 ? 'border-b border-DEFAULT' : '',
                 ].join(' ')}
               >
@@ -84,6 +93,11 @@ const CompanyCard = ({ company }: { company: CompanySummary }) => {
                 </span>
               </div>
             ))
+          )}
+          {hiddenCount > 0 && (
+            <div className="px-5 py-2.5 text-t3 text-xs border-t border-DEFAULT">
+              +{hiddenCount} more — view in Applications to see the rest
+            </div>
           )}
         </div>
       )}

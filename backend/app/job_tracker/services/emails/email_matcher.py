@@ -162,14 +162,19 @@ def match_application_by_domain(
     root = normalize_domain(sender_domain)
     # Strip TLD to get a bare brand name for matching
     brand = root.split(".")[0]  # e.g. 'google' from 'google.com'
-    if len(brand) <= 2:
+    # Unlike the text-score path (score >= 5), this fallback has no other
+    # corroborating signal, so require a more distinctive brand than a bare
+    # word-boundary match on its own would justify.
+    if len(brand) < 4:
         return None
 
     candidates = []
     for app in applications:
         company_lower = app.company_name.lower()
-        # Match if brand appears as a word inside the company name
-        if re.search(r"\b" + re.escape(brand) + r"\b", company_lower):
+        # Require the brand to lead the company name rather than appear
+        # anywhere in it — a mid-string word match (e.g. domain "life.com"
+        # matching "Silicon Life Analytics") is too weak a signal to auto-link.
+        if re.match(r"\b" + re.escape(brand) + r"\b", company_lower):
             candidates.append(app)
 
     if not candidates:

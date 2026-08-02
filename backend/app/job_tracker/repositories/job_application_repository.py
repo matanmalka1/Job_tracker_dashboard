@@ -187,6 +187,10 @@ class JobApplicationRepository:
         if current == inferred_status:
             return False
 
+        # Rejected is terminal — no automatic transition back out via email inference
+        if current == ApplicationStatus.REJECTED:
+            return False
+
         _priority = {
             ApplicationStatus.APPLIED: 0,
             ApplicationStatus.INTERVIEWING: 1,

@@ -28,8 +28,8 @@ class JobApplicationCreate(BaseModel):
     status: ApplicationStatus = ApplicationStatus.APPLIED
     source: Optional[str] = Field(None, max_length=255)
     applied_at: Optional[datetime] = None
-    confidence_score: Optional[float] = None
-    notes: Optional[str] = None
+    confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0)
+    notes: Optional[str] = Field(None, max_length=10000)
     job_url: Optional[str] = Field(None, max_length=2000)
     next_action_at: Optional[datetime] = None
 
@@ -50,8 +50,8 @@ class JobApplicationUpdate(BaseModel):
     status: Optional[ApplicationStatus] = None
     source: Optional[str] = Field(None, max_length=255)
     applied_at: Optional[datetime] = None
-    confidence_score: Optional[float] = None
-    notes: Optional[str] = None
+    confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0)
+    notes: Optional[str] = Field(None, max_length=10000)
     job_url: Optional[str] = Field(None, max_length=2000)
     next_action_at: Optional[datetime] = None
 

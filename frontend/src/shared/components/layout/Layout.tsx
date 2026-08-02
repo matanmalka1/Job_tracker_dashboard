@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { Menu, Moon, Sun, X } from 'lucide-react'
@@ -17,7 +17,15 @@ const PAGE_TITLES: Record<string, string> = {
 }
 
 const Clock = () => {
-  const now = new Date()
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    // Display precision is minutes, so a 30s tick keeps it fresh without
+    // re-rendering every second for no visible change.
+    const interval = window.setInterval(() => setNow(new Date()), 30_000)
+    return () => window.clearInterval(interval)
+  }, [])
+
   const time = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })
   const date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   return (

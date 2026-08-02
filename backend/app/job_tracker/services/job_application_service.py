@@ -68,8 +68,17 @@ class JobApplicationService:
         if not app:
             return False
 
+        previous_application_id = email.application_id
         email.application_id = application_id
         await self.app_repo.update_last_email_at(application_id, email.received_at)
+
+        # Reassigning away from another application: that application's
+        # last_email_at may now be stale (it could have been driven by this
+        # email), so recompute it from its remaining linked emails — same as
+        # unassign_email does.
+        if previous_application_id is not None and previous_application_id != application_id:
+            remaining_max = await self.email_repo.get_latest_received_at(previous_application_id)
+            await self.app_repo.set_last_email_at(previous_application_id, remaining_max)
 
         haystack = " ".join(filter(None, [email.subject, email.snippet, getattr(email, "body_text", None)]))
         inferred = infer_status(haystack)

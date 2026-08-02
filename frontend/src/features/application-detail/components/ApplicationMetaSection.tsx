@@ -1,4 +1,5 @@
 import type { JobApplication } from '../../../shared/types/job-tracker.ts'
+import { isSafeHttpUrl } from '../../../shared/utils/url.ts'
 
 const ApplicationMetaSection = ({ app }: { app: JobApplication }) => {
   if (!app.job_url && !app.notes) return null
@@ -8,14 +9,18 @@ const ApplicationMetaSection = ({ app }: { app: JobApplication }) => {
       {app.job_url && (
         <div className="flex items-center gap-2">
           <p className="text-t2 text-xs w-20 shrink-0">Job URL</p>
-          <a
-            href={app.job_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-purple-400 text-xs hover:text-purple-300 truncate transition-colors"
-          >
-            {app.job_url}
-          </a>
+          {isSafeHttpUrl(app.job_url) ? (
+            <a
+              href={app.job_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-purple-400 text-xs hover:text-purple-300 truncate transition-colors"
+            >
+              {app.job_url}
+            </a>
+          ) : (
+            <span className="text-t2 text-xs truncate">{app.job_url}</span>
+          )}
         </div>
       )}
       {app.notes && (
