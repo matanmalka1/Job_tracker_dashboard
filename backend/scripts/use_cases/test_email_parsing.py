@@ -143,6 +143,16 @@ class TestParseApplicationFromEmail:
         assert result is not None
         assert "Zeta" in result["company_name"]
 
+    def test_ccsld_domain_extracts_brand_not_ccsld_label(self):
+        """Regression test: 'aman.co.il' returned "Co" (the ccSLD label)
+        instead of "Aman" (the actual brand), because the old logic just
+        took the last label before the TLD without recognizing "co" as a
+        country-code second-level domain to strip along with the TLD."""
+        from app.job_tracker.services.emails.email_parser import extract_sender_domain
+
+        assert extract_sender_domain("Aman Group <noresponse@aman.co.il>") == "Aman"
+        assert extract_sender_domain("hr@infinitylabs.co.il") == "Infinitylabs"
+
     def test_ats_greenhouse_domain_blocklisted(self):
         from app.job_tracker.services.emails.email_parser import extract_sender_domain
 

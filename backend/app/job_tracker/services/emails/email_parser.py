@@ -154,6 +154,12 @@ _STATUS_HINTS: list[tuple[re.Pattern, ApplicationStatus]] = [
 ]
 
 
+# Second-level ccSLD labels used by two-part country-code domains
+# (e.g. "aman.co.il", "acme.org.il") — must be stripped along with the TLD,
+# otherwise a domain like "aman.co.il" yields "Co" instead of "Aman".
+_CCSLD_LABELS: set[str] = {"co", "com", "org", "net", "gov", "edu", "ac"}
+
+
 def extract_sender_domain(sender: str | None) -> str | None:
     """Extract bare domain from a sender like 'noreply@careers.acme.com' -> 'Acme'."""
     if not sender:
@@ -162,7 +168,10 @@ def extract_sender_domain(sender: str | None) -> str | None:
     if not m:
         return None
     parts = m.group(1).lower().split(".")
-    meaningful = [p for p in parts[:-1] if p not in _ATS_SENDER_DOMAINS]
+    labels = parts[:-1]  # drop the TLD
+    if len(labels) > 1 and labels[-1] in _CCSLD_LABELS:
+        labels = labels[:-1]  # also drop a ccSLD label like "co" in "aman.co.il"
+    meaningful = [p for p in labels if p not in _ATS_SENDER_DOMAINS]
     if meaningful:
         return meaningful[-1].capitalize()
     first = parts[0] if parts else None
