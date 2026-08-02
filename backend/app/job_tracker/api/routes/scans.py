@@ -25,8 +25,27 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Keep strong references to manual scan tasks so their lifetime is independent
+# of the SSE request that started them. A user navigating away may disconnect
+# the stream, but the scan must still finish and release the scan slot.
+_background_scan_tasks: set[asyncio.Task[None]] = set()
+
 SCAN_UNAVAILABLE_MESSAGE = "Gmail scan is unavailable. Check server logs and configuration."
 SCAN_FAILED_MESSAGE = "Scan failed. Check server logs."
+
+
+def _track_background_scan(task: asyncio.Task[None]) -> None:
+    _background_scan_tasks.add(task)
+    task.add_done_callback(_background_scan_tasks.discard)
+
+
+async def shutdown_background_scans() -> None:
+    """Cancel and await active manual scans during application shutdown."""
+    tasks = list(_background_scan_tasks)
+    for task in tasks:
+        task.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 
 @router.post("/scan/token", status_code=status.HTTP_200_OK)
@@ -128,15 +147,13 @@ async def scan_progress(
     def on_progress(stage: str, detail: str) -> None:
         queue.put_nowait({"stage": stage, "detail": detail})
 
-    async def event_stream():
-        scan_task: Optional[asyncio.Task] = None
-
-        async def run_scan() -> None:
-            # Own session scoped to this task, not FastAPI's Depends(get_session):
-            # a yield-dependency's session is held open until the whole
-            # StreamingResponse finishes, which would pin a pool connection for
-            # the entire scan (including the multi-minute Gmail-fetch phase that
-            # doesn't touch the DB at all).
+    async def run_scan() -> None:
+        # Own session scoped to this task, not FastAPI's Depends(get_session):
+        # a yield-dependency's session is held open until the whole
+        # StreamingResponse finishes, which would pin a pool connection for
+        # the entire scan (including the multi-minute Gmail-fetch phase that
+        # doesn't touch the DB at all).
+        try:
             async for scan_session in get_session():
                 service = EmailScanService(
                     client,
@@ -144,17 +161,22 @@ async def scan_progress(
                     JobApplicationRepository(scan_session),
                     ScanRunRepository(scan_session),
                 )
-                try:
-                    result = await service.scan_for_applications(on_progress=on_progress)
-                    queue.put_nowait({"stage": "result", "detail": "", **result})
-                except Exception as exc:
-                    logger.exception("SSE scan failed")
-                    detail = SCAN_UNAVAILABLE_MESSAGE if isinstance(exc, RuntimeError) else SCAN_FAILED_MESSAGE
-                    queue.put_nowait({"stage": "error", "detail": detail})
+                result = await service.scan_for_applications(on_progress=on_progress)
+                queue.put_nowait({"stage": "result", "detail": "", **result})
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.exception("SSE scan failed")
+            detail = SCAN_UNAVAILABLE_MESSAGE if isinstance(exc, RuntimeError) else SCAN_FAILED_MESSAGE
+            queue.put_nowait({"stage": "error", "detail": detail})
+        finally:
+            finish_scan()
 
+    scan_task = asyncio.create_task(run_scan(), name="manual-gmail-scan")
+    _track_background_scan(scan_task)
+
+    async def event_stream():
         try:
-            scan_task = asyncio.create_task(run_scan())
-
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=settings.SSE_KEEPALIVE_TIMEOUT)
@@ -169,17 +191,10 @@ async def scan_progress(
                 if event.get("stage") in ("result", "error"):
                     break
         except GeneratorExit:
-            logger.info("SSE client disconnected, cancelling scan task")
-        finally:
-            if scan_task is not None and not scan_task.done():
-                scan_task.cancel()
-                try:
-                    await scan_task
-                except asyncio.CancelledError:
-                    pass
-                except Exception:
-                    logger.debug("Cancelled scan task raised while closing SSE stream", exc_info=True)
-            finish_scan()
+            logger.info("SSE client disconnected; scan continues in background")
+        except asyncio.CancelledError:
+            logger.info("SSE response cancelled; scan continues in background")
+            raise
 
     return StreamingResponse(
         event_stream(),

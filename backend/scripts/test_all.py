@@ -12,3 +12,4 @@ from use_cases.test_email_matching import *  # noqa: F401,F403
 from use_cases.test_email_parsing import *  # noqa: F401,F403
 from use_cases.test_gmail_client import *  # noqa: F401,F403
 from use_cases.test_health import *  # noqa: F401,F403
+from use_cases.test_scan_stream import *  # noqa: F401,F403

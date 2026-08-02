@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { QueryObserverResult } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { fetchScanStreamUrl } from '../../../api/client.ts'
 import { SCAN_STAGES } from '../../../shared/constants/scan.ts'
 import type { Blip, LogLine, ScanResultState } from '../types.ts'
-import type { ScanRun } from '../../../shared/types/job-tracker.ts'
 
 let blipId = 0
 
@@ -26,9 +24,7 @@ type ScanEvent = {
   applications_created?: number
 }
 
-export const useScanRunner = (
-  refetchHistory: () => Promise<QueryObserverResult<ScanRun[], Error>>,
-) => {
+export const useScanRunner = () => {
   const queryClient = useQueryClient()
   const [scanning, setScanning] = useState(false)
   const [currentStage, setCurrentStage] = useState<string | null>(null)
@@ -81,7 +77,7 @@ export const useScanRunner = (
     queryClient.invalidateQueries({ queryKey: ['pipeline-column'] })
     queryClient.invalidateQueries({ queryKey: ['companies'] })
     queryClient.invalidateQueries({ queryKey: ['stats'] })
-    void refetchHistory()
+    queryClient.invalidateQueries({ queryKey: ['scan-history'] })
     toast.success(
       nextResult.applications_created > 0 || nextResult.inserted > 0
         ? `${nextResult.applications_created} new app${nextResult.applications_created !== 1 ? 's' : ''} · ${nextResult.inserted} email${nextResult.inserted !== 1 ? 's' : ''} saved`
@@ -96,7 +92,7 @@ export const useScanRunner = (
     setCurrentStage('error')
     setScanning(false)
     addLog('error', message, 'error')
-    void refetchHistory()
+    queryClient.invalidateQueries({ queryKey: ['scan-history'] })
     toast.error(message)
   }
 

@@ -8,7 +8,7 @@ import ScannerCard from '../components/ScannerCard.tsx'
 import LiveLoggerControls from '../components/LiveLoggerControls.tsx'
 import LiveLoggerHeader from '../components/LiveLoggerHeader.tsx'
 import { SCAN_STAGES } from '../../../shared/constants/scan.ts'
-import { useScanRunner } from '../hooks/useScanRunner.ts'
+import { useScan } from '../scan-context.ts'
 import { useLiveLogger } from '../hooks/useLiveLogger.ts'
 import EventTerminal from '../../../shared/components/feedback/EventTerminal.tsx'
 
@@ -16,7 +16,7 @@ const SettingsPage = () => {
   const [debugOpen, setDebugOpen] = useState(false)
   const [autoScroll, setAutoScroll] = useState(true)
 
-  const { data: history, refetch: refetchHistory } = useQuery({
+  const { data: history } = useQuery({
     queryKey: ['scan-history'],
     queryFn: fetchScanHistory,
     staleTime: 30_000,
@@ -28,7 +28,7 @@ const SettingsPage = () => {
     staleTime: 60_000,
   })
 
-  const scan = useScanRunner(refetchHistory)
+  const scan = useScan()
   const logger = useLiveLogger()
 
   const activeStage = SCAN_STAGES.find((s) => s.key === scan.currentStage)

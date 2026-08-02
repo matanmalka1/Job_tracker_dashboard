@@ -63,6 +63,9 @@ async def lifespan(_: FastAPI):
         except asyncio.CancelledError:
             pass
 
+    from app.job_tracker.api.routes.scans import shutdown_background_scans
+    await shutdown_background_scans()
+
     try:
         from app.job_tracker.services.emails.email_scan_service import shutdown_executor
         shutdown_executor()

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import ErrorBoundary from '../shared/components/feedback/ErrorBoundary.tsx'
+import ScanProvider from '../features/settings/ScanProvider.tsx'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,7 +20,9 @@ type AppProvidersProps = {
 const AppProviders = ({ children }: AppProvidersProps) => (
   <ErrorBoundary>
     <BrowserRouter>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <ScanProvider>{children}</ScanProvider>
+      </QueryClientProvider>
     </BrowserRouter>
   </ErrorBoundary>
 )
