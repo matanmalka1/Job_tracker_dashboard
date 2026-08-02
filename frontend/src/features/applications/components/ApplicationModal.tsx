@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { Button, FormField, IconButton, Input, SelectField, Textarea } from '@/shared/components/ui'
+import { useDialogA11y } from '@/shared/hooks/useDialogA11y.ts'
 import type { ApplicationWritePayload, JobApplication } from '../../../shared/types/job-tracker.ts'
 import { APPLICATION_STATUS_OPTIONS } from '../../../shared/constants/applicationStatus.ts'
 import {
@@ -33,6 +34,8 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
     }
   }, [open, initial])
 
+  const dialogRef = useDialogA11y<HTMLDivElement>(open, onClose)
+
   if (!open) return null
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -55,7 +58,11 @@ const ApplicationModal = ({ open, initial, onClose, onSubmit, loading }: Props) 
       aria-label={isEdit ? 'Edit Application' : 'Add Application'}
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-surface border border-DEFAULT rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="relative bg-surface border border-DEFAULT rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-t1 font-semibold text-lg">
             {isEdit ? 'Edit Application' : 'Add Application'}

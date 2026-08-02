@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react'
 import { Button } from '@/shared/components/ui'
+import { useDialogA11y } from '@/shared/hooks/useDialogA11y.ts'
 
 interface Props {
   open: boolean
@@ -20,12 +21,21 @@ const ConfirmDialog = ({
   onCancel,
   loading,
 }: Props) => {
+  const dialogRef = useDialogA11y<HTMLDivElement>(open, onCancel)
+
   if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-surface border border-DEFAULT rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={title}
+        className="relative bg-surface border border-DEFAULT rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6"
+      >
         <div className="flex items-start gap-4 mb-5">
           <div className="shrink-0 w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
             <AlertTriangle size={18} className="text-red-400" />

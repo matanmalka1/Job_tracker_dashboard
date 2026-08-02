@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from app.config import get_settings
 from app.db import get_session
 from app.job_tracker.api.deps import check_api_key, make_gmail_client
-from app.job_tracker.api.scan_rate_limit import acquire_scan_slot
+from app.job_tracker.api.scan_rate_limit import acquire_scan_slot, finish_scan, try_start_scan
 from app.job_tracker.api.scan_tokens import (
     consume_stream_token,
     issue_stream_token,
@@ -57,6 +57,12 @@ async def trigger_scan(
             headers={"Retry-After": str(int(retry_after))},
         )
 
+    if not try_start_scan():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A scan is already in progress.",
+        )
+
     settings = get_settings()
     client = make_gmail_client(settings)
 
@@ -80,12 +86,13 @@ async def trigger_scan(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=SCAN_FAILED_MESSAGE,
         ) from exc
+    finally:
+        finish_scan()
 
 
 @router.get("/scan/progress")
 async def scan_progress(
     stream_token: Optional[str] = Query(None),
-    session=Depends(get_session),
 ):
     """
     SSE endpoint: streams scan progress events then a final result.
@@ -109,6 +116,12 @@ async def scan_progress(
             headers={"Retry-After": str(int(retry_after))},
         )
 
+    if not try_start_scan():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A scan is already in progress.",
+        )
+
     client = make_gmail_client(settings)
     queue: asyncio.Queue = asyncio.Queue()
 
@@ -119,19 +132,25 @@ async def scan_progress(
         scan_task: Optional[asyncio.Task] = None
 
         async def run_scan() -> None:
-            service = EmailScanService(
-                client,
-                EmailReferenceRepository(session),
-                JobApplicationRepository(session),
-                ScanRunRepository(session),
-            )
-            try:
-                result = await service.scan_for_applications(on_progress=on_progress)
-                queue.put_nowait({"stage": "result", "detail": "", **result})
-            except Exception as exc:
-                logger.exception("SSE scan failed")
-                detail = SCAN_UNAVAILABLE_MESSAGE if isinstance(exc, RuntimeError) else SCAN_FAILED_MESSAGE
-                queue.put_nowait({"stage": "error", "detail": detail})
+            # Own session scoped to this task, not FastAPI's Depends(get_session):
+            # a yield-dependency's session is held open until the whole
+            # StreamingResponse finishes, which would pin a pool connection for
+            # the entire scan (including the multi-minute Gmail-fetch phase that
+            # doesn't touch the DB at all).
+            async for scan_session in get_session():
+                service = EmailScanService(
+                    client,
+                    EmailReferenceRepository(scan_session),
+                    JobApplicationRepository(scan_session),
+                    ScanRunRepository(scan_session),
+                )
+                try:
+                    result = await service.scan_for_applications(on_progress=on_progress)
+                    queue.put_nowait({"stage": "result", "detail": "", **result})
+                except Exception as exc:
+                    logger.exception("SSE scan failed")
+                    detail = SCAN_UNAVAILABLE_MESSAGE if isinstance(exc, RuntimeError) else SCAN_FAILED_MESSAGE
+                    queue.put_nowait({"stage": "error", "detail": detail})
 
         try:
             scan_task = asyncio.create_task(run_scan())
@@ -160,6 +179,7 @@ async def scan_progress(
                     pass
                 except Exception:
                     logger.debug("Cancelled scan task raised while closing SSE stream", exc_info=True)
+            finish_scan()
 
     return StreamingResponse(
         event_stream(),

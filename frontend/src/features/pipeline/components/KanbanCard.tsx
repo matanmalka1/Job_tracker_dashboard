@@ -10,6 +10,8 @@ interface Props {
   isOverlay?: boolean
 }
 
+const CLICK_DRAG_THRESHOLD_PX = 5
+
 const STATUS_ACCENT: Record<string, string> = {
   applied:      '#3b82f6',
   interviewing: '#a78bfa',
@@ -56,13 +58,21 @@ const KanbanCard = ({ application, isOverlay = false }: Props) => {
   const date = formatDate(application.applied_at ?? application.last_email_at)
   const initials = getInitials(application.company_name)
 
-  // Distinguish tap vs drag: only navigate if pointer didn't move much
-  const handlePointerDown = (e: React.PointerEvent) => {
+  // Distinguish tap vs drag: only navigate if pointer didn't move much.
+  // Chains dnd-kit's own onPointerDown activator so PointerSensor (the
+  // stylus/pointer-type fallback) still fires — a plain onPointerDown prop
+  // here would silently overwrite it since {...listeners} is spread first.
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     pointerDownPos.current = { x: e.clientX, y: e.clientY }
+    listeners?.onPointerDown?.(e)
   }
 
-  const handleClick = () => {
-    if (!pointerDownPos.current) return
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const start = pointerDownPos.current
+    pointerDownPos.current = null
+    if (!start) return
+    const movedDistance = Math.hypot(e.clientX - start.x, e.clientY - start.y)
+    if (movedDistance > CLICK_DRAG_THRESHOLD_PX) return
     navigate(`/applications/${application.id}`)
   }
 

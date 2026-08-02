@@ -15,13 +15,15 @@ from app.job_tracker.schemas.applications import (
 
 router = APIRouter()
 
+_search_max_length = get_settings().SEARCH_MAX_LENGTH
+
 
 @router.get("/applications", response_model=JobApplicationPage)
 async def list_applications(
     limit: Optional[int] = Query(None, ge=1, le=500),
     offset: Optional[int] = Query(None, ge=0),
     status_filter: Optional[ApplicationStatus] = Query(None, alias="status"),
-    search: Optional[str] = Query(None, max_length=200),
+    search: Optional[str] = Query(None, max_length=_search_max_length),
     company_name: Optional[str] = Query(None, max_length=255),
     sort: Optional[str] = Query(None, pattern="^(updated_at|created_at|applied_at|last_email_at|company_name|role_title|status)$"),
     session=Depends(get_session),

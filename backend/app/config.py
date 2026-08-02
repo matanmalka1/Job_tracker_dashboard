@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     PAGINATION_OFFSET_DEFAULT: int = 0
     BULK_DELETE_MAX_IDS: int = 100        # max IDs accepted by bulk-delete
     ERROR_TRUNCATE_LENGTH: int = 2000     # max chars stored in scan_run.error
+    SEARCH_MAX_LENGTH: int = 200          # max chars accepted in ?search= query params
 
     # ── API key guard ─────────────────────────────────────────────────────────
     # Set JOB_TRACKER_API_KEY to require X-Api-Key header on all /job-tracker routes.
@@ -67,6 +68,16 @@ class Settings(BaseSettings):
     def validate_production_database(self) -> "Settings":
         if self.APP_ENV.lower() == "production" and self.DATABASE_URL.startswith("sqlite"):
             raise ValueError("Production DATABASE_URL must point to PostgreSQL, not SQLite.")
+        return self
+
+    @model_validator(mode="after")
+    def validate_production_api_key(self) -> "Settings":
+        if self.APP_ENV.lower() == "production" and not self.JOB_TRACKER_API_KEY:
+            raise ValueError(
+                "JOB_TRACKER_API_KEY must be set in production — without it, every "
+                "/job-tracker route (including bulk delete and Gmail scan) is open "
+                "to anyone with the URL."
+            )
         return self
 
 

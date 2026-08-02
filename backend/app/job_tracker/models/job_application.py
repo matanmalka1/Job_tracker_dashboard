@@ -28,7 +28,6 @@ class JobApplication(Base):
             ApplicationStatus,
             values_callable=lambda enum_cls: [m.value for m in enum_cls],
             name="applicationstatus",
-            create_engine_constraint=False,
         ),
         nullable=False,
         default=ApplicationStatus.APPLIED,

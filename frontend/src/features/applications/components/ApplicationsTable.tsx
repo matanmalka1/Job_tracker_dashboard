@@ -59,8 +59,14 @@ const ApplicationsTable = ({
           <tr
             key={app.id}
             onClick={() => onRowClick(app.id)}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' && e.key !== ' ') return
+              e.preventDefault()
+              onRowClick(app.id)
+            }}
             className={[
-              'border-b border-DEFAULT hover:bg-white/[0.04] transition-colors cursor-pointer',
+              'border-b border-DEFAULT hover:bg-white/[0.04] transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-500 focus-visible:-outline-offset-2',
               selectedIds.has(app.id) ? 'bg-purple-600/5' : '',
             ].join(' ')}
           >

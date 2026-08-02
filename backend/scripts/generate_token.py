@@ -37,7 +37,7 @@ def main():
     flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET, SCOPES)
     creds = flow.run_local_server(port=0)
 
-    with open(TOKEN_OUTPUT, "w") as f:
+    with open(TOKEN_OUTPUT, "w", opener=lambda path, flags: os.open(path, flags, 0o600)) as f:
         f.write(creds.to_json())
 
     print(f"✓ Token saved to {TOKEN_OUTPUT}")

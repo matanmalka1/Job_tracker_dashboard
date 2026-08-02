@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { deleteApplication, updateApplication } from '../../../api/client.ts'
 import type { ApplicationStatus, ApplicationWritePayload, JobApplication } from '../../../shared/types/job-tracker.ts'
+import { useInvalidateApplicationData } from '../../../shared/hooks/useInvalidateApplicationData.ts'
 import {
   applicationToFormState,
   formStateToApplicationPayload,
@@ -13,17 +14,11 @@ import {
 
 export const useApplicationDetailActions = (appId: number, app?: JobApplication) => {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editForm, setEditForm] = useState<ApplicationFormState | null>(null)
 
-  const invalidateApplicationData = () => {
-    queryClient.invalidateQueries({ queryKey: ['applications'] })
-    queryClient.invalidateQueries({ queryKey: ['pipeline-column'] })
-    queryClient.invalidateQueries({ queryKey: ['companies'] })
-    queryClient.invalidateQueries({ queryKey: ['stats'] })
-  }
+  const invalidateApplicationData = useInvalidateApplicationData()
 
   const editMutation = useMutation({
     mutationFn: (body: Partial<ApplicationWritePayload>) => updateApplication(appId, body),

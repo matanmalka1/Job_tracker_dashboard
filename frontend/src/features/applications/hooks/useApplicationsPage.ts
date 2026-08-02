@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   bulkDeleteApplications,
@@ -10,13 +10,13 @@ import {
 } from '../../../api/client.ts'
 import type { ApplicationSortField } from '../../../api/client.ts'
 import type { ApplicationStatus, ApplicationWritePayload, JobApplication } from '../../../shared/types/job-tracker.ts'
+import { useInvalidateApplicationData } from '../../../shared/hooks/useInvalidateApplicationData.ts'
 
 export const PAGE_SIZE = 25
 
 const SEARCH_DEBOUNCE_MS = 300
 
 export const useApplicationsPage = () => {
-  const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'all'>('all')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -49,12 +49,7 @@ export const useApplicationsPage = () => {
     placeholderData: (prev) => prev,
   })
 
-  const invalidateApplicationData = () => {
-    queryClient.invalidateQueries({ queryKey: ['applications'] })
-    queryClient.invalidateQueries({ queryKey: ['pipeline-column'] })
-    queryClient.invalidateQueries({ queryKey: ['companies'] })
-    queryClient.invalidateQueries({ queryKey: ['stats'] })
-  }
+  const invalidateApplicationData = useInvalidateApplicationData()
 
   const addMutation = useMutation({
     mutationFn: createApplication,

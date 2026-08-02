@@ -1,12 +1,7 @@
 import { useState } from 'react'
-
-const decodeHtmlEntities = (str: string): string => {
-  const txt = document.createElement('textarea')
-  txt.innerHTML = str
-  return txt.value
-}
 import { ChevronDown, ExternalLink } from 'lucide-react'
 import type { EmailReference } from '../../../shared/types/job-tracker.ts'
+import { decodeHtmlEntities } from '../../../shared/utils/html.ts'
 import {
   CATEGORY_CONFIG,
   categorize,

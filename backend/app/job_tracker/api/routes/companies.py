@@ -9,10 +9,12 @@ from app.job_tracker.schemas.companies import CompanySummaryPage
 
 router = APIRouter()
 
+_search_max_length = get_settings().SEARCH_MAX_LENGTH
+
 
 @router.get("/companies/summary", response_model=CompanySummaryPage)
 async def get_companies_summary(
-    search: Optional[str] = Query(None, max_length=200),
+    search: Optional[str] = Query(None, max_length=_search_max_length),
     limit: Optional[int] = Query(None, ge=1, le=200),
     offset: Optional[int] = Query(None, ge=0),
     session=Depends(get_session),

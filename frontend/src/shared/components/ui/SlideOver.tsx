@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
 import { X } from 'lucide-react'
+import { useDialogA11y } from '../../hooks/useDialogA11y.ts'
 
 interface Props {
   open: boolean
@@ -9,13 +9,7 @@ interface Props {
 }
 
 const SlideOver = ({ open, title, onClose, children }: Props) => {
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    if (open) document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [open, onClose])
+  const panelRef = useDialogA11y<HTMLDivElement>(open, onClose)
 
   return (
     <>
@@ -30,6 +24,11 @@ const SlideOver = ({ open, title, onClose, children }: Props) => {
 
       {/* Panel */}
       <div
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className={[
           'fixed inset-y-0 right-0 z-50 w-full max-w-md bg-surface border-l border-DEFAULT shadow-2xl flex flex-col transition-transform duration-300 ease-in-out',
           open ? 'translate-x-0' : 'translate-x-full',

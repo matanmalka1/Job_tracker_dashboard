@@ -73,7 +73,8 @@ Defined in `app/config.py`.
 | `PAGINATION_OFFSET_DEFAULT` | `0` | Default offset |
 | `BULK_DELETE_MAX_IDS` | `100` | Max IDs in bulk delete |
 | `ERROR_TRUNCATE_LENGTH` | `2000` | Stored scan error length |
-| `JOB_TRACKER_API_KEY` | unset | Optional `X-Api-Key` guard for `/job-tracker` |
+| `SEARCH_MAX_LENGTH` | `200` | Max chars accepted in `?search=` query params |
+| `JOB_TRACKER_API_KEY` | unset | `X-Api-Key` guard for `/job-tracker`. Optional in development; **required** when `APP_ENV=production` (startup fails without it) |
 | `CORS_ORIGINS` | localhost origins | JSON list of allowed origins |
 
 `ENV_FILE` can point settings at a non-default env file. Production ignores `.env` unless `ENV_FILE` is explicitly set.
@@ -83,7 +84,7 @@ Defined in `app/config.py`.
 ```
 GET    /health                                      → {status, db}
 
-GET    /job-tracker/applications/pipeline           → applications grouped by status
+GET    /job-tracker/applications/pipeline/column    → paginated applications for one status column
 GET    /job-tracker/applications                    → paginated list (limit, offset, status, search, sort)
 POST   /job-tracker/applications                    → create
 GET    /job-tracker/applications/:id                → single

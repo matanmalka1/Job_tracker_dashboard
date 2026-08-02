@@ -30,7 +30,7 @@ async def _do_scan() -> None:
     from app.config import get_settings
     from app.db import get_session
     from app.job_tracker.api.deps import make_gmail_client
-    from app.job_tracker.api.scan_rate_limit import acquire_scan_slot
+    from app.job_tracker.api.scan_rate_limit import acquire_scan_slot, finish_scan, try_start_scan
     from app.job_tracker.repositories.email_reference_repository import EmailReferenceRepository
     from app.job_tracker.repositories.job_application_repository import JobApplicationRepository
     from app.job_tracker.repositories.scan_run_repository import ScanRunRepository
@@ -41,19 +41,26 @@ async def _do_scan() -> None:
         logger.info("Auto-scan skipped: rate-limited, retry in %.0fs", retry_after)
         return
 
+    if not try_start_scan():
+        logger.info("Auto-scan skipped: a scan is already in progress")
+        return
+
     settings = get_settings()
     client = make_gmail_client(settings)
 
-    async for session in get_session():
-        service = EmailScanService(
-            client,
-            EmailReferenceRepository(session),
-            JobApplicationRepository(session),
-            ScanRunRepository(session),
-        )
-        result = await service.scan_for_applications()
-        logger.info(
-            "Auto-scan complete: inserted=%s apps_created=%s",
-            result["inserted"],
-            result["applications_created"],
-        )
+    try:
+        async for session in get_session():
+            service = EmailScanService(
+                client,
+                EmailReferenceRepository(session),
+                JobApplicationRepository(session),
+                ScanRunRepository(session),
+            )
+            result = await service.scan_for_applications()
+            logger.info(
+                "Auto-scan complete: inserted=%s apps_created=%s",
+                result["inserted"],
+                result["applications_created"],
+            )
+    finally:
+        finish_scan()

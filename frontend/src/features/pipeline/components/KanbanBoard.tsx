@@ -70,9 +70,13 @@ function patchColumnCache(
   const toSnapshot = queryClient.getQueryData<PipelineColumnPage>(toKey)
 
   if (fromSnapshot) {
+    // Card may live on a page 2+ ("Load more") that isn't cached under this
+    // key — only decrement total when it's actually being removed from this
+    // page, otherwise the count goes stale until onResyncColumns refetches.
+    const wasOnPageOne = fromSnapshot.items.some((c) => c.id === cardId)
     queryClient.setQueryData<PipelineColumnPage>(fromKey, {
       ...fromSnapshot,
-      total: fromSnapshot.total - 1,
+      total: wasOnPageOne ? fromSnapshot.total - 1 : fromSnapshot.total,
       items: fromSnapshot.items.filter((c) => c.id !== cardId),
     })
   }
