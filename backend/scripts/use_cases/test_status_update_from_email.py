@@ -202,6 +202,30 @@ class TestInferStatusIntegration:
         result = infer_status("Unfortunately we cannot extend an offer at this time")
         assert result == ApplicationStatus.REJECTED
 
+    def test_wont_be_continuing_infers_rejected(self):
+        """Regression test: real rejection email phrasing ("we won't be
+        continuing with the process for this role") wasn't in the REJECTED
+        keyword list at all, so it fell through to the APPLIED default."""
+        from app.job_tracker.services.emails.email_parser import infer_status
+
+        result = infer_status(
+            "After reviewing your application, we won't be continuing with "
+            "the process for this role."
+        )
+        assert result == ApplicationStatus.REJECTED
+
+    def test_typographic_apostrophe_still_matches_rejection(self):
+        """Regression test: real emails commonly use a curly apostrophe (’)
+        in contractions, which the straight-apostrophe regex patterns
+        silently failed to match at all."""
+        from app.job_tracker.services.emails.email_parser import infer_status
+
+        result = infer_status(
+            "After reviewing your application, we won’t be continuing "
+            "with the process for this role."
+        )
+        assert result == ApplicationStatus.REJECTED
+
 
 @pytest.mark.asyncio
 class TestAssignEmailStatusInference:

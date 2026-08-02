@@ -123,6 +123,7 @@ _STATUS_HINTS: list[tuple[re.Pattern, ApplicationStatus]] = [
             r"\b(unfortunately|not moving forward|unable to proceed|cannot extend an offer|"
             r"decided not to proceed|regret to inform|not selected|declined|"
             r"we will not be moving forward|we won't be moving forward|"
+            r"will not be continuing|won't be continuing|not be continuing with|"
             r"move forward with other|move forward with different|"
             r"decided not to move forward|decided to pursue other|decided to proceed with other|"
             r"after careful consideration|after carefully considering|"
@@ -171,8 +172,12 @@ def extract_sender_domain(sender: str | None) -> str | None:
 
 
 def infer_status(text: str) -> ApplicationStatus:
+    # Real emails commonly use typographic apostrophes (’) in contractions
+    # like "won't" — normalize to straight ones so the _STATUS_HINTS patterns
+    # (written with straight apostrophes) actually match them.
+    normalized = text.replace("’", "'").replace("‘", "'")
     for pattern, app_status in _STATUS_HINTS:
-        if pattern.search(text):
+        if pattern.search(normalized):
             return app_status
     return ApplicationStatus.APPLIED
 
